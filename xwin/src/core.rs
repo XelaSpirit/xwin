@@ -3,17 +3,16 @@
 //! This covers the core functionality of XWin, primarily initialization and
 //! termination of the XWin library.
 
-use std::{
-	ffi::CStr,
-	os::raw::{
-		c_char,
-		c_int,
-	},
-	ptr::null,
-};
+use std::os::raw::c_int;
 
 use crate::{
 	bind::{
+		glfwGetPlatform,
+		glfwGetVersion,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -28,10 +27,6 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
-		glfwGetError,
-		glfwInit,
-		glfwInitHint,
-		glfwTerminate,
 	},
 	err::XErr,
 };
@@ -73,6 +68,9 @@ impl XWin
 	/// was compiled to support.
 	///
 	/// TODO add link to platform init hint
+	/// 
+	/// # Returns
+	/// A new XWin instance if successful, or an error if one occurred
 	///
 	/// # Errors
 	/// Possible errors include [PlatformUnavailable](XErr::PlatformUnavailable)
@@ -109,28 +107,15 @@ impl XWin
 	pub fn default() -> Result<Self, XErr>
 	{
 		let init = unsafe { glfwInit() };
+
 		if init != GLFW_TRUE as i32
 		{
-			let mut desc: *const c_char = null();
-			let code = unsafe { glfwGetError(&mut desc) };
-
-			return Err(XErr::from_code(
-				code as u32,
-				if !desc.is_null()
-				{
-					unsafe { CStr::from_ptr(desc) }
-						.to_str()
-						.unwrap_or_else(|_| "")
-						.to_string()
-				}
-				else
-				{
-					String::default()
-				},
-			));
+			Err(XErr::get())
 		}
-
-		Ok(XWin(()))
+		else
+		{
+			Ok(XWin(()))
+		}
 	}
 
 	/// Initialize the XWin library. See [XWin::default] for a full description.
@@ -163,6 +148,9 @@ impl XWin
 	/// Set the platform to use for windowing and input.
 	///
 	/// **Default:** [`Platform::Any`]
+	///
+	/// # Thread Safety
+	/// This function must only be called from the main thread.
 	pub fn platform(&self, platform: Platform) -> &Self
 	{
 		unsafe {
@@ -187,6 +175,9 @@ impl XWin
 	/// Specifies whether to set the current directory to the application to the
 	/// `Contents/Resources` subdirectory of the application's bundle, if
 	/// present. This is ignored on other platforms.
+	///
+	/// # Thread Safety
+	/// This function must only be called from the main thread.
 	pub fn cocoa_dir_resources(&self, value: bool) -> &Self
 	{
 		unsafe {
@@ -210,6 +201,9 @@ impl XWin
 	/// Specifies whether to create the menu bar and dock icon when XWin is
 	/// initialized. This applies whether the menu bar is created from a nib or
 	/// manually by XWin. This is ignored on other platforms.
+	///
+	/// # Thread Safety
+	/// This function must only be called from the main thread.
 	pub fn cocoa_menubar(&self, value: bool) -> &Self
 	{
 		unsafe {
@@ -233,6 +227,9 @@ impl XWin
 	/// specifies whether to use [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor)
 	/// for window decorations where available. This is ignored on other
 	/// platforms.
+	///
+	/// # Thread Safety
+	/// This function must only be called from the main thread.
 	pub fn wayland_libdecor(&self, value: bool) -> &Self
 	{
 		unsafe {
@@ -277,5 +274,90 @@ impl Drop for XWin
 	fn drop(&mut self)
 	{
 		unsafe { glfwTerminate() };
+	}
+}
+
+/// This function retrieves the major, minor and revision numbers of the GLFW
+/// library. It is intended for when you are using GLFW as a shared library and
+/// want to ensure that you are using the minimum required version.
+///
+/// # Remarks
+/// This function may be called before initializing XWin
+///
+/// # Thread Safety
+/// This function may be called from any thread.
+pub fn glfw_version() -> (u32, u32, u32)
+{
+	let mut major: c_int = 0;
+	let mut minor: c_int = 0;
+	let mut patch: c_int = 0;
+	unsafe { glfwGetVersion(&mut major, &mut minor, &mut patch) };
+
+	(major as u32, minor as u32, patch as u32)
+}
+
+/// This function returns the platform that was selected during initialization.
+///
+/// # Returns
+/// The currently selected platform, or an error if one occurred.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+///
+/// # Thread Safety
+/// This function may be called from any thread.
+///
+/// # See Also
+/// [platform_supported]
+pub fn platform() -> Result<Platform, XErr>
+{
+	let plat = unsafe { glfwGetPlatform() as u32 };
+
+	match plat
+	{
+		| 0 => Err(XErr::get()),
+		| GLFW_PLATFORM_WIN32 => Ok(Platform::Windows),
+		| GLFW_PLATFORM_COCOA => Ok(Platform::Cocoa),
+		| GLFW_PLATFORM_WAYLAND => Ok(Platform::Wayland),
+		| GLFW_PLATFORM_X11 => Ok(Platform::X11),
+		| GLFW_PLATFORM_NULL => Ok(Platform::Null),
+		| _ => Err(XErr::Unknown),
+	}
+}
+
+/// This function returns whether the library was compiled with support for the
+/// specified platform.
+///
+/// # Parameters
+/// `platform`: The platform to query
+///
+/// # Returns
+/// `true` if the platform is supported, `false` otherwise.
+///
+/// # Remarks
+/// This function may be called before initializing XWin
+///
+/// # Thread Safety
+/// This function may be called from any thread
+///
+/// # See Also
+/// [platform]
+pub fn platform_supported(platform: Platform) -> bool
+{
+	unsafe {
+		match glfwPlatformSupported(match platform
+		{
+			| Platform::Any => GLFW_ANY_PLATFORM as c_int,
+			| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
+			| Platform::Cocoa => GLFW_PLATFORM_COCOA as c_int,
+			| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
+			| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
+			| Platform::Null => GLFW_PLATFORM_NULL as c_int,
+		}) as u32
+		{
+			| GLFW_TRUE => true,
+			| GLFW_FALSE => false,
+			| _ => false,
+		}
 	}
 }

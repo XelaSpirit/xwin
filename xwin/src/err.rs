@@ -22,23 +22,10 @@
 //! Do not rely on a currently invalid call to generate a specific error, as in
 //! the future that same call may generate a different error or become valid.
 
-use crate::bind::{
-	GLFW_API_UNAVAILABLE,
-	GLFW_CURSOR_UNAVAILABLE,
-	GLFW_FEATURE_UNAVAILABLE,
-	GLFW_FEATURE_UNIMPLEMENTED,
-	GLFW_FORMAT_UNAVAILABLE,
-	GLFW_INVALID_ENUM,
-	GLFW_INVALID_VALUE,
-	GLFW_NO_CURRENT_CONTEXT,
-	GLFW_NO_ERROR,
-	GLFW_NO_WINDOW_CONTEXT,
-	GLFW_NOT_INITIALIZED,
-	GLFW_OUT_OF_MEMORY,
-	GLFW_PLATFORM_ERROR,
-	GLFW_PLATFORM_UNAVAILABLE,
-	GLFW_VERSION_UNAVAILABLE,
-};
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::ptr::null;
+use crate::bind::{GLFW_API_UNAVAILABLE, GLFW_CURSOR_UNAVAILABLE, GLFW_FEATURE_UNAVAILABLE, GLFW_FEATURE_UNIMPLEMENTED, GLFW_FORMAT_UNAVAILABLE, GLFW_INVALID_ENUM, GLFW_INVALID_VALUE, GLFW_NO_CURRENT_CONTEXT, GLFW_NO_ERROR, GLFW_NO_WINDOW_CONTEXT, GLFW_NOT_INITIALIZED, GLFW_OUT_OF_MEMORY, GLFW_PLATFORM_ERROR, GLFW_PLATFORM_UNAVAILABLE, GLFW_VERSION_UNAVAILABLE, glfwGetError};
 
 /// Error codes used throughout the XWin API.
 #[repr(u32)]
@@ -213,7 +200,7 @@ pub enum XErr
 
 impl XErr
 {
-	pub(crate) fn from_code(code: u32, msg: String) -> XErr
+	fn from_code(code: u32, msg: String) -> XErr
 	{
 		match code
 		{
@@ -234,6 +221,26 @@ impl XErr
 			| GLFW_PLATFORM_UNAVAILABLE => XErr::PlatformUnavailable(msg),
 			| _ => XErr::Unknown,
 		}
+	}
+	
+	pub(crate) fn get() -> XErr {
+		let mut desc: *const c_char = null();
+		let code = unsafe { glfwGetError(&mut desc) };
+		
+		XErr::from_code(
+			code as u32,
+			if !desc.is_null()
+			{
+				unsafe { CStr::from_ptr(desc) }
+					.to_str()
+					.unwrap_or_else(|_| "")
+					.to_string()
+			}
+			else
+			{
+				String::default()
+			},
+		)
 	}
 }
 

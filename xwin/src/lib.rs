@@ -22,6 +22,10 @@
 //! ### Dependencies
 //! - CMake
 
+use std::os::raw::c_int;
+
+use crate::bind::glfwGetVersion;
+
 mod bind;
 pub mod core;
 pub mod err;
