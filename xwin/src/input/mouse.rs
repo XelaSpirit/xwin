@@ -27,9 +27,10 @@ use crate::{
 };
 
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum MouseButton
 {
+	#[default]
 	Left   = GLFW_MOUSE_BUTTON_LEFT as u8,
 	Right  = GLFW_MOUSE_BUTTON_RIGHT as u8,
 	Middle = GLFW_MOUSE_BUTTON_MIDDLE as u8,

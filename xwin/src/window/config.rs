@@ -37,7 +37,7 @@ impl Window
 	/// Sets the [Sender] that will be used to send window config events. See
 	/// [WindowEvent] for the specific conditions under which each event is
 	/// sent.
-	/// 
+	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	pub fn set_config_channel<T>(&mut self, tx: T) -> Result<(), XErr>

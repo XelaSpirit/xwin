@@ -286,7 +286,7 @@ glfw_enum!(Key, i16);
 ///
 /// Bitwise operators may be used to manipulate these flags. Utility functions
 /// have been provided for easily querying specific modifiers.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Modifiers(u8);
 
 impl Modifiers

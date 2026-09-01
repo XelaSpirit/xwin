@@ -30,6 +30,7 @@ use crate::{
 	},
 	window::{
 		KeyEvent,
+		MouseEvent,
 		Window,
 	},
 };
@@ -39,8 +40,6 @@ impl Window
 	// =======================
 	//     EVENT FUNCTIONS
 	// =======================
-
-	/// TODO - events
 
 	/// Sets the [Sender] that will be used to send character events, which is
 	/// done when a Unicode character is input.
@@ -54,9 +53,9 @@ impl Window
 	///
 	/// The character channel behaves as system text input normally does and
 	/// will not receive events if modifier keys are held down that would
-	/// prevent normal text input on that platform. For example a Super (Command)
-	/// key on macOS or Alt key on Windows.
-	/// 
+	/// prevent normal text input on that platform. For example a Super
+	/// (Command) key on macOS or Alt key on Windows.
+	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	pub fn set_char_channel<T>(&mut self, tx: T) -> Result<(), XErr>
@@ -78,6 +77,33 @@ impl Window
 		self.with_context(
 			"Unable to clear char channel when XWin is uninitialized",
 			|ctx| ctx.remove_char_tx(),
+		)
+	}
+
+	/// Sets the [Sender] that will be used to send drop events, which is done
+	/// when one or more dragged paths are dropped on the window.
+	///
+	/// The [Vec] of strings sent on the channel are the file and/or directory
+	/// path names.
+	pub fn set_drop_channel<T>(&mut self, tx: T) -> Result<(), XErr>
+	where
+		T: Sender<Vec<String>> + Send + Sync + 'static,
+	{
+		self.with_context(
+			"Unable to set drop channel when XWin is uninitialized",
+			|ctx| ctx.set_drop_tx(tx),
+		)
+	}
+
+	/// Close the drop event channel. See [Window::set_drop_channel].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn clear_drop_channel(&mut self) -> Result<(), XErr>
+	{
+		self.with_context(
+			"Unable to clear drop channel when XWin is uninitialized",
+			|ctx| ctx.remove_drop_tx(),
 		)
 	}
 
@@ -113,15 +139,43 @@ impl Window
 		)
 	}
 
-	/// Close the key even channel. See [Window::set_key_channel].
+	/// Close the key event channel. See [Window::set_key_channel].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	pub fn clear_key_channel<T>(&mut self) -> Result<(), XErr>
+	pub fn clear_key_channel(&mut self) -> Result<(), XErr>
 	{
 		self.with_context(
 			"Unable to clear event channel when XWin is uninitialized",
 			|ctx| ctx.remove_key_tx(),
+		)
+	}
+
+	/// Sets the [Sender] that will be used to send mouse events for the window.
+	/// See [MouseEvent] for the specific conditions under which each event is
+	/// sent.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn set_mouse_channel<T>(&mut self, tx: T) -> Result<(), XErr>
+	where
+		T: Sender<MouseEvent> + Send + Sync + 'static,
+	{
+		self.with_context(
+			"Unable to set mouse channel when XWin is uninitialized",
+			|ctx| ctx.set_mouse_tx(tx),
+		)
+	}
+
+	/// Close the mouse event channel. See [Window::set_mouse_channel].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn clear_mouse_channel(&mut self) -> Result<(), XErr>
+	{
+		self.with_context(
+			"Unable to clear mouse channel when XWin is uninitialized",
+			|ctx| ctx.remove_mouse_tx(),
 		)
 	}
 

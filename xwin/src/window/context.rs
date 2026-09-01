@@ -8,15 +8,18 @@ use crate::{
 	error::XErr,
 	window::{
 		KeyEvent,
+		MouseEvent,
 		WindowEvent,
 	},
 };
 
 pub(crate) struct WindowContext
 {
-	cfg_tx:  Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
-	char_tx: Option<Box<dyn Sender<u32> + Send + Sync>>,
-	key_tx:  Option<Box<dyn Sender<KeyEvent> + Send + Sync>>,
+	cfg_tx:   Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
+	char_tx:  Option<Box<dyn Sender<u32> + Send + Sync>>,
+	drop_tx:  Option<Box<dyn Sender<Vec<String>> + Send + Sync>>,
+	key_tx:   Option<Box<dyn Sender<KeyEvent> + Send + Sync>>,
+	mouse_tx: Option<Box<dyn Sender<MouseEvent> + Send + Sync>>,
 }
 
 impl WindowContext
@@ -24,9 +27,11 @@ impl WindowContext
 	pub(crate) fn new() -> Self
 	{
 		WindowContext {
-			cfg_tx:  None,
-			char_tx: None,
-			key_tx:  None,
+			cfg_tx:   None,
+			char_tx:  None,
+			drop_tx:  None,
+			key_tx:   None,
+			mouse_tx: None,
 		}
 	}
 
@@ -70,6 +75,18 @@ impl WindowContext
 		self.char_tx = None;
 	}
 
+	pub(super) fn set_drop_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<Vec<String>> + Send + Sync + 'static,
+	{
+		self.drop_tx = Some(Box::new(tx));
+	}
+
+	pub(super) fn remove_drop_tx(&mut self)
+	{
+		self.drop_tx = None;
+	}
+
 	pub(super) fn set_key_tx<T>(&mut self, tx: T)
 	where
 		T: Sender<KeyEvent> + Send + Sync + 'static,
@@ -80,6 +97,18 @@ impl WindowContext
 	pub(super) fn remove_key_tx(&mut self)
 	{
 		self.key_tx = None;
+	}
+
+	pub(super) fn set_mouse_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<MouseEvent> + Send + Sync + 'static,
+	{
+		self.mouse_tx = Some(Box::new(tx));
+	}
+
+	pub(super) fn remove_mouse_tx(&mut self)
+	{
+		self.mouse_tx = None;
 	}
 
 	pub(super) fn post_config(&mut self, evt: WindowEvent)
@@ -104,6 +133,17 @@ impl WindowContext
 		}
 	}
 
+	pub(super) fn post_drop(&mut self, evt: Vec<String>)
+	{
+		if let Some(tx) = &self.drop_tx
+		{
+			if let Err(_) = tx.send(evt)
+			{
+				self.drop_tx = None;
+			}
+		}
+	}
+
 	pub(super) fn post_key(&mut self, evt: KeyEvent)
 	{
 		if let Some(tx) = &self.key_tx
@@ -111,6 +151,17 @@ impl WindowContext
 			if let Err(_) = tx.send(evt)
 			{
 				self.key_tx = None;
+			}
+		}
+	}
+
+	pub(super) fn post_mouse(&mut self, evt: MouseEvent)
+	{
+		if let Some(tx) = &self.mouse_tx
+		{
+			if let Err(_) = tx.send(evt)
+			{
+				self.mouse_tx = None;
 			}
 		}
 	}

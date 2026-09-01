@@ -1,9 +1,15 @@
 use std::{
-	ffi::c_uint,
+	ffi::{
+		CStr,
+		c_char,
+		c_double,
+		c_uint,
+	},
 	os::raw::{
 		c_float,
 		c_int,
 	},
+	slice,
 };
 
 use crate::{
@@ -11,8 +17,13 @@ use crate::{
 		GLFW_TRUE,
 		GLFWwindow,
 		glfwSetCharCallback,
+		glfwSetCursorEnterCallback,
+		glfwSetCursorPosCallback,
+		glfwSetDropCallback,
 		glfwSetFramebufferSizeCallback,
 		glfwSetKeyCallback,
+		glfwSetMouseButtonCallback,
+		glfwSetScrollCallback,
 		glfwSetWindowCloseCallback,
 		glfwSetWindowContentScaleCallback,
 		glfwSetWindowFocusCallback,
@@ -33,6 +44,7 @@ use crate::{
 			Key,
 			Modifiers,
 		},
+		mouse::MouseButton,
 	},
 	window::context::WindowContext,
 };
@@ -89,12 +101,48 @@ pub enum WindowEvent
 }
 
 /// Struct type for key events.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyEvent
 {
 	key:      Key,
 	scancode: i32,
 	action:   ButtonState,
 	mods:     Modifiers,
+}
+
+/// Struct type for mouse button events
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MouseButtonEvent
+{
+	button: MouseButton,
+	action: ButtonState,
+	mods:   Modifiers,
+}
+
+/// Enum type for mouse events
+#[derive(Debug, Clone, PartialEq)]
+pub enum MouseEvent
+{
+	/// Sent when a mouse button is pressed or released.
+	///
+	/// When a window loses input focus, it will generate synthetic mouse button
+	/// release events fopr all pressed mouse buttons. These synthetic mouse
+	/// button events will be sent after the focus loss event has been sent.
+	Button(MouseButtonEvent),
+	/// Sent when the cursor is moved. The cursor position is given in screen
+	/// coordinates relative to the upper-left corner of the content are of the
+	/// window.
+	Position(ScreenCoordinates<f64>),
+	/// Sent when the cursor enter or leaves the content area of the window. The
+	/// contained boolean is `true` when the cursor has entered, `false` when it
+	/// has left.
+	Enter(bool),
+	/// Sent when a scrolling device is used, such as a mouse wheel or scrolling
+	/// area of a touchpad.
+	///
+	/// This event contains both the `x_offset` and `y_offset` of the scroll, in
+	/// that order.
+	Scroll(f64, f64),
 }
 
 extern "C" fn char_cb(win: *mut GLFWwindow, codepoint: c_uint)
@@ -110,6 +158,28 @@ extern "C" fn close_cb(win: *mut GLFWwindow)
 extern "C" fn content_scale_cb(win: *mut GLFWwindow, x: c_float, y: c_float)
 {
 	config_event(win, WindowEvent::ContentScale(ContentScale { x, y }));
+}
+
+extern "C" fn drop_cb(win: *mut GLFWwindow, count: c_int, paths: *mut *const c_char)
+{
+	if paths.is_null() || count <= 0
+	{
+		return;
+	}
+
+	let slice = unsafe { slice::from_raw_parts(paths, count as usize) };
+
+	let vec: Vec<String> = slice
+		.iter()
+		.filter(|&&ptr| !ptr.is_null())
+		.map(|&ptr| {
+			unsafe { CStr::from_ptr(ptr) }
+				.to_string_lossy()
+				.into_owned()
+		})
+		.collect();
+
+	let _ = WindowContext::with_context(&win, "", |ctx| ctx.post_drop(vec));
 }
 
 extern "C" fn focus_cb(win: *mut GLFWwindow, focused: c_int)
@@ -150,6 +220,50 @@ extern "C" fn maximize_cb(win: *mut GLFWwindow, maximized: c_int)
 	config_event(win, WindowEvent::Maximize(maximized == GLFW_TRUE as i32));
 }
 
+extern "C" fn mouse_button_cb(win: *mut GLFWwindow, button: c_int, action: c_int, mods: c_int)
+{
+	let _ = WindowContext::with_context(&win, "", |ctx| {
+		ctx.post_mouse(MouseEvent::Button(MouseButtonEvent {
+			button: MouseButton::from_glfw(button as u32),
+			action: ButtonState::from_glfw(action as u32),
+			mods:   Modifiers::from_glfw(mods),
+		}))
+	});
+}
+
+extern "C" fn mouse_enter_cb(win: *mut GLFWwindow, entered: c_int)
+{
+	let _ = WindowContext::with_context(&win, "", |ctx| {
+		ctx.post_mouse(MouseEvent::Enter(
+			if entered == GLFW_TRUE as i32
+			{
+				true
+			}
+			else
+			{
+				false
+			},
+		))
+	});
+}
+
+extern "C" fn mouse_pos_cb(win: *mut GLFWwindow, xpos: c_double, ypos: c_double)
+{
+	let _ = WindowContext::with_context(&win, "", |ctx| {
+		ctx.post_mouse(MouseEvent::Position(ScreenCoordinates {
+			x: xpos as f64,
+			y: ypos as f64,
+		}))
+	});
+}
+
+extern "C" fn mouse_scroll_cb(win: *mut GLFWwindow, xoff: c_double, yoff: c_double)
+{
+	let _ = WindowContext::with_context(&win, "", |ctx| {
+		ctx.post_mouse(MouseEvent::Scroll(xoff as f64, yoff as f64))
+	});
+}
+
 extern "C" fn pos_cb(win: *mut GLFWwindow, x: c_int, y: c_int)
 {
 	config_event(win, WindowEvent::Position(ScreenCoordinates { x, y }));
@@ -180,8 +294,13 @@ pub(crate) fn set_window_callbacks(win: *mut GLFWwindow)
 {
 	unsafe {
 		glfwSetCharCallback(win, Some(char_cb));
+		glfwSetCursorEnterCallback(win, Some(mouse_enter_cb));
+		glfwSetCursorPosCallback(win, Some(mouse_pos_cb));
+		glfwSetDropCallback(win, Some(drop_cb));
 		glfwSetFramebufferSizeCallback(win, Some(framebuffer_size_cb));
 		glfwSetKeyCallback(win, Some(key_cb));
+		glfwSetMouseButtonCallback(win, Some(mouse_button_cb));
+		glfwSetScrollCallback(win, Some(mouse_scroll_cb));
 		glfwSetWindowCloseCallback(win, Some(close_cb));
 		glfwSetWindowContentScaleCallback(win, Some(content_scale_cb));
 		glfwSetWindowFocusCallback(win, Some(focus_cb));
