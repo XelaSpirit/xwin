@@ -573,7 +573,7 @@ impl Monitor
 	}
 
 	/// Return the `GLFWmonitor` held by this [Monitor].
-	pub(crate) fn get_glfw(&self) -> *mut GLFWmonitor
+	pub(crate) fn as_glfw(&self) -> *mut GLFWmonitor
 	{
 		self.monitor
 	}

@@ -726,6 +726,93 @@ impl Window
 		XWin::get()?.post_rcv(XWinMessage::RequestWindowAttention(self.0, tx), rx)?
 	}
 
+	/// Returns the [Monitor] that the window is full screen on, or `None` if
+	/// the window is in windowed mode.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn monitor(&self) -> Result<Option<Monitor>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowMonitor(self.0, tx), rx)?
+	}
+
+	/// Sets the window to fullscreen mode on a given monitor.
+	///
+	/// This function updates the width, height, and refresh rate of the desired
+	/// video mode and switches to the video mode closest to it.
+	///
+	/// If you only wish to update the resolution of a full screen window, see
+	/// [set_size](Window::set_size).
+	///
+	/// # Parameters
+	/// - `monitor`: The desired monitor for full screen mode.
+	/// - `size`: The desired size, in [ScreenCoordinates], of the video mode.
+	/// - `refresh_hz`: The desired rate, in Hz, of the video mode, or `None`
+	///   for no preference.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn fullscreen(
+		&self,
+		monitor: Monitor,
+		size: ScreenCoordinates,
+		refresh_hz: Option<i32>,
+	) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowFullscreen {
+				window: self.0,
+				monitor,
+				size,
+				refresh_rate: match refresh_hz
+				{
+					| Some(rate) => rate,
+					| None => GLFW_DONT_CARE,
+				},
+				tx,
+			},
+			rx,
+		)?
+	}
+
+	/// Sets the window to windowed mode.
+	///
+	/// `position` and `size` are used to place the window content area.
+	///
+	/// If you only wish to update the size of a windowed mode window, see
+	/// [set_size](Window::set_size).
+	///
+	/// # Parameters
+	/// - `position`: The desired [ScreenCoordinates] of the upper-left corner
+	///   of the content area.
+	/// - `size`: The desired size, in [ScreenCoordinates], of the content area.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - **Wayland**: The desired window position is ignored, as there is no
+	///   way for an application to set this property.
+	pub fn set_windowed(
+		&self,
+		position: ScreenCoordinates,
+		size: ScreenCoordinates,
+	) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowWindowed {
+				window: self.0,
+				position,
+				size,
+				tx,
+			},
+			rx,
+		)?
+	}
+
 	/// Construct a new [Window] from a `GLFWwindow`.
 	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
 	{

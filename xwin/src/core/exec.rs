@@ -34,6 +34,7 @@ use crate::{
 		glfwGetVideoModes,
 		glfwGetWindowContentScale,
 		glfwGetWindowFrameSize,
+		glfwGetWindowMonitor,
 		glfwGetWindowOpacity,
 		glfwGetWindowPos,
 		glfwGetWindowSize,
@@ -47,6 +48,7 @@ use crate::{
 		glfwSetGammaRamp,
 		glfwSetWindowAspectRatio,
 		glfwSetWindowIcon,
+		glfwSetWindowMonitor,
 		glfwSetWindowOpacity,
 		glfwSetWindowPos,
 		glfwSetWindowSize,
@@ -137,6 +139,22 @@ pub(crate) enum XWinMessage
 	HideWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
 	FocusWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
 	RequestWindowAttention(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	GetWindowMonitor(*mut GLFWwindow, Sender<Result<Option<Monitor>, XErr>>),
+	SetWindowFullscreen
+	{
+		window:       *mut GLFWwindow,
+		monitor:      Monitor,
+		size:         ScreenCoordinates,
+		refresh_rate: i32,
+		tx:           Sender<Result<(), XErr>>,
+	},
+	SetWindowWindowed
+	{
+		window:   *mut GLFWwindow,
+		position: ScreenCoordinates,
+		size:     ScreenCoordinates,
+		tx:       Sender<Result<(), XErr>>,
+	},
 }
 unsafe impl Send for XWinMessage {}
 
@@ -231,9 +249,75 @@ impl XWin
 				| XWinMessage::HideWindow(win, tx) => hide_window(win, tx),
 				| XWinMessage::FocusWindow(win, tx) => focus_window(win, tx),
 				| XWinMessage::RequestWindowAttention(win, tx) => request_window_attention(win, tx),
+				| XWinMessage::GetWindowMonitor(win, tx) => window_monitor(win, tx),
+				| XWinMessage::SetWindowFullscreen {
+					window,
+					monitor,
+					size,
+					refresh_rate,
+					tx,
+				} =>
+				{
+					set_window_monitor(
+						window,
+						Some(monitor),
+						ScreenCoordinates::default(),
+						size,
+						refresh_rate,
+						tx,
+					)
+				},
+				| XWinMessage::SetWindowWindowed {
+					window,
+					position,
+					size,
+					tx,
+				} => set_window_monitor(window, None, position, size, 0, tx),
 			};
 		}
 	}
+}
+
+fn set_window_monitor(
+	win: *mut GLFWwindow,
+	mon: Option<Monitor>,
+	pos: ScreenCoordinates,
+	size: ScreenCoordinates,
+	refresh_rate: i32,
+	tx: Sender<Result<(), XErr>>,
+)
+{
+	unsafe {
+		glfwSetWindowMonitor(
+			win,
+			match mon
+			{
+				| Some(m) => m.as_glfw(),
+				| None => null_mut(),
+			},
+			pos.x,
+			pos.y,
+			size.x,
+			size.y,
+			refresh_rate,
+		)
+	}
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn window_monitor(win: *mut GLFWwindow, tx: Sender<Result<Option<Monitor>, XErr>>)
+{
+	let monitor = unsafe { glfwGetWindowMonitor(win) };
+	let _ = tx.send(XErr::result(|| {
+		if monitor.is_null()
+		{
+			None
+		}
+		else
+		{
+			Some(Monitor::from_glfw(monitor))
+		}
+	}));
 }
 
 fn request_window_attention(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
@@ -484,7 +568,7 @@ fn create_window(
 			str.as_ptr(),
 			match monitor
 			{
-				| Some(mon) => mon.get_glfw(),
+				| Some(mon) => mon.as_glfw(),
 				| None => null_mut(),
 			},
 			null_mut(),
