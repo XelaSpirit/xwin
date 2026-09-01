@@ -4,6 +4,7 @@ mod window;
 use std::sync::mpsc::{
 	Receiver,
 	Sender,
+	TryRecvError,
 };
 
 use monitor::*;
@@ -11,14 +12,15 @@ use window::*;
 
 use crate::{
 	bind::{
+		glfwWaitEvents,
 		GLFWmonitor,
 		GLFWwindow,
 	},
 	core::{
+		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		image::Image,
 	},
 	err::XErr,
 	monitor::{
@@ -33,6 +35,7 @@ use crate::{
 		WindowBuilder,
 	},
 };
+use crate::bind::glfwPostEmptyEvent;
 
 /// Used internally by XWin for sending messages to the main thread, for GLFW
 /// functions that must be called on that thread.
@@ -138,6 +141,7 @@ impl XWin
 	pub(crate) fn post_rcv<T>(&self, msg: XWinMessage, rcv: Receiver<T>) -> Result<T, XErr>
 	{
 		self.post(msg)?;
+		unsafe { glfwPostEmptyEvent() };
 		rcv.recv()
 			.map_err(|_| XErr::NotInitialized(String::from("XWin has not been initialized")))
 	}
@@ -147,79 +151,93 @@ impl XWin
 /// an [XWinMessage::Terminate] message is received.
 pub(crate) fn run(rx: Receiver<XWinMessage>)
 {
-	while let Ok(msg) = rx.recv()
+	unsafe { glfwWaitEvents() };
+
+	let rcv = rx.try_recv();
+	match rcv
 	{
-		match msg
+		| Ok(msg) => handle_msg(msg),
+		| Err(err) =>
 		{
-			// Core
-			| XWinMessage::Terminate => break,
-
-			// Monitor
-			| XWinMessage::GetMonitors(tx) => monitors(tx),
-			| XWinMessage::GetPrimaryMonitor(tx) => primary_monitor(tx),
-			| XWinMessage::GetMonitorPos(mon, tx) => monitor_pos(mon, tx),
-			| XWinMessage::GetMonitorWorkArea(mon, tx) => monitor_work_area(mon, tx),
-			| XWinMessage::GetMonitorPhysicalSize(mon, tx) => monitor_physical_size(mon, tx),
-			| XWinMessage::GetMonitorContentScale(mon, tx) => monitor_content_scale(mon, tx),
-			| XWinMessage::GetMonitorName(mon, tx) => monitor_name(mon, tx),
-			| XWinMessage::GetMonitorVideoModes(mon, tx) => monitor_video_modes(mon, tx),
-			| XWinMessage::GetMonitorVideoMode(mon, tx) => monitor_video_mode(mon, tx),
-			| XWinMessage::SetGamma(mon, gamma, tx) => set_gamma(mon, gamma, tx),
-			| XWinMessage::GammaRamp(mon, tx) => gamma_ramp(mon, tx),
-			| XWinMessage::SetGammaRamp(mon, ramp, tx) => set_gamma_ramp(mon, ramp, tx),
-
-			// Window
-			| XWinMessage::CreateWindow {
-				width,
-				height,
-				title,
-				monitor,
-				builder,
-				tx,
-			} => create_window(width, height, title, monitor, builder, tx),
-			| XWinMessage::DestroyWindow(win, tx) => destroy_window(win, tx),
-			| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
-			| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
-			| XWinMessage::SetWindowIcon(win, icons, tx) => set_window_icon(win, icons, tx),
-			| XWinMessage::GetWindowPos(win, tx) => window_pos(win, tx),
-			| XWinMessage::SetWindowPos(win, pos, tx) => set_window_pos(win, pos, tx),
-			| XWinMessage::GetWindowSize(win, tx) => window_size(win, tx),
-			| XWinMessage::SetWindowSizeLimits {
-				window,
-				min,
-				max,
-				tx,
-			} => set_window_size_limits(window, min, max, tx),
-			| XWinMessage::SetWindowAspectRatio {
-				window,
-				numerator,
-				denominator,
-				tx,
-			} => set_window_aspect_ratio(window, numerator, denominator, tx),
-			| XWinMessage::SetWindowSize(win, size, tx) => set_window_size(win, size, tx),
-			| XWinMessage::GetFrameBufferSize(win, tx) => framebuffer_size(win, tx),
-			| XWinMessage::GetWindowFrameSize(win, tx) => window_frame_size(win, tx),
-			| XWinMessage::GetWindowContentScale(win, tx) => window_content_scale(win, tx),
-			| XWinMessage::GetWindowOpacity(win, tx) => window_opacity(win, tx),
-			| XWinMessage::SetWindowOpacity(win, opacity, tx) =>
+			match err
 			{
-				set_window_opacity(win, opacity, tx)
-			},
-			| XWinMessage::IconifyWindow(win, tx) => iconify_window(win, tx),
-			| XWinMessage::RestoreWindow(win, tx) => restore_window(win, tx),
-			| XWinMessage::MaximizeWindow(win, tx) => maximize_window(win, tx),
-			| XWinMessage::ShowWindow(win, tx) => show_window(win, tx),
-			| XWinMessage::HideWindow(win, tx) => hide_window(win, tx),
-			| XWinMessage::FocusWindow(win, tx) => focus_window(win, tx),
-			| XWinMessage::RequestWindowAttention(win, tx) => request_window_attention(win, tx),
-			| XWinMessage::GetWindowMonitor(win, tx) => window_monitor(win, tx),
-			| XWinMessage::SetWindowFullscreen {
-				window,
-				monitor,
-				size,
-				refresh_rate,
-				tx,
-			} =>
+				| TryRecvError::Disconnected => return,
+				| TryRecvError::Empty => (),
+			}
+		},
+	};
+}
+
+fn handle_msg(msg: XWinMessage)
+{
+	match msg
+	{
+		// Core
+		| XWinMessage::Terminate => return,
+
+		// Monitor
+		| XWinMessage::GetMonitors(tx) => monitors(tx),
+		| XWinMessage::GetPrimaryMonitor(tx) => primary_monitor(tx),
+		| XWinMessage::GetMonitorPos(mon, tx) => monitor_pos(mon, tx),
+		| XWinMessage::GetMonitorWorkArea(mon, tx) => monitor_work_area(mon, tx),
+		| XWinMessage::GetMonitorPhysicalSize(mon, tx) => monitor_physical_size(mon, tx),
+		| XWinMessage::GetMonitorContentScale(mon, tx) => monitor_content_scale(mon, tx),
+		| XWinMessage::GetMonitorName(mon, tx) => monitor_name(mon, tx),
+		| XWinMessage::GetMonitorVideoModes(mon, tx) => monitor_video_modes(mon, tx),
+		| XWinMessage::GetMonitorVideoMode(mon, tx) => monitor_video_mode(mon, tx),
+		| XWinMessage::SetGamma(mon, gamma, tx) => set_gamma(mon, gamma, tx),
+		| XWinMessage::GammaRamp(mon, tx) => gamma_ramp(mon, tx),
+		| XWinMessage::SetGammaRamp(mon, ramp, tx) => set_gamma_ramp(mon, ramp, tx),
+
+		// Window
+		| XWinMessage::CreateWindow {
+			width,
+			height,
+			title,
+			monitor,
+			builder,
+			tx,
+		} => create_window(width, height, title, monitor, builder, tx),
+		| XWinMessage::DestroyWindow(win, tx) => destroy_window(win, tx),
+		| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
+		| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
+		| XWinMessage::SetWindowIcon(win, icons, tx) => set_window_icon(win, icons, tx),
+		| XWinMessage::GetWindowPos(win, tx) => window_pos(win, tx),
+		| XWinMessage::SetWindowPos(win, pos, tx) => set_window_pos(win, pos, tx),
+		| XWinMessage::GetWindowSize(win, tx) => window_size(win, tx),
+		| XWinMessage::SetWindowSizeLimits {
+			window,
+			min,
+			max,
+			tx,
+		} => set_window_size_limits(window, min, max, tx),
+		| XWinMessage::SetWindowAspectRatio {
+			window,
+			numerator,
+			denominator,
+			tx,
+		} => set_window_aspect_ratio(window, numerator, denominator, tx),
+		| XWinMessage::SetWindowSize(win, size, tx) => set_window_size(win, size, tx),
+		| XWinMessage::GetFrameBufferSize(win, tx) => framebuffer_size(win, tx),
+		| XWinMessage::GetWindowFrameSize(win, tx) => window_frame_size(win, tx),
+		| XWinMessage::GetWindowContentScale(win, tx) => window_content_scale(win, tx),
+		| XWinMessage::GetWindowOpacity(win, tx) => window_opacity(win, tx),
+		| XWinMessage::SetWindowOpacity(win, opacity, tx) => set_window_opacity(win, opacity, tx),
+		| XWinMessage::IconifyWindow(win, tx) => iconify_window(win, tx),
+		| XWinMessage::RestoreWindow(win, tx) => restore_window(win, tx),
+		| XWinMessage::MaximizeWindow(win, tx) => maximize_window(win, tx),
+		| XWinMessage::ShowWindow(win, tx) => show_window(win, tx),
+		| XWinMessage::HideWindow(win, tx) => hide_window(win, tx),
+		| XWinMessage::FocusWindow(win, tx) => focus_window(win, tx),
+		| XWinMessage::RequestWindowAttention(win, tx) => request_window_attention(win, tx),
+		| XWinMessage::GetWindowMonitor(win, tx) => window_monitor(win, tx),
+		| XWinMessage::SetWindowFullscreen {
+			window,
+			monitor,
+			size,
+			refresh_rate,
+			tx,
+		} =>
 			{
 				set_window_monitor(
 					window,
@@ -230,17 +248,16 @@ pub(crate) fn run(rx: Receiver<XWinMessage>)
 					tx,
 				)
 			},
-			| XWinMessage::SetWindowWindowed {
-				window,
-				position,
-				size,
-				tx,
-			} => set_window_monitor(window, None, position, size, 0, tx),
-			| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
-			| XWinMessage::SetWindowAttribute(win, attr, value, tx) =>
+		| XWinMessage::SetWindowWindowed {
+			window,
+			position,
+			size,
+			tx,
+		} => set_window_monitor(window, None, position, size, 0, tx),
+		| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
+		| XWinMessage::SetWindowAttribute(win, attr, value, tx) =>
 			{
 				set_window_attribute(win, attr, value, tx)
 			},
-		};
-	}
+	};
 }
