@@ -15,6 +15,7 @@ use xch::Sender;
 use crate::{
 	bind::{
 		GLFW_AUTO_ICONIFY,
+		GLFW_CURSOR,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
@@ -23,9 +24,13 @@ use crate::{
 		GLFW_FOCUSED,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
+		GLFW_LOCK_KEY_MODS,
 		GLFW_MAXIMIZED,
 		GLFW_MOUSE_PASSTHROUGH,
+		GLFW_RAW_MOUSE_MOTION,
 		GLFW_RESIZABLE,
+		GLFW_STICKY_KEYS,
+		GLFW_STICKY_MOUSE_BUTTONS,
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
@@ -41,6 +46,7 @@ use crate::{
 		image::Image,
 	},
 	error::XErr,
+	input::mouse::CursorMode,
 	monitor::Monitor,
 	window::context::WindowContext,
 };
@@ -210,7 +216,7 @@ impl Window
 	/// See [Window::try_set_should_close].
 	pub fn set_should_close(&mut self, value: bool)
 	{
-		self.try_set_should_close(value).unwrap_or_default()
+		let _ = self.try_set_should_close(value);
 	}
 
 	/// This function returns the title of the window. This is the title set
@@ -260,7 +266,7 @@ impl Window
 	/// See [Window::try_set_title].
 	pub fn set_title(&mut self, title: &str)
 	{
-		self.try_set_title(title).unwrap_or_default()
+		let _ = self.try_set_title(title);
 	}
 
 	/// This function sets the icon of the window. If passed an array
@@ -301,7 +307,7 @@ impl Window
 	/// See [Window::try_set_icon].
 	pub fn set_icon(&mut self, icons: Vec<Image>)
 	{
-		self.try_set_icon(icons).unwrap_or_default()
+		let _ = self.try_set_icon(icons);
 	}
 
 	/// This function retrieves the position, in [ScreenCoordinates], of the
@@ -361,7 +367,7 @@ impl Window
 	/// See [Window::try_set_position].
 	pub fn set_position(&mut self, position: ScreenCoordinates)
 	{
-		self.try_set_position(position).unwrap_or_default()
+		let _ = self.try_set_position(position);
 	}
 
 	/// Returns the size, in [ScreenCoordinates], of the content area of this
@@ -425,7 +431,7 @@ impl Window
 	/// See [Window::try_set_size_limits].
 	pub fn set_size_limits(&mut self, min: ScreenCoordinates, max: ScreenCoordinates)
 	{
-		self.try_set_size_limits(min, max).unwrap_or_default()
+		let _ = self.try_set_size_limits(min, max);
 	}
 
 	/// Sets the required aspect ratio of the content area of the window. If
@@ -469,7 +475,7 @@ impl Window
 	/// See [Window::try_set_aspect_ratio].
 	pub fn set_aspect_ratio(&mut self, ratio: Option<(i32, i32)>)
 	{
-		self.try_set_aspect_ratio(ratio).unwrap_or_default()
+		let _ = self.try_set_aspect_ratio(ratio);
 	}
 
 	/// Sets the size, in [ScreenCoordinates], of the content area
@@ -498,7 +504,7 @@ impl Window
 	/// See [Window::try_set_size].
 	pub fn set_size(&mut self, size: ScreenCoordinates)
 	{
-		self.try_set_size(size).unwrap_or_default()
+		let _ = self.try_set_size(size);
 	}
 
 	/// Returns the size, in [Pixels], of the framebuffer of
@@ -634,7 +640,7 @@ impl Window
 	/// See [Window::try_set_opacity].
 	pub fn set_opacity(&mut self, opacity: f32)
 	{
-		self.try_set_opacity(opacity).unwrap_or_default()
+		let _ = self.try_set_opacity(opacity);
 	}
 
 	/// Iconifies (minimizes) the window if it was previously restored. If the
@@ -900,8 +906,7 @@ impl Window
 		refresh_hz: Option<i32>,
 	)
 	{
-		self.try_set_fullscreen(monitor, size, refresh_hz)
-			.unwrap_or_default()
+		let _ = self.try_set_fullscreen(monitor, size, refresh_hz);
 	}
 
 	/// Sets the window to windowed mode.
@@ -943,7 +948,7 @@ impl Window
 	/// See [Window::try_set_windowed].
 	pub fn set_windowed(&mut self, position: ScreenCoordinates, size: ScreenCoordinates)
 	{
-		self.try_set_windowed(position, size).unwrap_or_default()
+		let _ = self.try_set_windowed(position, size);
 	}
 
 	/// Indicates whether the window has input focus.
@@ -952,7 +957,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_focused(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_FOCUSED)
+		self.attr(GLFW_FOCUSED)
 	}
 
 	/// See [Window::try_is_focused].
@@ -971,7 +976,7 @@ impl Window
 	///   window is iconified, so this function always returns `false`.
 	pub fn try_is_iconified(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_ICONIFIED)
+		self.attr(GLFW_ICONIFIED)
 	}
 
 	/// See [Window::try_is_iconified]
@@ -986,7 +991,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_maximized(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_MAXIMIZED)
+		self.attr(GLFW_MAXIMIZED)
 	}
 
 	/// See [Window::try_is_maximized].
@@ -1002,7 +1007,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_hovered(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_HOVERED)
+		self.attr(GLFW_HOVERED)
 	}
 
 	/// See [Window::try_is_hovered].
@@ -1017,7 +1022,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_visible(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_VISIBLE)
+		self.attr(GLFW_VISIBLE)
 	}
 
 	/// See [Window::try_is_visible].
@@ -1032,7 +1037,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_resizable(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_RESIZABLE)
+		self.attr(GLFW_RESIZABLE)
 	}
 
 	/// See [Window::try_is_resizable].
@@ -1048,7 +1053,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_decorated(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_DECORATED)
+		self.attr(GLFW_DECORATED)
 	}
 
 	/// See [Window::try_is_decorated].
@@ -1064,7 +1069,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_will_iconify(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_AUTO_ICONIFY)
+		self.attr(GLFW_AUTO_ICONIFY)
 	}
 
 	/// See [Window::try_will_iconify].
@@ -1080,7 +1085,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_floating(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_FLOATING)
+		self.attr(GLFW_FLOATING)
 	}
 
 	/// See [Window::try_is_floating].
@@ -1097,7 +1102,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_has_transparent_framebuffer(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_TRANSPARENT_FRAMEBUFFER)
+		self.attr(GLFW_TRANSPARENT_FRAMEBUFFER)
 	}
 
 	/// See [Window::try_has_transparent_framebuffer].
@@ -1113,7 +1118,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_will_focus(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_FOCUS_ON_SHOW)
+		self.attr(GLFW_FOCUS_ON_SHOW)
 	}
 
 	/// See [Window::try_will_focus].
@@ -1129,7 +1134,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_will_mouse_passthrough(&self) -> Result<bool, XErr>
 	{
-		self.get_attr(GLFW_MOUSE_PASSTHROUGH)
+		self.attr(GLFW_MOUSE_PASSTHROUGH)
 	}
 
 	/// See [Window::try_will_mouse_passthrough].
@@ -1151,7 +1156,7 @@ impl Window
 	/// See [Window::try_set_decorated].
 	pub fn set_decorated(&mut self, value: bool)
 	{
-		self.try_set_decorated(value).unwrap_or_default()
+		let _ = self.try_set_decorated(value);
 	}
 
 	/// Sets whether the window is resizable *by the user*.
@@ -1166,7 +1171,7 @@ impl Window
 	/// See [Window::try_set_resizable].
 	pub fn set_resizable(&mut self, value: bool)
 	{
-		self.try_set_resizable(value).unwrap_or_default()
+		let _ = self.try_set_resizable(value);
 	}
 
 	/// Sets whether the window is floating, also called topmost or
@@ -1187,7 +1192,7 @@ impl Window
 	/// See [Window::try_set_floating].
 	pub fn set_floating(&mut self, value: bool)
 	{
-		self.try_set_floating(value).unwrap_or_default()
+		let _ = self.try_set_floating(value);
 	}
 
 	/// Sets whether the full screen window is iconified on focus loss, a close
@@ -1203,7 +1208,7 @@ impl Window
 	/// See [Window::try_set_will_iconify].
 	pub fn set_will_iconify(&mut self, value: bool)
 	{
-		self.try_set_will_iconify(value).unwrap_or_default()
+		let _ = self.try_set_will_iconify(value);
 	}
 
 	/// Sets whether the window will be given input focus when [Window::show] is
@@ -1219,7 +1224,7 @@ impl Window
 	/// See [Window::try_set_will_focus].
 	pub fn set_will_focus(&mut self, value: bool)
 	{
-		self.try_set_will_focus(value).unwrap_or_default()
+		let _ = self.try_set_will_focus(value);
 	}
 
 	/// Sets whether the window is transparent to mouse input, letting any mouse
@@ -1236,7 +1241,203 @@ impl Window
 	/// See [Window::try_set_mouse_passthrough].
 	pub fn set_mouse_passthrough(&mut self, value: bool)
 	{
-		self.try_set_mouse_passthrough(value).unwrap_or_default()
+		let _ = self.try_set_mouse_passthrough(value);
+	}
+
+	/// Returns the cursor mode of the window.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_cursor(&self) -> Result<CursorMode, XErr>
+	{
+		self.input_mode(GLFW_CURSOR)
+			.map(|v| CursorMode::from_glfw(v))
+	}
+
+	/// See [Window::try_cursor].
+	pub fn cursor(&self) -> CursorMode
+	{
+		self.try_cursor().unwrap_or_default()
+	}
+
+	/// Sets the cursor mode of the window. See [CursorMode].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_cursor(&mut self, mode: CursorMode) -> Result<(), XErr>
+	{
+		self.set_input_mode(GLFW_CURSOR, mode.as_glfw())
+	}
+
+	/// See [Window::try_set_cursor].
+	pub fn set_cursor(&mut self, mode: CursorMode)
+	{
+		let _ = self.try_set_cursor(mode);
+	}
+
+	/// Returns whether sticky keys are enabled for the window. See
+	/// [Window::try_set_sticky_keys].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_sticky_keys(&self) -> Result<bool, XErr>
+	{
+		self.input_mode(GLFW_STICKY_KEYS)
+			.map(|v| if v == GLFW_TRUE { true } else { false })
+	}
+
+	/// See [Window::try_sticky_keys].
+	pub fn sticky_keys(&self) -> bool
+	{
+		self.try_sticky_keys().unwrap_or_default()
+	}
+
+	/// Enables or disables sticky keys on the window.
+	///
+	/// If sticky keys are enabled, a key press will ensure that [Window::key]
+	/// returns PRESS the next time it is called even if the key had been
+	/// released before the call. This is useful when you are only interested in
+	/// whether keys have been pressed but not when or in which order.
+	///
+	/// TODO finish linking PRESS
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_sticky_keys(&mut self, value: bool) -> Result<(), XErr>
+	{
+		self.set_input_mode(GLFW_STICKY_KEYS, if value { GLFW_TRUE } else { GLFW_FALSE })
+	}
+
+	/// See [Window::try_set_sticky_keys].
+	pub fn set_sticky_keys(&mut self, value: bool)
+	{
+		let _ = self.try_set_sticky_keys(value);
+	}
+
+	/// Returns whether sticky mouse buttons are enabled for the window. See
+	/// [Window::try_set_sticky_mouse].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_sticky_mouse(&self) -> Result<bool, XErr>
+	{
+		self.input_mode(GLFW_STICKY_MOUSE_BUTTONS)
+			.map(|v| if v == GLFW_TRUE { true } else { false })
+	}
+
+	/// See [Window::try_sticky_mouse].
+	pub fn sticky_mouse(&self) -> bool
+	{
+		self.try_sticky_mouse().unwrap_or_default()
+	}
+
+	/// Enables or disables sticky mouse buttons on the window.
+	///
+	/// If sticky mouse buttons are enabled, a mouse button press will ensure
+	/// that [Window::mouse_button] returns PRESS the next time it is called
+	/// even if the mouse button has been released before the call. This is
+	/// useful when you are only interested in whether mouse buttons have been
+	/// pressed but not when or in which order.
+	///
+	/// TODO finish linking PRESS
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_sticky_mouse(&mut self, value: bool) -> Result<(), XErr>
+	{
+		self.set_input_mode(
+			GLFW_STICKY_MOUSE_BUTTONS,
+			if value { GLFW_TRUE } else { GLFW_FALSE },
+		)
+	}
+
+	/// See [Window::try_set_sticky_mouse].
+	pub fn set_sticky_mouse(&mut self, value: bool)
+	{
+		let _ = self.try_set_sticky_mouse(value);
+	}
+
+	/// Returns whether lock key mods are enabled for the window. See
+	/// [Window::try_set_lock_key_mods].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_lock_key_mods(&self) -> Result<bool, XErr>
+	{
+		self.input_mode(GLFW_LOCK_KEY_MODS)
+			.map(|v| if v == GLFW_TRUE { true } else { false })
+	}
+
+	/// See [Window::try_lock_key_mods].
+	pub fn lock_key_mods(&self) -> bool
+	{
+		self.try_lock_key_mods().unwrap_or_default()
+	}
+
+	/// Enables or disables lock key modifier bits.
+	///
+	/// If enabled, events that send modifier bits will also have the
+	/// [Modifier::CAPS_LOCK](crate::input::keyboard::Modifier::CAPS_LOCK) bit
+	/// set when the event was generated with Caps Lock on, and the
+	/// [Modifier::NUM_LOCK](crate::input::keyboard::Modifier::NUM_LOCK) bit
+	/// when Num Lock was on.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_lock_key_mods(&mut self, value: bool) -> Result<(), XErr>
+	{
+		self.set_input_mode(
+			GLFW_LOCK_KEY_MODS,
+			if value { GLFW_TRUE } else { GLFW_FALSE },
+		)
+	}
+
+	/// See [Window::try_set_lock_key_mods].
+	pub fn set_lock_key_mods(&mut self, value: bool)
+	{
+		let _ = self.try_set_lock_key_mods(value);
+	}
+
+	/// Returns whether raw mouse motion is enabled for the window. See
+	/// [Window::try_set_raw_mouse_motion].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_raw_mouse_motion(&self) -> Result<bool, XErr>
+	{
+		self.input_mode(GLFW_RAW_MOUSE_MOTION)
+			.map(|v| if v == GLFW_TRUE { true } else { false })
+	}
+
+	/// See [Window::try_raw_mouse_motion].
+	pub fn raw_mouse_motion(&self) -> bool
+	{
+		self.try_raw_mouse_motion().unwrap_or_default()
+	}
+
+	/// Enabled or disabled raw mouse motion for the window.
+	///
+	/// When enabled, raw (unscaled and unaccelerated) mouse motion will be used
+	/// for mouse events. This will only be used when the cursor is disabled.
+	///
+	/// If raw mouse motion is not supported, this will return
+	/// [XErr::FeatureUnavailable]. See [try_raw_mouse_supported](crate::input::mouse::try_raw_mouse_supported).
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform], and
+	/// [XErr::FeatureUnavailable].
+	pub fn try_set_raw_mouse_motion(&mut self, value: bool) -> Result<(), XErr>
+	{
+		self.set_input_mode(
+			GLFW_RAW_MOUSE_MOTION,
+			if value { GLFW_TRUE } else { GLFW_FALSE },
+		)
+	}
+
+	/// See [Window::try_set_raw_mouse_motion].
+	pub fn set_raw_mouse_motion(&mut self, value: bool)
+	{
+		let _ = self.try_set_raw_mouse_motion(value);
 	}
 
 	/// Subscribes to general window events on the given channel. See
@@ -1268,7 +1469,7 @@ impl Window
 		Window(win)
 	}
 
-	fn get_attr(&self, attr: u32) -> Result<bool, XErr>
+	fn attr(&self, attr: u32) -> Result<bool, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -1295,6 +1496,25 @@ impl Window
 				},
 				tx,
 			),
+			rx,
+		)?
+	}
+
+	fn input_mode(&self, mode: u32) -> Result<u32, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetInputMode(self.0, mode as i32, tx), rx)?
+			.map(|v| v as u32)
+	}
+
+	fn set_input_mode(&mut self, mode: u32, value: u32) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::SetInputMode(self.0, mode as i32, value as i32, tx),
 			rx,
 		)?
 	}

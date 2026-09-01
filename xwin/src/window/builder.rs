@@ -5,9 +5,6 @@ use std::{
 
 use crate::{
 	bind::{
-		glfwDefaultWindowHints,
-		glfwWindowHint,
-		glfwWindowHintString,
 		GLFW_ALPHA_BITS,
 		GLFW_ANY_POSITION,
 		GLFW_AUTO_ICONIFY,
@@ -21,8 +18,8 @@ use crate::{
 		GLFW_DOUBLEBUFFER,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUSED,
 		GLFW_FOCUS_ON_SHOW,
+		GLFW_FOCUSED,
 		GLFW_GREEN_BITS,
 		GLFW_MAXIMIZED,
 		GLFW_MOUSE_PASSTHROUGH,
@@ -45,10 +42,13 @@ use crate::{
 		GLFW_WIN32_SHOWDEFAULT,
 		GLFW_X11_CLASS_NAME,
 		GLFW_X11_INSTANCE_NAME,
+		glfwDefaultWindowHints,
+		glfwWindowHint,
+		glfwWindowHintString,
 	},
 	core::{
-		exec::XWinMessage,
 		XWin,
+		exec::XWinMessage,
 	},
 	error::XErr,
 	monitor::Monitor,

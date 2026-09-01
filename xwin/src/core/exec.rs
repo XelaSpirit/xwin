@@ -1,4 +1,4 @@
-mod cursor;
+mod input;
 mod monitor;
 mod window;
 
@@ -23,17 +23,17 @@ use crate::{
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::cursor::{
+		exec::input::{
 			create_cursor,
 			destroy_cursor,
+			input_mode,
+			raw_mouse_supported,
+			set_input_mode,
 		},
 		image::Image,
 	},
 	error::XErr,
-	input::mouse::{
-		Cursor,
-		CursorShape,
-	},
+	input::mouse::CursorShape,
 	monitor::{
 		GammaRamp,
 		Millimeters,
@@ -131,9 +131,12 @@ pub(crate) enum XWinMessage
 	GetWindowAttribute(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
 	SetWindowAttribute(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
 
-	// Cursor
+	// Input
 	CreateCursor(CursorShape, Sender<Result<*mut GLFWcursor, XErr>>),
 	DestroyCursor(*mut GLFWcursor, Sender<Result<(), XErr>>),
+	GetInputMode(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
+	SetInputMode(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
+	RawMouseSupported(Sender<Result<bool, XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -274,8 +277,14 @@ fn handle_msg(msg: XWinMessage)
 			set_window_attribute(win, attr, value, tx)
 		},
 
-		// Cursor
+		// Input
 		| XWinMessage::CreateCursor(shape, tx) => create_cursor(shape, tx),
 		| XWinMessage::DestroyCursor(cursor, tx) => destroy_cursor(cursor, tx),
+		| XWinMessage::GetInputMode(window, mode, tx) => input_mode(window, mode, tx),
+		| XWinMessage::SetInputMode(window, mode, value, tx) =>
+		{
+			set_input_mode(window, mode, value, tx)
+		},
+		| XWinMessage::RawMouseSupported(tx) => raw_mouse_supported(tx),
 	};
 }

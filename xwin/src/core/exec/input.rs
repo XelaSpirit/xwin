@@ -12,16 +12,18 @@ use crate::{
 		GLFW_RESIZE_NESW_CURSOR,
 		GLFW_RESIZE_NS_CURSOR,
 		GLFW_RESIZE_NWSE_CURSOR,
+		GLFW_TRUE,
 		GLFWcursor,
+		GLFWwindow,
 		glfwCreateCursor,
 		glfwCreateStandardCursor,
 		glfwDestroyCursor,
+		glfwGetInputMode,
+		glfwRawMouseMotionSupported,
+		glfwSetInputMode,
 	},
 	error::XErr,
-	input::mouse::{
-		Cursor,
-		CursorShape,
-	},
+	input::mouse::CursorShape,
 };
 
 pub(super) fn create_cursor(shape: CursorShape, tx: Sender<Result<*mut GLFWcursor, XErr>>)
@@ -65,4 +67,29 @@ pub(super) fn destroy_cursor(cursor: *mut GLFWcursor, tx: Sender<Result<(), XErr
 {
 	unsafe { glfwDestroyCursor(cursor) };
 	let _ = tx.send(XErr::result(|| ()));
+}
+
+pub(super) fn input_mode(window: *mut GLFWwindow, mode: i32, tx: Sender<Result<i32, XErr>>)
+{
+	let value = unsafe { glfwGetInputMode(window, mode) };
+	let _ = tx.send(XErr::result(|| value));
+}
+
+pub(super) fn set_input_mode(
+	window: *mut GLFWwindow,
+	mode: i32,
+	value: i32,
+	tx: Sender<Result<(), XErr>>,
+)
+{
+	unsafe { glfwSetInputMode(window, mode, value) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+pub(super) fn raw_mouse_supported(tx: Sender<Result<bool, XErr>>)
+{
+	let value = unsafe { glfwRawMouseMotionSupported() } as u32;
+	let _ = tx.send(XErr::result(
+		|| if value == GLFW_TRUE { true } else { false },
+	));
 }

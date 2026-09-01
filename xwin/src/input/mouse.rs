@@ -2,7 +2,10 @@ use std::sync::mpsc::channel;
 
 use crate::{
 	bind::{
-		GLFWcursor,
+		GLFW_CURSOR_CAPTURED,
+		GLFW_CURSOR_DISABLED,
+		GLFW_CURSOR_HIDDEN,
+		GLFW_CURSOR_NORMAL,
 		GLFW_MOUSE_BUTTON_4,
 		GLFW_MOUSE_BUTTON_5,
 		GLFW_MOUSE_BUTTON_6,
@@ -11,15 +14,19 @@ use crate::{
 		GLFW_MOUSE_BUTTON_LEFT,
 		GLFW_MOUSE_BUTTON_MIDDLE,
 		GLFW_MOUSE_BUTTON_RIGHT,
+		GLFWcursor,
 	},
 	core::{
+		XWin,
 		exec::XWinMessage,
 		image::Image,
-		XWin,
 	},
 	error::XErr,
 	glfw_enum,
-	window::Pixels,
+	window::{
+		Pixels,
+		Window,
+	},
 };
 
 #[repr(u8)]
@@ -71,6 +78,25 @@ pub enum CursorShape
 	Custom(Image, Pixels),
 }
 
+#[repr(u32)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CursorMode
+{
+	/// Default. Makes the cursor visible and behave normally.
+	Normal   = GLFW_CURSOR_NORMAL,
+	/// Makes the cursor invisible when it is over the content area of the
+	/// window but does not restrict the cursor from leaving.
+	Hidden   = GLFW_CURSOR_HIDDEN,
+	/// Hides and grabs the cursor, providing virtual and unlimited cursor
+	/// movement. This is useful for implementing, for example, 3D camera
+	/// controls.
+	Disabled = GLFW_CURSOR_DISABLED,
+	/// Makes the cursor visible and confines it to the content area of the
+	/// window.
+	Captured = GLFW_CURSOR_CAPTURED,
+}
+glfw_enum!(CursorMode, u32, CursorMode::Normal);
+
 pub struct Cursor(*mut GLFWcursor);
 
 impl Cursor
@@ -115,4 +141,32 @@ impl Drop for Cursor
 				.post_rcv(XWinMessage::DestroyCursor(self.0, tx), rx);
 		}
 	}
+}
+
+/// Returns whether raw mouse motion is supported on the current system.
+/// This status does not change after XWin has been initialized so you only
+/// need to check this once. If you attempt to enable raw motion on a system
+/// that does not support it, [XErr::Platform] will be returned.
+///
+/// Raw mouse motion is closer to the actual motion of the mouse across a
+/// surface. It is not affected by the scaling and acceleration applied to the
+/// motion of the desktop cursor. That processing is suitable for a cursor while
+/// raw motion is better for controlling for example a 3D camera. Because of
+/// this, raw mouse motion is only provided when the cursor is disabled.
+/// 
+/// # Errors
+/// Possible errors include [XErr::NotInitialized]
+pub fn try_raw_mouse_supported() -> Result<bool, XErr>
+{
+	let (tx, rx) = channel();
+	XWin::get()?
+		.read()
+		.unwrap()
+		.post_rcv(XWinMessage::RawMouseSupported(tx), rx)?
+}
+
+/// See [try_raw_mouse_supported].
+pub fn raw_mouse_supported() -> bool
+{
+	try_raw_mouse_supported().unwrap_or_default()
 }
