@@ -269,12 +269,8 @@
 //! ```
 //!
 //! This tutorial used only a few of the many functions XWin provides. There is
-//! additional documentation in other module covering more specific areas of
+//! additional documentation in other modules covering more specific areas of
 //! XWin.
-//! - [core]
-//! - [window]
-//! - [monitor]
-//! - [input]
 //!
 //! # Crate Features
 //! XWin provides a number of optional features which may be enabled to expose

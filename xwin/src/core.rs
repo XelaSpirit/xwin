@@ -142,8 +142,6 @@ pub(crate) struct XWin
 	xwin_tx:     mpsc::Sender<XWinMessage>,
 }
 
-// TODO - glfwInitVulkanLoader
-
 impl XWin
 {
 	pub(crate) fn get() -> Result<&'static RwLock<XWin>, XErr>

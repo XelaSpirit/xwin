@@ -181,7 +181,9 @@ pub enum XErr
 	/// Platform unavailable or no matching platform was found.
 	///
 	/// If emitted during initialization, no matching platform was found. If the
-	/// GLFW_PLATFORM init hint was set to GLFW_ANY_PLATFORM, XWin could not
+	/// platform init hint was set to
+	/// [Platform::Any](crate::core::Platform::Any) with
+	/// [core::set_platform](crate::core::set_platform), XWin could not
 	/// detect any of the platforms supported by this library binary, except for
 	/// the Null platform. If the init hint was set to a specific platform, it
 	/// is either not supported by this library binary or XWin was not able to
@@ -198,10 +200,8 @@ pub enum XErr
 	///
 	/// Failure to detect a specific platform may have the same cause as above
 	/// or be because support for that platform was not compiled in. Call
-	/// glfwPlatformSupported to check whether a specific platform is supported
-	/// by a library binary.
-	///
-	/// TODO link hints and functions
+	/// [core::platform_supported](crate::core::platform_supported) to check
+	/// whether a specific platform is supported by a library binary.
 	PlatformUnavailable(String) = GLFW_PLATFORM_UNAVAILABLE,
 	/// An unknown error occurred that XWin did not expect
 	///

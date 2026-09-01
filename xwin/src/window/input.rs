@@ -550,8 +550,6 @@ impl Window
 	/// before the call. This is useful when you are only interested in whether
 	/// mouse buttons have been pressed but not when or in which order.
 	///
-	/// TODO finish linking PRESS
-	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_sticky_mouse(&mut self, value: bool) -> Result<(), XErr>

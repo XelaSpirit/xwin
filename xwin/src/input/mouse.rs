@@ -99,7 +99,8 @@ pub struct Cursor(*mut GLFWcursor);
 
 impl Cursor
 {
-	/// Creates a new cursor that can be set for a window with TODO().
+	/// Creates a new cursor that can be set for a window with
+	/// [Window::try_set_cursor](crate::window::Window::try_set_cursor).
 	///
 	/// See [CursorShape] for more details.
 	///
