@@ -320,7 +320,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickAxes(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickAxes(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -337,7 +337,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickButtons(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickButtons(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -356,7 +356,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetGamepadName(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::GetGamepadName(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -385,7 +385,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickGuid(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickGuid(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -402,7 +402,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickHats(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickHats(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -420,7 +420,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickIsGamepad(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickIsGamepad(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -437,7 +437,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickPresent(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickPresent(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -454,7 +454,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickName(unsafe { self.as_glfw() } as i32, tx),
+			XWinMessage::JoystickName(self.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -482,7 +482,7 @@ impl Joystick
 			.read()
 			.unwrap()
 			.post_rcv(
-				XWinMessage::GetGamepadState(unsafe { self.as_glfw() } as i32, tx),
+				XWinMessage::GetGamepadState(self.as_glfw() as i32, tx),
 				rx,
 			)?
 			.map(|opt| opt.map(|state| GamepadState::from_glfw_crate(state)))

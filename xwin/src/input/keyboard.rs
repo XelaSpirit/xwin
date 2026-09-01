@@ -40,14 +40,6 @@ use crate::{
 		GLFW_KEY_ESCAPE,
 		GLFW_KEY_F,
 		GLFW_KEY_F1,
-		GLFW_KEY_F2,
-		GLFW_KEY_F3,
-		GLFW_KEY_F4,
-		GLFW_KEY_F5,
-		GLFW_KEY_F6,
-		GLFW_KEY_F7,
-		GLFW_KEY_F8,
-		GLFW_KEY_F9,
 		GLFW_KEY_F10,
 		GLFW_KEY_F11,
 		GLFW_KEY_F12,
@@ -58,12 +50,20 @@ use crate::{
 		GLFW_KEY_F17,
 		GLFW_KEY_F18,
 		GLFW_KEY_F19,
+		GLFW_KEY_F2,
 		GLFW_KEY_F20,
 		GLFW_KEY_F21,
 		GLFW_KEY_F22,
 		GLFW_KEY_F23,
 		GLFW_KEY_F24,
 		GLFW_KEY_F25,
+		GLFW_KEY_F3,
+		GLFW_KEY_F4,
+		GLFW_KEY_F5,
+		GLFW_KEY_F6,
+		GLFW_KEY_F7,
+		GLFW_KEY_F8,
+		GLFW_KEY_F9,
 		GLFW_KEY_G,
 		GLFW_KEY_GRAVE_ACCENT,
 		GLFW_KEY_H,
@@ -323,10 +323,10 @@ impl Key
 	pub fn try_name(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetKeyName(unsafe { self.as_glfw() } as i32, -1, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetKeyName(self.as_glfw() as i32, -1, tx), rx)?
 	}
 
 	/// See [Key::try_name].

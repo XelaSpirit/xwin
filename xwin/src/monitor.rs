@@ -22,7 +22,6 @@ use crate::{
 		exec::XWinMessage,
 	},
 	error::XErr,
-	window::Window,
 };
 
 /// Almost all positions and sizes in XWin are measured in

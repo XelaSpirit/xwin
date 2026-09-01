@@ -24,7 +24,6 @@ use crate::{
 	},
 	error::XErr,
 	glfw_enum,
-	monitor::Monitor,
 };
 
 #[repr(u8)]

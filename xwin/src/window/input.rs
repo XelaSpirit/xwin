@@ -337,7 +337,7 @@ impl Window
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetKey(self.0, unsafe { key.as_glfw() } as i32, tx),
+			XWinMessage::GetKey(self.0, key.as_glfw() as i32, tx),
 			rx,
 		)?
 	}
@@ -368,7 +368,7 @@ impl Window
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetMouseButton(self.0, unsafe { button.as_glfw() } as i32, tx),
+			XWinMessage::GetMouseButton(self.0, button.as_glfw() as i32, tx),
 			rx,
 		)?
 	}

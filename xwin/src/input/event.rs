@@ -27,7 +27,7 @@ impl JoystickConfigEvent
 	#[cfg(feature = "glfw")]
 	pub unsafe fn from_glfw(jid: u32, evt: u32) -> Self
 	{
-		unsafe { Self::from_glfw_crate(jid, evt) }
+		Self::from_glfw_crate(jid, evt)
 	}
 
 	#[cfg(feature = "glfw")]
