@@ -1,11 +1,16 @@
 mod input;
+mod joystick;
 mod monitor;
 mod window;
 
-use std::sync::mpsc::{
-	Receiver,
-	Sender,
-	TryRecvError,
+use std::{
+	ffi::CStr,
+	os::raw::c_char,
+	sync::mpsc::{
+		Receiver,
+		Sender,
+		TryRecvError,
+	},
 };
 
 use input::*;
@@ -25,17 +30,29 @@ use crate::{
 		Pixels,
 		ScreenCoordinates,
 		XWin,
-		exec::input::{
-			cursor_pos,
-			key,
-			mouse_button,
-			set_cursor_pos,
+		exec::{
+			input::{
+				cursor_pos,
+				key,
+				mouse_button,
+				set_cursor_pos,
+			},
+			joystick::{
+				joystick_axes,
+				joystick_buttons,
+				joystick_guid,
+				joystick_hats,
+				joystick_is_gamepad,
+				joystick_name,
+				joystick_present,
+			},
 		},
 		image::Image,
 	},
 	error::XErr,
 	input::{
 		ButtonState,
+		gamepad::JoystickHatState,
 		mouse::CursorShape,
 	},
 	monitor::{
@@ -155,7 +172,7 @@ pub(crate) enum XWinMessage
 	GetInputMode(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
 	SetInputMode(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
 	RawMouseSupported(Sender<Result<bool, XErr>>),
-	GetKeyName(i32, i32, Sender<Option<String>>),
+	GetKeyName(i32, i32, Sender<Result<Option<String>, XErr>>),
 	GetKey(*mut GLFWwindow, i32, Sender<Result<ButtonState, XErr>>),
 	GetMouseButton(*mut GLFWwindow, i32, Sender<Result<ButtonState, XErr>>),
 	GetCursorPos(
@@ -164,6 +181,15 @@ pub(crate) enum XWinMessage
 	),
 	SetCursorPos(*mut GLFWwindow, f64, f64, Sender<Result<(), XErr>>),
 	SetCursor(*mut GLFWwindow, *mut GLFWcursor, Sender<Result<(), XErr>>),
+
+	// Joystick
+	JoystickPresent(i32, Sender<Result<bool, XErr>>),
+	JoystickAxes(i32, Sender<Result<Option<Vec<f32>>, XErr>>),
+	JoystickButtons(i32, Sender<Result<Option<Vec<ButtonState>>, XErr>>),
+	JoystickHats(i32, Sender<Result<Option<Vec<JoystickHatState>>, XErr>>),
+	JoystickName(i32, Sender<Result<Option<String>, XErr>>),
+	JoystickGuid(i32, Sender<Result<Option<String>, XErr>>),
+	JoystickIsGamepad(i32, Sender<Result<bool, XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -319,5 +345,28 @@ fn handle_msg(msg: XWinMessage)
 		| XWinMessage::GetCursorPos(win, tx) => cursor_pos(win, tx),
 		| XWinMessage::SetCursorPos(win, x, y, tx) => set_cursor_pos(win, x, y, tx),
 		| XWinMessage::SetCursor(win, cursor, tx) => set_cursor(win, cursor, tx),
+
+		// Joystick
+		| XWinMessage::JoystickPresent(jid, tx) => joystick_present(jid, tx),
+		| XWinMessage::JoystickAxes(jid, tx) => joystick_axes(jid, tx),
+		| XWinMessage::JoystickButtons(jid, tx) => joystick_buttons(jid, tx),
+		| XWinMessage::JoystickHats(jid, tx) => joystick_hats(jid, tx),
+		| XWinMessage::JoystickName(jid, tx) => joystick_name(jid, tx),
+		| XWinMessage::JoystickGuid(jid, tx) => joystick_guid(jid, tx),
+		| XWinMessage::JoystickIsGamepad(jid, tx) => joystick_is_gamepad(jid, tx),
 	};
+}
+
+fn send_string(value: *const c_char, tx: Sender<Result<Option<String>, XErr>>)
+{
+	let _ = tx.send(XErr::result(|| {
+		if value.is_null()
+		{
+			None
+		}
+		else
+		{
+			Some(unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() })
+		}
+	}));
 }

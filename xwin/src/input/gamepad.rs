@@ -1,5 +1,9 @@
+use std::sync::mpsc::channel;
+
 use crate::{
 	bind::{
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
 		GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,
 		GLFW_GAMEPAD_AXIS_LEFT_X,
 		GLFW_GAMEPAD_AXIS_LEFT_Y,
@@ -27,6 +31,13 @@ use crate::{
 		GLFW_HAT_RIGHT,
 		GLFW_HAT_UP,
 		GLFW_JOYSTICK_1,
+		GLFW_JOYSTICK_10,
+		GLFW_JOYSTICK_11,
+		GLFW_JOYSTICK_12,
+		GLFW_JOYSTICK_13,
+		GLFW_JOYSTICK_14,
+		GLFW_JOYSTICK_15,
+		GLFW_JOYSTICK_16,
 		GLFW_JOYSTICK_2,
 		GLFW_JOYSTICK_3,
 		GLFW_JOYSTICK_4,
@@ -35,15 +46,14 @@ use crate::{
 		GLFW_JOYSTICK_7,
 		GLFW_JOYSTICK_8,
 		GLFW_JOYSTICK_9,
-		GLFW_JOYSTICK_10,
-		GLFW_JOYSTICK_11,
-		GLFW_JOYSTICK_12,
-		GLFW_JOYSTICK_13,
-		GLFW_JOYSTICK_14,
-		GLFW_JOYSTICK_15,
-		GLFW_JOYSTICK_16,
 	},
+	core::{
+		XWin,
+		exec::XWinMessage,
+	},
+	error::XErr,
 	glfw_enum,
+	input::ButtonState,
 };
 
 #[repr(u8)]
@@ -99,6 +109,29 @@ glfw_enum!(JoystickHatState, u8);
 
 #[repr(u8)]
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JoystickConfigEvent
+{
+	Connected(Joystick) = GLFW_CONNECTED as u8,
+	Disconnected(Joystick) = GLFW_DISCONNECTED as u8,
+}
+
+impl JoystickConfigEvent
+{
+	pub(crate) fn from_glfw(jid: u32, evt: u32) -> Self
+	{
+		if evt == GLFW_CONNECTED
+		{
+			JoystickConfigEvent::Connected(Joystick::from_glfw(jid))
+		}
+		else
+		{
+			JoystickConfigEvent::Disconnected(Joystick::from_glfw(jid))
+		}
+	}
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Joystick
 {
 	One      = GLFW_JOYSTICK_1 as u8,
@@ -119,3 +152,192 @@ pub enum Joystick
 	Sixteen  = GLFW_JOYSTICK_16 as u8,
 }
 glfw_enum!(Joystick, u8);
+
+impl Joystick
+{
+	// =======================
+	//     QUERY FUNCTIONS
+	// =======================
+
+	/// See [Joystick::try_axes].
+	pub fn axes(&self) -> Option<Vec<f32>>
+	{
+		self.try_axes().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_buttons].
+	pub fn buttons(&self) -> Option<Vec<ButtonState>>
+	{
+		self.try_buttons().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_guid].
+	pub fn guid(&self) -> Option<String>
+	{
+		self.try_guid().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_hats].
+	pub fn hats(&self) -> Option<Vec<JoystickHatState>>
+	{
+		self.try_hats().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_is_gamepad].
+	pub fn is_gamepad(&self) -> bool
+	{
+		self.try_is_gamepad().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_is_present].
+	pub fn is_present(&self) -> bool
+	{
+		self.try_is_present().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_name].
+	pub fn name(&self) -> Option<String>
+	{
+		self.try_name().unwrap_or_default()
+	}
+
+	// =======================
+	//   TRY QUERY FUNCTIONS
+	// =======================
+
+	/// Returns the values of all axes of the joystick. Each element in the
+	/// [Vec] is a value between -1.0 and 1.0.
+	///
+	/// If the joystick is not present, `None` is returned without generating an
+	/// error. This can be used instead of first calling
+	/// [Joystick::try_is_present].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_axes(&self) -> Result<Option<Vec<f32>>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickAxes(self.as_glfw() as i32, tx), rx)?
+	}
+
+	/// Returns the state of all buttons of the joystick.
+	///
+	/// If the joystick is not present, `None` is returned without generating an
+	/// error. This can be used instead of first calling
+	/// [Joystick::try_is_present].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_buttons(&self) -> Result<Option<Vec<ButtonState>>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickButtons(self.as_glfw() as i32, tx), rx)?
+	}
+
+	/// Returns the SDL compatible GUID, as a hexadecimal string, of the
+	/// joystick.
+	///
+	/// If the joystick is not present, `None` is returned without generating an
+	/// error. This can be used instead of first calling
+	/// [Joystick::try_is_present].
+	///
+	/// The GUID is what connects a joystick to a gamepad mapping. A connected
+	/// joystick will always have a GUID even if there is no gamepad mapping
+	/// assigned to it.
+	///
+	/// The GUID uses the format introduced in SDL 2.0.5. This GUID tries to
+	/// uniquely identify the make and model of a joystick but does not identify
+	/// a specific unit, e.g. all wired Xbox 360 controllers will have the same
+	/// GUID on that platform. The GUID for a unit may vary between platforms
+	/// depending on what hardware information the platform specific APIs
+	/// provide.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_guid(&self) -> Result<Option<String>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickGuid(self.as_glfw() as i32, tx), rx)?
+	}
+
+	/// Returns the state of all hats of the joystick.
+	///
+	/// If the joystick is not present, `None` is returned without generating an
+	/// error. This can be used instead of first calling
+	/// [Joystick::try_is_present].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_hats(&self) -> Result<Option<Vec<JoystickHatState>>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickHats(self.as_glfw() as i32, tx), rx)?
+	}
+
+	/// Returns whether the joystick is both present and has a gamepad mapping.
+	///
+	/// If the joystick is present but does not have a gamepad mapping this
+	/// function will return `false` without generating an error. Call
+	/// [Joystick::is_present] to check if a joystick is present regardless of
+	/// whether it has a mapping.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_is_gamepad(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickIsGamepad(self.as_glfw() as i32, tx),
+			rx,
+		)?
+	}
+
+	/// Returns whether a given joystick is present.
+	///
+	/// There is no need to call this function before other functions that
+	/// accept a [Joystick] argument, as they all check for presence before
+	/// performing any other work.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_present(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickPresent(self.as_glfw() as i32, tx), rx)?
+	}
+
+	/// Returns the name of the joystick.
+	///
+	/// If the joystick is not present, `None` is returned without generating an
+	/// error. This can be used instead of first calling
+	/// [Joystick::try_is_present].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_name(&self) -> Result<Option<String>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickName(self.as_glfw() as i32, tx), rx)?
+	}
+}
+
+// TODO - joystick config callback. XWIN struct has been updated, need to add
+//        callback, set tx, and get callback to send on channel.

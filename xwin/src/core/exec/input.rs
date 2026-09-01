@@ -1,5 +1,6 @@
 use std::{
 	ffi::CStr,
+	os::raw::c_int,
 	sync::mpsc::Sender,
 };
 
@@ -23,18 +24,26 @@ use crate::{
 		glfwDestroyCursor,
 		glfwGetCursorPos,
 		glfwGetInputMode,
+		glfwGetJoystickAxes,
+		glfwGetJoystickButtons,
+		glfwGetJoystickHats,
 		glfwGetKey,
 		glfwGetKeyName,
 		glfwGetMouseButton,
+		glfwJoystickPresent,
 		glfwRawMouseMotionSupported,
 		glfwSetCursor,
 		glfwSetCursorPos,
 		glfwSetInputMode,
 	},
-	core::ScreenCoordinates,
+	core::{
+		ScreenCoordinates,
+		exec::send_string,
+	},
 	error::XErr,
 	input::{
 		ButtonState,
+		gamepad::JoystickHatState,
 		mouse::CursorShape,
 	},
 };
@@ -107,20 +116,9 @@ pub(super) fn raw_mouse_supported(tx: Sender<Result<bool, XErr>>)
 	));
 }
 
-pub(super) fn key_name(key: i32, scancode: i32, tx: Sender<Option<String>>)
+pub(super) fn key_name(key: i32, scancode: i32, tx: Sender<Result<Option<String>, XErr>>)
 {
-	let value = unsafe { glfwGetKeyName(key, scancode) };
-
-	let _ = tx.send(
-		if value.is_null()
-		{
-			None
-		}
-		else
-		{
-			Some(unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() })
-		},
-	);
+	send_string(unsafe { glfwGetKeyName(key, scancode) }, tx);
 }
 
 pub(super) fn key(win: *mut GLFWwindow, key: i32, tx: Sender<Result<ButtonState, XErr>>)

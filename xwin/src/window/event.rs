@@ -39,6 +39,7 @@ use crate::{
 		ScreenCoordinates,
 	},
 	input::{
+		ButtonEvent,
 		ButtonState,
 		keyboard::{
 			Key,
@@ -106,7 +107,7 @@ pub struct KeyEvent
 {
 	key:      Key,
 	scancode: i32,
-	action:   ButtonState,
+	action:   ButtonEvent,
 	mods:     Modifiers,
 }
 
@@ -209,7 +210,7 @@ extern "C" fn key_cb(win: *mut GLFWwindow, key: c_int, scancode: c_int, action: 
 		ctx.post_key(KeyEvent {
 			key: Key::from_glfw(key as u32),
 			scancode,
-			action: ButtonState::from_glfw(action as u32),
+			action: ButtonEvent::from_glfw(action as u32),
 			mods: Modifiers::from_glfw(mods),
 		})
 	});

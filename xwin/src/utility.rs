@@ -18,9 +18,9 @@ macro_rules! glfw_enum {
 			}
 
 			#[allow(dead_code)]
-			pub(crate) fn as_glfw(self) -> $rep
+			pub(crate) fn as_glfw(&self) -> $rep
 			{
-				unsafe { std::mem::transmute(self as $type) }
+				unsafe { std::mem::transmute(self.clone() as $type) }
 			}
 		}
 	};
@@ -43,9 +43,9 @@ macro_rules! glfw_enum {
 			}
 
 			#[allow(dead_code)]
-			pub(crate) fn as_glfw(self) -> $rep
+			pub(crate) fn as_glfw(&self) -> $rep
 			{
-				unsafe { std::mem::transmute(self as $type) }
+				unsafe { std::mem::transmute(self.clone() as $type) }
 			}
 		}
 

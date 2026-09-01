@@ -31,6 +31,7 @@ use crate::{
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
 		GLFW_FALSE,
+		GLFW_JOYSTICK_HAT_BUTTONS,
 		GLFW_PLATFORM,
 		GLFW_PLATFORM_COCOA,
 		GLFW_PLATFORM_NULL,
@@ -49,6 +50,7 @@ use crate::{
 	},
 	core::exec::XWinMessage,
 	error::XErr,
+	input::gamepad::JoystickConfigEvent,
 	monitor::{
 		MonitorEvent,
 		set_monitor_callback,
@@ -132,8 +134,9 @@ pub struct ContentScale
 
 pub(crate) struct XWin
 {
-	xwin_tx:    mpsc::Sender<XWinMessage>,
-	monitor_tx: Option<Box<dyn Sender<MonitorEvent> + Send + Sync>>,
+	joystick_tx: Option<Box<dyn Sender<JoystickConfigEvent> + Send + Sync>>,
+	monitor_tx:  Option<Box<dyn Sender<MonitorEvent> + Send + Sync>>,
+	xwin_tx:     mpsc::Sender<XWinMessage>,
 }
 
 // TODO - glfwInitVulkanLoader
@@ -144,6 +147,24 @@ impl XWin
 	{
 		XWIN.get()
 			.ok_or_else(|| XErr::NotInitialized(String::from("XWin has not been initialized")))
+	}
+
+	pub(crate) fn set_joystick_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<JoystickConfigEvent> + Send + Sync + 'static,
+	{
+		self.joystick_tx = Some(Box::new(tx));
+	}
+
+	pub(crate) fn remove_joystick_tx(&mut self)
+	{
+		self.joystick_tx = None;
+	}
+
+	pub(crate) fn joystick_tx(&self)
+	-> Option<&Box<dyn Sender<JoystickConfigEvent> + Send + Sync>>
+	{
+		self.joystick_tx.as_ref()
 	}
 
 	pub(crate) fn set_monitor_tx<T>(&mut self, tx: T)
@@ -225,8 +246,9 @@ where
 {
 	let (tx, rx) = channel();
 	if let Err(_) = XWIN.set(RwLock::new(XWin {
-		xwin_tx:    tx,
+		joystick_tx: None,
 		monitor_tx: None,
+		xwin_tx:    tx,
 	}))
 	{
 		return Err(XErr::Reinitialized);
@@ -234,6 +256,8 @@ where
 
 	#[cfg(feature = "tracing")]
 	set_error_log();
+
+	unsafe { glfwInitHint(GLFW_JOYSTICK_HAT_BUTTONS as c_int, GLFW_FALSE as c_int) };
 
 	if unsafe { glfwInit() } != GLFW_TRUE as i32
 	{
