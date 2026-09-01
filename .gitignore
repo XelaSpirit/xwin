@@ -1,5 +1,3 @@
 /target
 Cargo.lock
-modules.xml
-vcs.xml
-xwin.iml
+.idea
