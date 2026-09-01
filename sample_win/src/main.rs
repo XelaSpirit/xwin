@@ -1,4 +1,6 @@
+use xwin::core::XWin;
+
 fn main()
 {
-	xwin::core::init().expect("Failed to init xwin");
+	let _xwin = XWin::new();
 }

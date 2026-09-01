@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use cmake::Config;
 use xb::{
-	out_dir,
 	CargoCmd,
 	SearchKind,
+	dep::deploy,
+	out_dir,
 };
-use xb::dep::deploy;
 
 fn main()
 {
