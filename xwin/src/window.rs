@@ -8,10 +8,7 @@ mod builder;
 pub(crate) mod context;
 mod events;
 
-use std::sync::mpsc::{
-	Receiver,
-	channel,
-};
+use std::sync::mpsc::channel;
 
 pub use builder::*;
 pub use events::*;
@@ -19,13 +16,16 @@ use xch::Sender;
 
 use crate::{
 	bind::{
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
+		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUS_ON_SHOW,
 		GLFW_FOCUSED,
+		GLFW_FOCUS_ON_SHOW,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
 		GLFW_MAXIMIZED,
@@ -34,18 +34,15 @@ use crate::{
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
-		GLFWwindow,
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
 	},
 	core::{
+		exec::XWinMessage,
+		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::XWinMessage,
-		image::Image,
 	},
-	err::XErr,
+	error::XErr,
 	monitor::Monitor,
 	window::context::WindowContext,
 };

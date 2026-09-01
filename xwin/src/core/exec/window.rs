@@ -10,10 +10,6 @@ use std::{
 
 use crate::{
 	bind::{
-		GLFW_CLIENT_API,
-		GLFW_NO_API,
-		GLFWimage,
-		GLFWwindow,
 		glfwCreateWindow,
 		glfwDefaultWindowHints,
 		glfwDestroyWindow,
@@ -45,19 +41,23 @@ use crate::{
 		glfwSetWindowUserPointer,
 		glfwShowWindow,
 		glfwWindowHint,
+		GLFWimage,
+		GLFWwindow,
+		GLFW_CLIENT_API,
+		GLFW_NO_API,
 	},
 	core::{
+		image::Image,
 		ContentScale,
 		ScreenCoordinates,
-		image::Image,
 	},
-	err::XErr,
+	error::XErr,
 	monitor::Monitor,
 	window::{
-		Pixels,
-		WindowBuilder,
 		context::WindowContext,
 		set_window_callbacks,
+		Pixels,
+		WindowBuilder,
 	},
 };
 

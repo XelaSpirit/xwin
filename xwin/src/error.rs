@@ -35,6 +35,7 @@ use tracing::{
 #[cfg(feature = "tracing")]
 use crate::bind::glfwSetErrorCallback;
 use crate::bind::{
+	glfwGetError,
 	GLFW_API_UNAVAILABLE,
 	GLFW_CURSOR_UNAVAILABLE,
 	GLFW_FEATURE_UNAVAILABLE,
@@ -42,18 +43,17 @@ use crate::bind::{
 	GLFW_FORMAT_UNAVAILABLE,
 	GLFW_INVALID_ENUM,
 	GLFW_INVALID_VALUE,
+	GLFW_NOT_INITIALIZED,
 	GLFW_NO_CURRENT_CONTEXT,
 	GLFW_NO_ERROR,
 	GLFW_NO_WINDOW_CONTEXT,
-	GLFW_NOT_INITIALIZED,
 	GLFW_OUT_OF_MEMORY,
 	GLFW_PLATFORM_ERROR,
 	GLFW_PLATFORM_UNAVAILABLE,
 	GLFW_VERSION_UNAVAILABLE,
-	glfwGetError,
 };
 
-/// Error codes used throughout the XWin library. See [crate::err] for more
+/// Error codes used throughout the XWin library. See [crate::error] for more
 /// information.
 #[repr(u32)]
 #[derive(Debug, PartialEq, Eq)]
@@ -314,16 +314,16 @@ mod tests
 			GLFW_FORMAT_UNAVAILABLE,
 			GLFW_INVALID_ENUM,
 			GLFW_INVALID_VALUE,
+			GLFW_NOT_INITIALIZED,
 			GLFW_NO_CURRENT_CONTEXT,
 			GLFW_NO_ERROR,
 			GLFW_NO_WINDOW_CONTEXT,
-			GLFW_NOT_INITIALIZED,
 			GLFW_OUT_OF_MEMORY,
 			GLFW_PLATFORM_ERROR,
 			GLFW_PLATFORM_UNAVAILABLE,
 			GLFW_VERSION_UNAVAILABLE,
 		},
-		err::XErr,
+		error::XErr,
 	};
 
 	#[test]

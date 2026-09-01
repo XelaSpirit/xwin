@@ -5,7 +5,6 @@ use std::{
 
 use crate::{
 	bind::{
-		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -18,12 +17,13 @@ use crate::{
 		glfwGetVideoModes,
 		glfwSetGamma,
 		glfwSetGammaRamp,
+		GLFWmonitor,
 	},
 	core::{
 		ContentScale,
 		ScreenCoordinates,
 	},
-	err::XErr,
+	error::XErr,
 	monitor::{
 		GammaRamp,
 		Millimeters,

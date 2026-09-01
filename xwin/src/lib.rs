@@ -28,7 +28,7 @@
 //! Different modules also contain their own guides introducing their
 //! functionality:
 //! - [core]
-//! - [err]
+//! - [error]
 //! - [monitor]
 //!
 //! There are also guides for the other areas of XWin:
@@ -43,6 +43,6 @@
 
 mod bind;
 pub mod core;
-pub mod err;
+pub mod error;
 pub mod monitor;
 pub mod window;

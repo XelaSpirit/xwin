@@ -7,14 +7,14 @@ use xch::Sender;
 
 use crate::{
 	bind::{
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
-		GLFWmonitor,
 		glfwGetMonitorName,
 		glfwSetMonitorCallback,
+		GLFWmonitor,
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
 	},
 	core::XWin,
-	err::XErr,
+	error::XErr,
 	monitor::Monitor,
 };
 

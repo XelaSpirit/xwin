@@ -12,6 +12,7 @@ use window::*;
 
 use crate::{
 	bind::{
+		glfwPostEmptyEvent,
 		glfwWaitEvents,
 		GLFWmonitor,
 		GLFWwindow,
@@ -22,7 +23,7 @@ use crate::{
 		ScreenCoordinates,
 		XWin,
 	},
-	err::XErr,
+	error::XErr,
 	monitor::{
 		GammaRamp,
 		Millimeters,
@@ -35,7 +36,6 @@ use crate::{
 		WindowBuilder,
 	},
 };
-use crate::bind::glfwPostEmptyEvent;
 
 /// Used internally by XWin for sending messages to the main thread, for GLFW
 /// functions that must be called on that thread.
@@ -238,16 +238,16 @@ fn handle_msg(msg: XWinMessage)
 			refresh_rate,
 			tx,
 		} =>
-			{
-				set_window_monitor(
-					window,
-					Some(monitor),
-					ScreenCoordinates::default(),
-					size,
-					refresh_rate,
-					tx,
-				)
-			},
+		{
+			set_window_monitor(
+				window,
+				Some(monitor),
+				ScreenCoordinates::default(),
+				size,
+				refresh_rate,
+				tx,
+			)
+		},
 		| XWinMessage::SetWindowWindowed {
 			window,
 			position,
@@ -256,8 +256,8 @@ fn handle_msg(msg: XWinMessage)
 		} => set_window_monitor(window, None, position, size, 0, tx),
 		| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
 		| XWinMessage::SetWindowAttribute(win, attr, value, tx) =>
-			{
-				set_window_attribute(win, attr, value, tx)
-			},
+		{
+			set_window_attribute(win, attr, value, tx)
+		},
 	};
 }
