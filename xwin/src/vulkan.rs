@@ -4,11 +4,13 @@ use std::{
 	slice,
 };
 
+pub use crate::bind::{
+	VkInstance,
+	VkPhysicalDevice,
+};
 use crate::{
 	bind::{
 		GLFW_TRUE,
-		VkInstance,
-		VkPhysicalDevice,
 		glfwGetPhysicalDevicePresentationSupport,
 		glfwGetRequiredInstanceExtensions,
 		glfwVulkanSupported,

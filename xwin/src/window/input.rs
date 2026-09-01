@@ -336,10 +336,10 @@ impl Window
 	pub fn try_key_state(&self, key: Key) -> Result<ButtonState, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetKey(self.0, key.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetKey(self.0, key.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns whether lock key mods are enabled for the window. See

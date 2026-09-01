@@ -4,8 +4,7 @@ pub use crate::{
 	window::event::*,
 };
 
-/// Enum containing each of the different events from XWin, excluding [monitor
-/// events](MonitorEvent).
+/// Enum containing each of the different events from XWin.
 ///
 /// This is intended to be used with [xch::funnel::channel], to allow handling
 /// multiple different events on a single channel.
@@ -14,6 +13,7 @@ pub enum XWinEvent
 	JoystickConfig(JoystickConfigEvent),
 	Window(WindowEvent),
 	Key(KeyEvent),
+	Monitor(MonitorEvent),
 	MouseButton(MouseButtonEvent),
 	Mouse(MouseEvent),
 }
@@ -39,6 +39,14 @@ impl From<KeyEvent> for XWinEvent
 	fn from(value: KeyEvent) -> Self
 	{
 		XWinEvent::Key(value)
+	}
+}
+
+impl From<MonitorEvent> for XWinEvent
+{
+	fn from(value: MonitorEvent) -> Self
+	{
+		XWinEvent::Monitor(value)
 	}
 }
 

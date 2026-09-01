@@ -319,10 +319,10 @@ impl Joystick
 	pub fn try_axes(&self) -> Result<Option<Vec<f32>>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickAxes(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickAxes(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the state of all buttons of the joystick.
@@ -336,10 +336,10 @@ impl Joystick
 	pub fn try_buttons(&self) -> Result<Option<Vec<ButtonState>>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickButtons(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickButtons(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the human-readable name of the gamepad from the gamepad mapping
@@ -355,10 +355,10 @@ impl Joystick
 	pub fn try_gamepad_name(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetGamepadName(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetGamepadName(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the SDL compatible GUID, as a hexadecimal string, of the
@@ -384,10 +384,10 @@ impl Joystick
 	pub fn try_guid(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickGuid(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickGuid(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the state of all hats of the joystick.
@@ -401,10 +401,10 @@ impl Joystick
 	pub fn try_hats(&self) -> Result<Option<Vec<JoystickHatState>>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickHats(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickHats(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns whether the joystick is both present and has a gamepad mapping.
@@ -436,10 +436,10 @@ impl Joystick
 	pub fn try_is_present(&self) -> Result<bool, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickPresent(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickPresent(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the name of the joystick.
@@ -453,10 +453,10 @@ impl Joystick
 	pub fn try_name(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickName(self.as_glfw() as i32, tx),
-			rx,
-		)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::JoystickName(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the state of the joystick remapped to an Xbox-like gamepad.
@@ -481,10 +481,7 @@ impl Joystick
 		XWin::get()?
 			.read()
 			.unwrap()
-			.post_rcv(
-				XWinMessage::GetGamepadState(self.as_glfw() as i32, tx),
-				rx,
-			)?
+			.post_rcv(XWinMessage::GetGamepadState(self.as_glfw() as i32, tx), rx)?
 			.map(|opt| opt.map(|state| GamepadState::from_glfw_crate(state)))
 	}
 }

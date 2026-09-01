@@ -16,11 +16,14 @@ use std::{
 
 pub use builder::*;
 
+#[cfg(feature = "glfw")]
+pub use crate::bind::GLFWwindow;
+#[cfg(not(feature = "glfw"))]
+use crate::bind::GLFWwindow;
 use crate::{
 	bind::{
 		GLFW_FALSE,
 		GLFW_TRUE,
-		GLFWwindow,
 	},
 	core::{
 		XWin,

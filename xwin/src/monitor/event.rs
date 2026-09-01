@@ -21,7 +21,7 @@ use crate::{
 ///
 /// If a monitor is disconnected, all windows that are full screen on it will be
 /// switched to windowed mode before the callback is called.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum MonitorEvent
 {
 	/// Contains a [Monitor] which has been connected.

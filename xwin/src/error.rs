@@ -18,7 +18,10 @@
 //! the future that same call may generate a different error or become valid.
 
 use std::{
-	ffi::CStr,
+	ffi::{
+		CStr,
+		CString,
+	},
 	os::raw::{
 		c_char,
 		c_int,
@@ -59,9 +62,7 @@ use crate::bind::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum XErr
 {
-	/// No error has occurred.
-	///
-	/// Yay
+	/// No error has occurred. Yay
 	None(String)         = GLFW_NO_ERROR,
 	/// XWin has not been initialized.
 	///
@@ -73,8 +74,9 @@ pub enum XErr
 	NotInitialized(String) = GLFW_NOT_INITIALIZED,
 	/// No context is current for this thread.
 	///
-	/// XWin does not support OpenGL contexts, and therefore this should never
-	/// occur, but is here to fully cover GLFW errors.
+	/// XWin does not support OpenGL contexts, but this may occur if the
+	/// [bindings feature](crate#crate-features) was used to create a window
+	/// with context.
 	///
 	/// **Analysis**. A bug in XWin.
 	NoCurrentContext(String) = GLFW_NO_CURRENT_CONTEXT,
@@ -83,7 +85,9 @@ pub enum XErr
 	///
 	/// XWin has defined enums for its API, unlike GLFW which used `#define` for
 	/// many of their constants. This should be sufficient to prevent this error
-	/// from ever occuring.
+	/// from ever occuring, but may occur if the [bindings
+	/// feature](crate#crate_features) is being used to directly call GLFW
+	/// functions.
 	///
 	/// **Analysis**. A bug in XWin.
 	InvalidEnum(String)  = GLFW_INVALID_ENUM,
@@ -110,8 +114,9 @@ pub enum XErr
 	ApiUnavailable(String) = GLFW_API_UNAVAILABLE,
 	/// The requested OpenGL or OpenGL ES version is not available.
 	///
-	/// XWin does not support OpenGL contexts, and therefore this should never
-	/// occur, but is here to fully cover GLFW errors.
+	/// XWin does not support OpenGL contexts, but this may occur if the
+	/// [bindings feature](crate#crate-features) was used to create a window
+	/// with context.
 	///
 	/// **Analysis.** A bug in XWin.
 	VersionUnavailable(String) = GLFW_VERSION_UNAVAILABLE,
@@ -138,8 +143,9 @@ pub enum XErr
 	FormatUnavailable(String) = GLFW_FORMAT_UNAVAILABLE,
 	/// The specified window does not have an OpenGL or OpenGL ES context.
 	///
-	/// XWin does not support OpenGL contexts, and therefore this should never
-	/// occur, but is here to fully cover GLFW errors.
+	/// XWin does not support OpenGL contexts, but this may occur if the
+	/// [bindings feature](crate#crate-features) was used to create a window
+	/// with context.
 	///
 	/// **Analysis**. A bug in XWin.
 	NoWindowContext(String) = GLFW_NO_WINDOW_CONTEXT,
@@ -201,22 +207,188 @@ pub enum XErr
 	/// An unknown error occurred that XWin did not expect
 	///
 	/// **Analysis**. A bug in XWin.
-	Unknown,
+	Unknown(String),
 	/// Attempted to reinitialize XWin after termination.
 	///
 	/// **Analysis**. Currently, XWin may only be initialized/terminated once.
 	/// Future versions may remove this limitation.
-	Reinitialized,
+	Reinitialized(String),
 	// TODO - GLFW doesn't have this limitation, this is only here because of not being able to
-	// update tx in XWIN without using an unsafe mutable static. A different solution for this
-	// could be found, I just haven't done it yet.
-
-	// TODO - Some errors should be impossible to get, such as OpenGL related errors or invalid
-	//        enum. Confirm this, and if so, remove those errors from this enum.
+	//        update tx in XWIN without using an unsafe mutable static. A different solution for
+	//        this could be found, I just haven't done it yet.
 }
 
 impl XErr
 {
+	/// Returns both the GLFW error code and description of the error. Values
+	/// that are not GLFW errors will all return 0.
+	#[cfg(feature = "glfw")]
+	pub fn to_glfw(self) -> (u32, *const c_char)
+	{
+		match self
+		{
+			| XErr::None(str) =>
+			{
+				(
+					GLFW_NO_ERROR,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::NotInitialized(str) =>
+			{
+				(
+					GLFW_NOT_INITIALIZED,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::NoCurrentContext(str) =>
+			{
+				(
+					GLFW_NO_CURRENT_CONTEXT,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::InvalidEnum(str) =>
+			{
+				(
+					GLFW_INVALID_ENUM,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::InvalidValue(str) =>
+			{
+				(
+					GLFW_INVALID_VALUE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::OutOfMemory(str) =>
+			{
+				(
+					GLFW_OUT_OF_MEMORY,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::ApiUnavailable(str) =>
+			{
+				(
+					GLFW_API_UNAVAILABLE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::VersionUnavailable(str) =>
+			{
+				(
+					GLFW_VERSION_UNAVAILABLE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::Platform(str) =>
+			{
+				(
+					GLFW_PLATFORM_ERROR,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::FormatUnavailable(str) =>
+			{
+				(
+					GLFW_FORMAT_UNAVAILABLE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::NoWindowContext(str) =>
+			{
+				(
+					GLFW_NO_WINDOW_CONTEXT,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::CursorUnavailable(str) =>
+			{
+				(
+					GLFW_CURSOR_UNAVAILABLE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::FeatureUnavailable(str) =>
+			{
+				(
+					GLFW_FEATURE_UNAVAILABLE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::FeatureUnimplemented(str) =>
+			{
+				(
+					GLFW_FEATURE_UNIMPLEMENTED,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::PlatformUnavailable(str) =>
+			{
+				(
+					GLFW_PLATFORM_UNAVAILABLE,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::Unknown(str) =>
+			{
+				(
+					0,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+			| XErr::Reinitialized(str) =>
+			{
+				(
+					0,
+					CString::new(str)
+						.expect("Unable to convert to CString")
+						.into_raw(),
+				)
+			},
+		}
+	}
+
+	#[cfg(feature = "glfw")]
+	pub fn from_glfw(code: c_int, msg: *const c_char) -> Self
+	{
+		Self::from_code(code, msg)
+	}
+
 	fn from_code(code: c_int, msg: *const c_char) -> XErr
 	{
 		let str = if !msg.is_null()
@@ -248,7 +420,7 @@ impl XErr
 			| GLFW_FEATURE_UNAVAILABLE => XErr::FeatureUnavailable(str),
 			| GLFW_FEATURE_UNIMPLEMENTED => XErr::FeatureUnimplemented(str),
 			| GLFW_PLATFORM_UNAVAILABLE => XErr::PlatformUnavailable(str),
-			| _ => XErr::Unknown,
+			| _ => XErr::Unknown(String::from("Unknown error")),
 		}
 	}
 

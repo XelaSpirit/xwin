@@ -13,8 +13,11 @@ pub use gamma_ramp::*;
 pub use video_mode::*;
 pub use work_area::*;
 
+#[cfg(feature = "glfw")]
+pub use crate::bind::GLFWmonitor;
+#[cfg(not(feature = "glfw"))]
+use crate::bind::GLFWmonitor;
 use crate::{
-	bind::GLFWmonitor,
 	core::{
 		ContentScale,
 		ScreenCoordinates,
@@ -43,18 +46,10 @@ impl Default for Millimeters
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Monitor(*mut GLFWmonitor);
 unsafe impl Send for Monitor {}
 unsafe impl Sync for Monitor {}
-
-impl PartialEq for Monitor
-{
-	fn eq(&self, other: &Self) -> bool
-	{
-		self.0 == other.0
-	}
-}
 
 impl Monitor
 {

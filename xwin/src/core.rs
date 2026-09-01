@@ -254,7 +254,9 @@ where
 		xwin_tx:     tx,
 	}))
 	{
-		return Err(XErr::Reinitialized);
+		return Err(XErr::Reinitialized(String::from(
+			"XWin may not be initialized more than once",
+		)));
 	}
 
 	#[cfg(feature = "tracing")]
@@ -371,7 +373,7 @@ pub fn platform() -> Result<Platform, XErr>
 		| GLFW_PLATFORM_WAYLAND => Ok(Platform::Wayland),
 		| GLFW_PLATFORM_X11 => Ok(Platform::X11),
 		| GLFW_PLATFORM_NULL => Ok(Platform::Null),
-		| _ => Err(XErr::Unknown),
+		| _ => Err(XErr::Unknown(String::from("Unknown error"))),
 	}
 }
 
