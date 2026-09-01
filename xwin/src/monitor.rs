@@ -11,9 +11,14 @@ use std::{
 };
 
 use linkme::distributed_slice;
+pub use xwin_macro::monitor_callback;
 
 use crate::{
 	bind::{
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
+		GLFWgammaramp,
+		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -29,16 +34,10 @@ use crate::{
 		glfwSetGammaRamp,
 		glfwSetMonitorCallback,
 		glfwSetMonitorUserPointer,
-		GLFWgammaramp,
-		GLFWmonitor,
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
 	},
 	core::ScreenCoordinates,
 	err::XErr,
 };
-
-pub use xwin_macro::monitor_callback;
 
 /// Container for all functions handling monitor configuration events
 #[distributed_slice]
@@ -668,21 +667,6 @@ extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
 	}
 }
 
-/// This function sets the monitor configuration callback, or removes the
-/// currently set callback. This is called when a monitor is connected to or
-/// disconnected from the system.
-///
-/// # Returns
-/// The previously set callback if one was set.
-///
-/// # Callback signature
-/// `fn monitor_callback(monitor: &Monitor, event: MonitorEvent)`
-///
-/// # Errors
-/// Possible errors include [XErr::NotInitialized].
-///
-/// # Thread Safety
-/// This function must only be called from the main thread.
 pub(crate) fn set_monitor_callback()
 {
 	// TODO - add non-linkme callbacks

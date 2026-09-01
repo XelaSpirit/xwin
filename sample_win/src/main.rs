@@ -13,6 +13,7 @@ fn main()
 }
 
 #[monitor_callback]
-fn cb(monitor: &Monitor, ev: MonitorEvent) {
+fn cb(monitor: &Monitor, ev: MonitorEvent)
+{
 	println!("Monitor event received: {:?}", ev);
 }
