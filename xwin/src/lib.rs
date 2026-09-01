@@ -34,5 +34,7 @@ pub mod event;
 pub mod input;
 pub mod monitor;
 pub mod utility;
-pub mod vulkan;
 pub mod window;
+
+#[cfg(feature = "vulkan")]
+pub mod vulkan;

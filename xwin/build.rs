@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+	env,
+	path::PathBuf,
+};
 
 use cmake::Config;
 use xb::{
@@ -7,6 +10,26 @@ use xb::{
 	dep::deploy,
 	out_dir,
 };
+
+const VK_SDK_PATH: &str = "VULKAN_SDK_PATH";
+
+fn setup_vulkan(bindings: bindgen::Builder) -> bindgen::Builder
+{
+	if let Ok(vk) = env::var(VK_SDK_PATH)
+	{
+		CargoCmd()
+			.link_lib("dylib=vulkan-1")
+			.rerun_if_env_changed(VK_SDK_PATH);
+
+		bindings
+			.clang_arg("-DGLFW_INCLUDE_VULKAN")
+			.clang_arg(format!("-I{}/Include", vk))
+	}
+	else
+	{
+		bindings
+	}
+}
 
 fn main()
 {
@@ -32,6 +55,13 @@ fn main()
 	// Generate rust bindings
 	let bindings = bindgen::Builder::default()
 		.clang_arg(format!("-I{}/include", glfw))
+		.clang_arg("-DGLFW_DLL")
+		.clang_arg("-DGLFW_INCLUDE_NONE"); // TODO add support for OpenGL
+
+	#[cfg(feature = "vulkan")]
+	let bindings = setup_vulkan(bindings);
+
+	let bindings = bindings
 		.header("lib/xwin.h")
 		.parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
 		.generate()

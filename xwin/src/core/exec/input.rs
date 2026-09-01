@@ -3,7 +3,6 @@ use std::{
 		CStr,
 		CString,
 	},
-	os::raw::c_int,
 	ptr::null_mut,
 	sync::mpsc::Sender,
 };
@@ -29,13 +28,9 @@ use crate::{
 		glfwGetClipboardString,
 		glfwGetCursorPos,
 		glfwGetInputMode,
-		glfwGetJoystickAxes,
-		glfwGetJoystickButtons,
-		glfwGetJoystickHats,
 		glfwGetKey,
 		glfwGetKeyName,
 		glfwGetMouseButton,
-		glfwJoystickPresent,
 		glfwRawMouseMotionSupported,
 		glfwSetClipboardString,
 		glfwSetCursor,
@@ -49,7 +44,6 @@ use crate::{
 	error::XErr,
 	input::{
 		ButtonState,
-		gamepad::JoystickHatState,
 		mouse::CursorShape,
 	},
 };

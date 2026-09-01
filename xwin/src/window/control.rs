@@ -20,10 +20,7 @@ use crate::{
 	},
 	error::XErr,
 	monitor::Monitor,
-	window::{
-		Window,
-		WindowBuilder,
-	},
+	window::Window,
 };
 
 impl Window

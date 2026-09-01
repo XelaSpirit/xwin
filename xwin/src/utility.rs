@@ -2,12 +2,10 @@ use std::sync::mpsc::channel;
 
 use crate::{
 	bind::{
-		GLFW_TRUE,
 		glfwGetTime,
 		glfwGetTimerFrequency,
 		glfwGetTimerValue,
 		glfwSetTime,
-		glfwVulkanSupported,
 	},
 	core::{
 		XWin,
