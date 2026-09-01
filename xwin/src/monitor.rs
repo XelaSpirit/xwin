@@ -1,6 +1,290 @@
 //! Module containing monitor related functions and types
 //!
-//! TODO - monitor guide
+//! # Monitor Objects
+//! A [Monitor] object represents a currently connected monitor. [Monitor]
+//! objects cannot be created or destroyed by the application and retain their
+//! data until the monitors they represent are disconnected or until the library
+//! is terminated.
+//!
+//! Each monitor has a current video mode, a list of supported video modes, a
+//! virtual position, a human-readable name, an estimated physical size and a
+//! gamma ramp. One of the monitors is the primary monitor.
+//!
+//! The virtual position of a monitor is in [ScreenCoordinates] and, together
+//! with the current video mode, describes the viewports that the connected
+//! monitors provide into the virtual desktop that spans them.
+//!
+//! # Retrieving Monitors
+//! The primary monitor is returned by [Monitor::primary]. It is the user's
+//! preferred monitor and is usually the one with global UI elements like task
+//! bar or menu bar.
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! ```
+//!
+//! You can retrieve all currently connected monitors with [Monitor::all].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let monitors = Monitor::all();
+//! ```
+//!
+//! The primary monitor is always the first monitor in the returned [Vec], but
+//! other monitors may be moved to a different index when a monitor is connected
+//! or disconnected.
+//!
+//! # Monitor Configuration Changes
+//! If you wish to be notified when a monitor is connected or disconnected, set
+//! a monitor callback.
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::{add_monitor_callback, Monitor, MonitorEvent};
+//! # let xwin = XWin::default();
+//! #
+//! fn monitor_callback(monitor: &Monitor, evt: MonitorEvent)
+//! {
+//! 	match evt
+//! 	{
+//! 		| MonitorEvent::Connected =>
+//! 		{ /* Monitor was connected */ },
+//! 		| MonitorEvent::Disconnected =>
+//! 		{ /* Monitor was disconnected */ },
+//! 	}
+//! }
+//! add_monitor_callback(monitor_callback);
+//! ```
+//!
+//! If the `linkme` feature is enabled (which it is by default), you can also
+//! use the [monitor_callback] attribute on a function to have it set as a
+//! monitor callback when XWin is initialized.
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::{Monitor, MonitorEvent};
+//! # use xwin_macro::monitor_callback;
+//! # let xwin = XWin::default();
+//! #
+//! #[monitor_callback]
+//! fn monitor_callback(monitor: &Monitor, evt: MonitorEvent)
+//! {
+//! 	match evt
+//! 	{
+//! 		| MonitorEvent::Connected =>
+//! 		{ /* Monitor was connected */ },
+//! 		| MonitorEvent::Disconnected =>
+//! 		{ /* Monitor was disconnected */ },
+//! 	}
+//! }
+//! ```
+//!
+//! Note that the above macro relies on the [linkme](https://crates.io/crates/linkme)
+//! crate to function. If you prefer not to have the extra dependency, you can
+//! disable the `linkme` feature and simply use [add_monitor_callback].
+//!
+//! If a monitor is disconnected, all windows that are full screen on it will be
+//! switched to windowed mode before the callback is called. Only
+//! [Monitor::name] and [Monitor::userdata] will return useful values for a
+//! disconnected monitor and only before the monitor callback returns.
+//!
+//! # Monitor Properties
+//! Each monitor has a current video mode, a list of supported video modes, a
+//! virtual position, a content scale, a human-readable name, a user pointer, an
+//! estimated physical size and a gamma ramp.
+//!
+//! ## Video Modes
+//! XWin generally does a good job selecting a suitable video mode when you
+//! create a full screen window, change its video mode or make a windowed one
+//! full screen, but it is sometimes useful to know exactly which video modes
+//! are supported.
+//!
+//! Video modes are represented with the [VideoMode] structure. You can get a
+//! [Vec] of the video modes supported by a monitor with [Monitor::video_modes].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let video_modes = primary.unwrap().video_modes().unwrap();
+//! # }
+//! ```
+//!
+//! To get the current video mode of a monitor call [Monitor::video_mode].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let video_mode = primary.unwrap().video_mode().unwrap();
+//! # }
+//! ```
+//!
+//! The resolution of a video mode is specified in [ScreenCoordinates], not
+//! pixels.
+//!
+//! ## Physical Size
+//! The physical size of a monitor in millimeters, or an estimation of it, can
+//! be retrieved with [Monitor::physical_size]. This has no relation to its
+//! current *resolution*, i.e. the width and height of its current [VideoMode].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let (width_mm, height_mm) = primary.unwrap().physical_size().unwrap();
+//! # }
+//! ```
+//!
+//! While this can be used to calculate the raw DPI of a monitor, this is often
+//! not useful. Instead, use the [monitor content scale](Monitor::content_scale)
+//! and [window content scale](xwin::window::Window::content_scale) to scale
+//! your content.
+//!
+//! ## Content scale
+//! The content scale for a monitor can be retrieved with
+//! [Monitor::content_scale].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let content_scale = primary.unwrap().content_scale().unwrap();
+//! # }
+//! ```
+//!
+//! For more information on what the content scale is and how to use it, see
+//! [window content scale]()
+//!
+//! TODO - link window content scale
+//!
+//! ## Virtual Position
+//! The position of the monitor on the virtual desktop, in [ScreenCoordinates],
+//! can be retrieved with [Monitor::position].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let position = primary.unwrap().position().unwrap();
+//! # }
+//! ```
+//!
+//! ## Work Area
+//! The area of a monitor not occupied by global task bars or menu bars is the
+//! work area. This is specified in [ScreenCoordinates] and can be retrieved
+//! with [Monitor::work_area].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let work_area = primary.unwrap().work_area().unwrap();
+//! # }
+//! ```
+//!
+//! ## Human-Readable Name
+//! The human-readable name of a monitor is returned by [Monitor::name].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let name = primary.unwrap().name().unwrap();
+//! # }
+//! ```
+//!
+//! ## User Data
+//! Each monitor has a userdata value that can be set with
+//! [Monitor::set_userdata] and queried with [Monitor::userdata]. This can be
+//! used for any purpose you need and will not be modified by XWin. The value
+//! will be kept until the monitor is disconnected or until the library is
+//! terminated. This means that even if the [Monitor] is dropped, and later
+//! re-retrieved via XWin, the userdata value will still be set so long as the
+//! monitor was never disconnected.
+//!
+//! The initial value of the userdata is `0`.
+//!
+//! ## Gamma Ramp
+//! The gamma ramp of a monitor can be set with [Monitor::set_gamma_ramp], which
+//! accepts a monitor handle and a pointer to a [GammaRamp] structure.
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::{GammaRamp, Monitor};
+//! # let xwin = XWin::default();
+//! #
+//! let mut ramp = GammaRamp::new(256, 0);
+//!
+//! for idx in 0..256
+//! {
+//! 	// Fill out gamma ramp values as desired
+//! }
+//!
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let name = primary.unwrap().set_gamma_ramp(&mut ramp);
+//! # }
+//! ```
+//!
+//! It is recommended that your gamma ramp have the same size as the current
+//! gamma ramp for that monitor.
+//!
+//! The current gamma ramp for a monitor is returned by [Monitor::gamma_ramp].
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let gamma_ramp = primary.unwrap().gamma_ramp().unwrap();
+//! # }
+//! ```
+//!
+//! If you wish to set a regular gamma ramp, you can have XWin calculate it for
+//! you from the desired exponent with [Monitor::set_gamma], which in turn calls
+//! [Monitor::set_gamma_ramp] with the resulting ramp.
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! # use xwin::monitor::Monitor;
+//! # let xwin = XWin::default();
+//! #
+//! let primary = Monitor::primary();
+//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! let gamma_ramp = primary.unwrap().set_gamma(1.0);
+//! # }
+//! ```
 
 use std::{
 	ffi::CStr,
@@ -22,6 +306,10 @@ pub use xwin_macro::monitor_callback;
 
 use crate::{
 	bind::{
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
+		GLFWgammaramp,
+		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -37,10 +325,6 @@ use crate::{
 		glfwSetGammaRamp,
 		glfwSetMonitorCallback,
 		glfwSetMonitorUserPointer,
-		GLFWgammaramp,
-		GLFWmonitor,
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
 	},
 	core::ScreenCoordinates,
 	err::XErr,
@@ -604,7 +888,7 @@ impl Monitor
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn get_gamma_ramp(&self) -> Result<GammaRamp, XErr>
+	pub fn gamma_ramp(&self) -> Result<GammaRamp, XErr>
 	{
 		let ramp = unsafe { glfwGetGammaRamp(self.0) };
 

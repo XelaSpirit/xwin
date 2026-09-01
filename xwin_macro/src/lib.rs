@@ -9,10 +9,10 @@ use proc_macro::TokenStream;
 /// `fn monitor_callback(monitor: &Monitor, event: MonitorEvent)`
 ///
 /// # Remarks
-/// This macro requires xwin to be built with the feature "linkme" (enabled by
-/// default), as it currently relies on the [linkme] crate to function. If you
-/// prefer to reduce dependencies, you can disable the "linkme" feature and
-/// manually set monitor callbacks.
+/// This macro requires xwin to be built with the feature `linkme` (enabled by
+/// default), as it currently relies on the [linkme](https://crates.io/crates/linkme)
+/// crate to function. If you prefer to reduce dependencies, you can disable the
+/// `linkme` feature and manually set monitor callbacks.
 #[proc_macro_attribute]
 pub fn monitor_callback(_attr: TokenStream, item: TokenStream) -> TokenStream
 {

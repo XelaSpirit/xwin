@@ -25,6 +25,12 @@
 //!
 //! For a broad but shallow tutorial, see [#Getting Started] below.
 //!
+//! Different modules also contain their own guides introducing their
+//! functionality:
+//! - [core]
+//! - [err]
+//! - [monitor]
+//!
 //! There are also guides for the other areas of XWin:
 //! 	 - TODO window, context, monitor, input, (Vulkan?)
 //!

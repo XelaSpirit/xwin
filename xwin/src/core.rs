@@ -200,7 +200,7 @@ use crate::{
 
 /// XWin has two primary coordinate systems: the **virtual screen** and the
 /// window **content area**. Both use the same unit: `virtual screen
-/// coordinates`, or just [screen coordinates](ScreenCoordinates), which don't
+/// coordinates`, or just [ScreenCoordinates], which don't
 /// necessarily correspond to pixels.
 ///
 /// Both the virtual screen and the content area coordinate systems have the
@@ -216,7 +216,7 @@ use crate::{
 /// position. The window frame, when present, extends out from the content area
 /// but does not affect the window position.
 ///
-/// Almost all positions and sizes in XWin are measured in screen coordinates
+/// Almost all positions and sizes in XWin are measured in [ScreenCoordinates]
 /// relative to one of the two origins above. This includes cursor positions,
 /// window positions and sizes, window frame sizes, monitor positions and video
 /// mode resolutions.
@@ -224,10 +224,10 @@ use crate::{
 /// Two exceptions are the **monitor physical size**, which is measured in
 /// **millimetres**, and **framebuffer size**, which is measured in **pixels**.
 ///
-/// Pixels and screen coordinates may map 1:1 on your machine, but they won't on
-/// every other machine, for example on a Mac with a Retina display. The ratio
-/// between screen coordinates and pixels may also change at run-time depending
-/// on which monitor the window is currently considered to be on.
+/// Pixels and [ScreenCoordinates] may map 1:1 on your machine, but they won't
+/// on every other machine, for example on a Mac with a Retina display. The
+/// ratio between [ScreenCoordinates] and pixels may also change at run-time
+/// depending on which monitor the window is currently considered to be on.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ScreenCoordinates
 {
@@ -262,6 +262,13 @@ pub struct XWin(bool, PhantomData<Cell<()>>);
 
 impl XWin
 {
+	/// Initialize the XWin library with default settings. See [XWin::init] for
+	/// a more complete description.
+	pub fn default() -> Result<Self, XErr>
+	{
+		XWin::new().init()
+	}
+
 	/// This function initializes the XWin library. Before most XWin functions
 	/// can be used, XWin must be initialized. When an [XWin] goes out of scope,
 	/// the library is terminated in order to free any resources allocation
@@ -314,7 +321,7 @@ impl XWin
 	///   application locale according to the current environment if that
 	///   category is still "C". This is because the "C" locale breaks Unicode
 	///   text input.
-	pub fn init(self) -> Result<Self, XErr>
+	pub fn init(&self) -> Result<Self, XErr>
 	{
 		#[cfg(feature = "tracing")]
 		set_error_log();
@@ -326,7 +333,7 @@ impl XWin
 		else
 		{
 			set_monitor_callback();
-			Ok(self)
+			Ok(XWin(self.0, PhantomData::default()))
 		}
 	}
 
