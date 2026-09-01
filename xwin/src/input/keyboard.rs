@@ -1,14 +1,18 @@
-use std::ops::{
-	BitAnd,
-	BitAndAssign,
-	BitOr,
-	BitOrAssign,
-	BitXor,
-	BitXorAssign,
+use std::{
+	ops::{
+		BitAnd,
+		BitAndAssign,
+		BitOr,
+		BitOrAssign,
+		BitXor,
+		BitXorAssign,
+	},
+	sync::mpsc::channel,
 };
 
 use crate::{
 	bind::{
+		glfwGetKeyScancode,
 		GLFW_KEY_0,
 		GLFW_KEY_1,
 		GLFW_KEY_2,
@@ -37,14 +41,6 @@ use crate::{
 		GLFW_KEY_ESCAPE,
 		GLFW_KEY_F,
 		GLFW_KEY_F1,
-		GLFW_KEY_F2,
-		GLFW_KEY_F3,
-		GLFW_KEY_F4,
-		GLFW_KEY_F5,
-		GLFW_KEY_F6,
-		GLFW_KEY_F7,
-		GLFW_KEY_F8,
-		GLFW_KEY_F9,
 		GLFW_KEY_F10,
 		GLFW_KEY_F11,
 		GLFW_KEY_F12,
@@ -55,12 +51,20 @@ use crate::{
 		GLFW_KEY_F17,
 		GLFW_KEY_F18,
 		GLFW_KEY_F19,
+		GLFW_KEY_F2,
 		GLFW_KEY_F20,
 		GLFW_KEY_F21,
 		GLFW_KEY_F22,
 		GLFW_KEY_F23,
 		GLFW_KEY_F24,
 		GLFW_KEY_F25,
+		GLFW_KEY_F3,
+		GLFW_KEY_F4,
+		GLFW_KEY_F5,
+		GLFW_KEY_F6,
+		GLFW_KEY_F7,
+		GLFW_KEY_F8,
+		GLFW_KEY_F9,
 		GLFW_KEY_G,
 		GLFW_KEY_GRAVE_ACCENT,
 		GLFW_KEY_H,
@@ -136,6 +140,11 @@ use crate::{
 		GLFW_MOD_SHIFT,
 		GLFW_MOD_SUPER,
 	},
+	core::{
+		exec::XWinMessage,
+		XWin,
+	},
+	error::XErr,
 	glfw_enum,
 };
 
@@ -266,6 +275,14 @@ pub enum Key
 }
 glfw_enum!(Key, u16);
 
+/// Bitmask containing the state of modifier keys sent along with key events.
+///
+/// Contains bit flags for [Modifier::ALT], [Modifier::CAPS_LOCK],
+/// [Modifier::CONTROL], [Modifier::NUM_LOCK], [Modifier::SHIFT], and
+/// [Modifier::SUPER].
+///
+/// Bitwise operators may be used to manipulate these flags. Utility functions
+/// have been provided for easily querying specific modifiers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Modifier(u8);
 
@@ -278,31 +295,37 @@ impl Modifier
 	pub const SHIFT: Modifier = Modifier(GLFW_MOD_SHIFT as u8);
 	pub const SUPER: Modifier = Modifier(GLFW_MOD_SUPER as u8);
 
+	/// Returns whether the [SHIFT] flag is set.
 	pub fn is_shift(&self) -> bool
 	{
 		self.0 & GLFW_MOD_SHIFT as u8 > 0
 	}
 
+	/// Returns whether the [CONTROL] flag is set.
 	pub fn is_control(&self) -> bool
 	{
 		self.0 & GLFW_MOD_CONTROL as u8 > 0
 	}
 
+	/// Returns whether the [ALT] flag is set.
 	pub fn is_alt(&self) -> bool
 	{
 		self.0 & GLFW_MOD_ALT as u8 > 0
 	}
 
+	/// Returns whether the [SUPER] flag is set.
 	pub fn is_super(&self) -> bool
 	{
 		self.0 & GLFW_MOD_SUPER as u8 > 0
 	}
 
+	/// Returns whether the [CAPS_LOCK] flag is set.
 	pub fn is_caps_lock(&self) -> bool
 	{
 		self.0 & GLFW_MOD_CAPS_LOCK as u8 > 0
 	}
 
+	/// Returns whether the [NUM_LOCK] flag is set.
 	pub fn is_num_lock(&self) -> bool
 	{
 		self.0 & GLFW_MOD_NUM_LOCK as u8 > 0
@@ -361,4 +384,87 @@ impl BitXorAssign<Modifier> for Modifier
 	{
 		self.0 ^= rhs.0;
 	}
+}
+
+/// Returns the name of the specified printable key. This is typically the
+/// character that key would produce without any modifier keys, intended for
+/// displaying key bindings to the user. For dead keys, it is typically the
+/// diacritic it would add to a character.
+///
+/// **Do not use this function for text input**. You will break text input for
+/// many languages even if it happens to work for yours.
+///
+/// If you specify a non-printable key, this function returns `None`.
+///
+/// Names for printable keys depend on keyboard layout, while names for
+/// non-printable keys are the same across layouts but depend on the application
+/// language and should be localized along with other user interface text.
+///
+/// Printable keys:
+/// - [Key::Apostrophe]
+/// - [Key::Comma]
+/// - [Key::Minus]
+/// - [Key::Period]
+/// - [Key::Slash]
+/// - [Key::Semicolon]
+/// - [Key::Equal]
+/// - [Key::LeftBracket]
+/// - [Key::RightBracket]
+/// - [Key::Backslash]
+/// - [Key::World1]
+/// - [Key::World2]
+/// - [Key::Zero] to [Key::Nine]
+/// - [Key::A] to [Key::Z]
+/// - [Key::Keypad0] to [Key::Keypad9]
+/// - [Key::KeypadDecimal]
+/// - [Key::KeypadDivide]
+/// - [Key::KeypadMultiply]
+/// - [Key::KeypadSubtract]
+/// - [Key::KeypadAdd]
+/// - [Key::KeypadEqual]
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized]
+pub fn try_key_name(key: Key) -> Result<Option<String>, XErr>
+{
+	let (tx, rx) = channel();
+	XWin::get()?
+		.read()
+		.unwrap()
+		.post_rcv(XWinMessage::GetKeyName(key.as_glfw() as i32, -1, tx), rx)
+}
+
+/// See [try_key_name].
+pub fn key_name(key: Key) -> Option<String>
+{
+	try_key_name(key).unwrap_or_default()
+}
+
+/// See [try_key_name].
+pub fn try_scancode_name(key: i32) -> Result<Option<String>, XErr>
+{
+	let (tx, rx) = channel();
+	XWin::get()?
+		.read()
+		.unwrap()
+		.post_rcv(XWinMessage::GetKeyName(-1, key, tx), rx)
+}
+
+/// See [try_key_name].
+pub fn scancode_name(key: i32) -> Option<String>
+{
+	try_scancode_name(key).unwrap_or_default()
+}
+
+/// Returns the platform-specific scancode of the specified key.
+///
+/// If `key` corresponds to a physical key not supported on the current platform
+/// then this method will return `-1`.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn try_key_scancode(key: Key) -> Result<i32, XErr>
+{
+	let value = unsafe { glfwGetKeyScancode(key.as_glfw() as i32) };
+	XErr::result(|| value)
 }

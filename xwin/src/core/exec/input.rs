@@ -1,4 +1,7 @@
-use std::sync::mpsc::Sender;
+use std::{
+	ffi::CStr,
+	sync::mpsc::Sender,
+};
 
 use crate::{
 	bind::{
@@ -19,6 +22,7 @@ use crate::{
 		glfwCreateStandardCursor,
 		glfwDestroyCursor,
 		glfwGetInputMode,
+		glfwGetKeyName,
 		glfwRawMouseMotionSupported,
 		glfwSetInputMode,
 	},
@@ -92,4 +96,20 @@ pub(super) fn raw_mouse_supported(tx: Sender<Result<bool, XErr>>)
 	let _ = tx.send(XErr::result(
 		|| if value == GLFW_TRUE { true } else { false },
 	));
+}
+
+pub(super) fn key_name(key: i32, scancode: i32, tx: Sender<Option<String>>)
+{
+	let value = unsafe { glfwGetKeyName(key, scancode) };
+
+	let _ = tx.send(
+		if value.is_null()
+		{
+			None
+		}
+		else
+		{
+			Some(unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() })
+		},
+	);
 }

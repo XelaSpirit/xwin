@@ -27,6 +27,7 @@ use crate::{
 			create_cursor,
 			destroy_cursor,
 			input_mode,
+			key_name,
 			raw_mouse_supported,
 			set_input_mode,
 		},
@@ -137,6 +138,7 @@ pub(crate) enum XWinMessage
 	GetInputMode(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
 	SetInputMode(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
 	RawMouseSupported(Sender<Result<bool, XErr>>),
+	GetKeyName(i32, i32, Sender<Option<String>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -286,5 +288,6 @@ fn handle_msg(msg: XWinMessage)
 			set_input_mode(window, mode, value, tx)
 		},
 		| XWinMessage::RawMouseSupported(tx) => raw_mouse_supported(tx),
+		| XWinMessage::GetKeyName(key, scancode, tx) => key_name(key, scancode, tx),
 	};
 }

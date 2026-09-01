@@ -153,7 +153,7 @@ impl Drop for Cursor
 /// motion of the desktop cursor. That processing is suitable for a cursor while
 /// raw motion is better for controlling for example a 3D camera. Because of
 /// this, raw mouse motion is only provided when the cursor is disabled.
-/// 
+///
 /// # Errors
 /// Possible errors include [XErr::NotInitialized]
 pub fn try_raw_mouse_supported() -> Result<bool, XErr>

@@ -1421,7 +1421,8 @@ impl Window
 	/// for mouse events. This will only be used when the cursor is disabled.
 	///
 	/// If raw mouse motion is not supported, this will return
-	/// [XErr::FeatureUnavailable]. See [try_raw_mouse_supported](crate::input::mouse::try_raw_mouse_supported).
+	/// [XErr::FeatureUnavailable]. See
+	/// [try_raw_mouse_supported](crate::input::mouse::try_raw_mouse_supported).
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::Platform], and
