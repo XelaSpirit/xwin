@@ -28,6 +28,7 @@ use crate::{
 		glfwGetKeyName,
 		glfwGetMouseButton,
 		glfwRawMouseMotionSupported,
+		glfwSetCursor,
 		glfwSetCursorPos,
 		glfwSetInputMode,
 	},
@@ -38,7 +39,6 @@ use crate::{
 		mouse::CursorShape,
 	},
 };
-use crate::bind::glfwSetCursor;
 
 pub(super) fn create_cursor(shape: CursorShape, tx: Sender<Result<*mut GLFWcursor, XErr>>)
 {
@@ -150,7 +150,11 @@ pub(super) fn set_cursor_pos(win: *mut GLFWwindow, x: f64, y: f64, tx: Sender<Re
 	let _ = tx.send(XErr::result(|| ()));
 }
 
-pub(super) fn set_cursor(win: *mut GLFWwindow, cursor: *mut GLFWcursor, tx: Sender<Result<(), XErr>>)
+pub(super) fn set_cursor(
+	win: *mut GLFWwindow,
+	cursor: *mut GLFWcursor,
+	tx: Sender<Result<(), XErr>>,
+)
 {
 	unsafe { glfwSetCursor(win, cursor) };
 	let _ = tx.send(XErr::result(|| ()));

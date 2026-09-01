@@ -22,6 +22,7 @@ use crate::{
 	},
 	core::{
 		ContentScale,
+		Pixels,
 		ScreenCoordinates,
 		XWin,
 		exec::input::{
@@ -44,10 +45,7 @@ use crate::{
 		VideoMode,
 		WorkArea,
 	},
-	window::{
-		Pixels,
-		WindowBuilder,
-	},
+	window::WindowBuilder,
 };
 
 /// Used internally by XWin for sending messages to the main thread, for GLFW

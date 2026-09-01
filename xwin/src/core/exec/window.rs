@@ -48,15 +48,15 @@ use crate::{
 	},
 	core::{
 		ContentScale,
+		Pixels,
 		ScreenCoordinates,
 		image::Image,
 	},
 	error::XErr,
 	monitor::Monitor,
 	window::{
-		Pixels,
 		WindowBuilder,
-		context::WindowContext,
+		ctx::WindowContext,
 		set_window_callbacks,
 	},
 };

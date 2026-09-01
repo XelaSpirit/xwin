@@ -47,15 +47,13 @@ use crate::{
 		glfwWindowHintString,
 	},
 	core::{
+		Pixels,
 		XWin,
 		exec::XWinMessage,
 	},
 	error::XErr,
 	monitor::Monitor,
-	window::{
-		Pixels,
-		Window,
-	},
+	window::Window,
 };
 
 /// Used to construct a window with some number of window creation hints.

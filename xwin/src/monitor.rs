@@ -2,14 +2,14 @@
 //!
 //! TODO documentation
 
-mod events;
+mod evt;
 mod gamma_ramp;
 mod video_mode;
 mod work_area;
 
 use std::sync::mpsc::channel;
 
-pub use events::*;
+pub use evt::*;
 pub use gamma_ramp::*;
 pub use video_mode::*;
 pub use work_area::*;

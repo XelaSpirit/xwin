@@ -12,6 +12,7 @@ use std::{
 		UnwindSafe,
 		resume_unwind,
 	},
+	ptr,
 	sync::{
 		OnceLock,
 		RwLock,
@@ -49,7 +50,10 @@ use crate::{
 	},
 	core::exec::XWinMessage,
 	error::XErr,
-	monitor::MonitorEvent,
+	monitor::{
+		MonitorEvent,
+		set_monitor_callback,
+	},
 };
 
 /// Used internally by XWin for managing global state
@@ -102,6 +106,16 @@ pub struct ScreenCoordinates<T>
 {
 	pub x: T,
 	pub y: T,
+}
+
+/// Almost all positions and sizes in XWin are measured in
+/// [ScreenCoordinates](ScreenCoordinates). However, framebuffer sizes
+/// are measured in pixels.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+pub struct Pixels
+{
+	pub x: i32,
+	pub y: i32,
 }
 
 /// The content scale can be thought of as the ratio between the current DPI and
@@ -226,6 +240,8 @@ where
 	{
 		return Err(XErr::get());
 	}
+
+	set_monitor_callback();
 
 	let handle = thread::Builder::new()
 		.name("XWin Thread".to_string())

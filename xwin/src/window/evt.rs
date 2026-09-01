@@ -19,20 +19,11 @@ use crate::{
 	},
 	core::{
 		ContentScale,
+		Pixels,
 		ScreenCoordinates,
 	},
-	window::context::WindowContext,
+	window::ctx::WindowContext,
 };
-
-/// Almost all positions and sizes in XWin are measured in
-/// [ScreenCoordinates](ScreenCoordinates). However, framebuffer sizes
-/// are measured in pixels.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
-pub struct Pixels
-{
-	pub x: i32,
-	pub y: i32,
-}
 
 /// Window events
 pub enum WindowEvent

@@ -47,15 +47,13 @@ impl Clone for MonitorEvent
 	}
 }
 
-/// Subscribes to monitor configuration events on the given channel. A new event
-/// will be pushed to the channel each time a [Monitor] is connected or
-/// disconnected.
-///
-/// See [crate::core#event-handling]
+/// Sets the [Sender] that will be used to send monitor configuration events.A
+/// new event will be pushed to the channel each time a [Monitor] is connected
+/// or disconnected.
 ///
 /// # Errors
 /// Possible errors include [XErr::NotInitialized].
-pub fn subscribe_monitors<T>(tx: T) -> Result<(), XErr>
+pub fn set_monitor_channel<T>(tx: T) -> Result<(), XErr>
 where
 	T: Sender<MonitorEvent> + Send + Sync + 'static,
 {
@@ -65,15 +63,19 @@ where
 	Ok(())
 }
 
-/// Closes the monitor event channel, disconnecting the event sender (if one
-/// exists).
+/// Closes the monitor event channel.
 ///
-/// See also [subscribe_monitors].
-pub fn unsubscribe_monitors() -> Result<(), XErr>
+/// See [set_monitor_channel].
+pub fn clear_monitor_channel() -> Result<(), XErr>
 {
 	unsafe { glfwSetMonitorCallback(None) };
 	XWin::get()?.write().unwrap().remove_monitor_tx();
 	Ok(())
+}
+
+pub(crate) fn set_monitor_callback()
+{
+	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
 }
 
 extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
