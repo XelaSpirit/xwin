@@ -12,8 +12,6 @@ use std::{
 
 use crate::{
 	bind::{
-		GLFWmonitor,
-		GLFWwindow,
 		glfwCreateWindow,
 		glfwDefaultWindowHints,
 		glfwDestroyWindow,
@@ -31,11 +29,17 @@ use crate::{
 		glfwSetGamma,
 		glfwSetGammaRamp,
 		glfwSetWindowTitle,
+		glfwWindowHint,
+		GLFWmonitor,
+		GLFWwindow,
+		GLFW_CLIENT_API,
+		GLFW_NO_API,
 	},
 	core::{
 		ContentScale,
 		ScreenCoordinates,
-		XWin,
+		XWin
+		,
 	},
 	err::XErr,
 	monitor::{
@@ -82,6 +86,7 @@ pub(crate) enum XWinMessage
 	DestroyWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
 	GetWindowTitle(*mut GLFWwindow, Sender<Result<String, XErr>>),
 	SetWindowTitle(*mut GLFWwindow, String, Sender<Result<(), XErr>>),
+	// SetWindowIcon(Vec<Image>, Sender<Result<(), XErr>>)
 }
 unsafe impl Send for XWinMessage {}
 
@@ -181,6 +186,19 @@ fn destroy_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
 	let _ = tx.send(XErr::result(|| ()));
 }
 
+fn check_err<T>(tx: &Sender<Result<T, XErr>>) -> bool
+{
+	if let Err(err) = XErr::result(|| ())
+	{
+		let _ = tx.send(Err(err));
+		true
+	}
+	else
+	{
+		false
+	}
+}
+
 fn create_window(
 	width: i32,
 	height: i32,
@@ -191,9 +209,8 @@ fn create_window(
 )
 {
 	unsafe { glfwDefaultWindowHints() };
-	if let Err(err) = XErr::result(|| ())
+	if check_err(&tx)
 	{
-		let _ = tx.send(Err(err));
 		return;
 	}
 
@@ -204,6 +221,12 @@ fn create_window(
 			let _ = tx.send(Err(err));
 			return;
 		}
+	}
+
+	unsafe { glfwWindowHint(GLFW_CLIENT_API as i32, GLFW_NO_API as i32) };
+	if check_err(&tx)
+	{
+		return;
 	}
 
 	let str = CString::new(title)

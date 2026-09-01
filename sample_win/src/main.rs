@@ -1,8 +1,10 @@
 use xwin::{
 	core::XWin,
-	window::WindowBuilder,
+	window::{
+		Window,
+		WindowBuilder,
+	},
 };
-use xwin::window::Window;
 // TODO - New thread for each window? Prevent context from being current on
 // multiple threads Maybe make Windows not Send, and use function to send
 // windows that ensures detach? Or have set_current return result, and store id

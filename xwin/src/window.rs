@@ -99,11 +99,8 @@ mod builder;
 mod callback;
 
 use std::{
-	ptr::null_mut,
-	sync::{
-		Mutex,
-		mpsc::channel,
-	},
+	cell::RefCell,
+	sync::mpsc::channel,
 };
 
 pub use builder::*;
@@ -111,28 +108,26 @@ pub use callback::*;
 
 use crate::{
 	bind::{
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
+		GLFWwindow,
 		GLFW_FALSE,
 		GLFW_TRUE,
-		GLFWwindow,
-		glfwGetCurrentContext,
-		glfwMakeContextCurrent,
-		glfwSetWindowShouldClose,
-		glfwSwapInterval,
-		glfwWindowShouldClose,
 	},
 	core::{
-		XWin,
 		exec::XWinMessage,
+		image::Image,
+		XWin,
 	},
 	err::XErr,
 	monitor::Monitor,
 };
 
-pub struct Window
-{
-	window: *mut GLFWwindow,
-	lock:   Mutex<()>,
+thread_local! {
+	static WINDOW: RefCell<Option<Window>> = RefCell::new(None);
 }
+
+pub struct Window(*mut GLFWwindow);
 
 impl Window
 {
@@ -254,113 +249,13 @@ impl Window
 			.map(|win| Self::from_glfw(win))
 	}
 
-	/// If this window is the current context, detaches it.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized], [XErr::NoWindowContext],
-	/// [XErr::Platform].
-	pub fn detach(&self) -> Result<(), XErr>
-	{
-		if self.is_current()?
-		{
-			unsafe { glfwMakeContextCurrent(null_mut()) };
-		}
-		XErr::result(|| {})
-	}
-
-	/// Sets the OpenGL or OpenGL ES context of this window as the current
-	/// context on the calling thread.
-	///
-	/// A context may only be made current on a single thread at a time and each
-	/// thread can have only a single current context at a time. Making a
-	/// context current detaches any previously current context on the calling
-	/// thread.
-	///
-	/// By default, making a context non-current implicitly forces a pipeline
-	/// flush. On machines that support `GL_KHR_context_flush_control`, you can
-	/// control whether a context performs this flush by setting the
-	/// [WindowBuilder::context_release_behavior](WindowBuilder::context_release_behavior) hint.
-	///
-	/// This window must have an OpenGL or OpenGL ES context. Using this without
-	/// a context will return [XErr::NoWindowContext].
-	///
-	/// # Remarks
-	/// If the previously current context was created via a different context
-	/// creation API than this window, XWin will still detach the previous one
-	/// from its API before making this one current.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized], [XErr::NoWindowContext],
-	/// and [XErr::Platform].
-	pub fn set_current(&self) -> Result<(), XErr>
-	{
-		unsafe { glfwMakeContextCurrent(self.window) };
-		XErr::result(|| {})
-	}
-
-	/// Returns whether this window is the current context.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	pub fn is_current(&self) -> Result<bool, XErr>
-	{
-		let res = unsafe { glfwGetCurrentContext() == self.window };
-		XErr::result(|| res)
-	}
-
-	/// Sets the swap interval for this window's OpenGL or OpenGL ES
-	/// context, i.e. the number of screen updates to wait from the time
-	/// [Window::swap_buffers] was called before swapping the buffers and
-	/// returning. This is sometimes called vertical synchronization, vertical
-	/// retrace synchronization or just vsync.
-	///
-	/// A context that supports either of the `WGL_EXT_swap_control_tear` and
-	/// `GLX_EXT_swap_control_tear` extensions also accepts negative swap
-	/// intervals, which allows the driver to swap immediately even if a frame
-	/// arrives a little late.
-	///
-	/// This function does not apply to Vulkan. If you are rendering with
-	/// Vulkan, see the present mode of your swapchain instead.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized],
-	/// [XErr::NoCurrentContext], and [XErr::Platform].
-	///
-	/// # Remarks
-	/// This function is not called during context creation, leaving the swap
-	/// interval set to whatever is the default for that API. This is done
-	/// because some swap interval extensions used by XWin do not allow the swap
-	/// interval to be reset to zero once it has been set to a non-zero value.
-	///
-	/// Some GPU drivers do not honor the requested swap interval, either
-	/// because of a user setting that overrides the application's request or
-	/// due to bugs in the driver.
-	pub fn set_swap_interval(&self, swap_interval: i32) -> Result<(), XErr>
-	{
-		let ctx = unsafe { glfwGetCurrentContext() };
-		XErr::result(|| {})?;
-
-		self.set_current()?;
-
-		unsafe {
-			glfwSwapInterval(swap_interval);
-			XErr::result(|| {})?;
-
-			glfwMakeContextCurrent(ctx);
-		};
-		XErr::result(|| {})
-	}
-
 	/// Returns the value of the close flag of this window.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	pub fn should_close(&self) -> Result<bool, XErr>
 	{
-		let lock = self.lock.lock().unwrap();
-		let close = unsafe { glfwWindowShouldClose(self.window) == GLFW_TRUE as i32 };
-		drop(lock);
-
+		let close = unsafe { glfwWindowShouldClose(self.0) == GLFW_TRUE as i32 };
 		XErr::result(|| close)
 	}
 
@@ -370,12 +265,11 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	pub fn set_should_close(&self, value: bool) -> Result<(), XErr>
+	pub fn set_should_close(&mut self, value: bool) -> Result<(), XErr>
 	{
-		let lock = self.lock.lock().unwrap();
 		unsafe {
 			glfwSetWindowShouldClose(
-				self.window,
+				self.0,
 				if value
 				{
 					GLFW_TRUE as i32
@@ -386,7 +280,6 @@ impl Window
 				},
 			)
 		};
-		drop(lock);
 
 		XErr::result(|| {})
 	}
@@ -405,7 +298,7 @@ impl Window
 	pub fn title(&self) -> Result<String, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowTitle(self.window, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetWindowTitle(self.0, tx), rx)?
 	}
 
 	/// This function sets the title of this window.
@@ -417,28 +310,24 @@ impl Window
 	/// # Remarks
 	/// - **MacOS**: The window title will not be updated until the next time
 	///   you process events.
-	pub fn set_title(&self, title: &str) -> Result<(), XErr>
+	pub fn set_title(&mut self, title: &str) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(
-			XWinMessage::SetWindowTitle(self.window, String::from(title), tx),
+			XWinMessage::SetWindowTitle(self.0, String::from(title), tx),
 			rx,
 		)?
+	}
+
+	pub fn set_icon(&self, icons: Vec<Image>)
+	{
+		todo!()
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.
 	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
 	{
-		Window {
-			window: win,
-			lock:   Mutex::new(()),
-		}
-	}
-
-	/// Return the `GLFWwindow` held by this [Window].
-	pub(crate) fn get_glfw(&self) -> *mut GLFWwindow
-	{
-		self.window
+		Window(win)
 	}
 }
 
@@ -454,11 +343,10 @@ impl Drop for Window
 	/// This function must not be called from a callback.
 	fn drop(&mut self)
 	{
-		let _ = self.detach();
 		let (tx, rx) = channel();
 		if let Ok(xwin) = XWin::get()
 		{
-			let _ = xwin.post_rcv(XWinMessage::DestroyWindow(self.window, tx), rx);
+			let _ = xwin.post_rcv(XWinMessage::DestroyWindow(self.0, tx), rx);
 		}
 	}
 }

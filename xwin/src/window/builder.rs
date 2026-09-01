@@ -11,7 +11,6 @@ use crate::{
 		GLFW_AUTO_ICONIFY,
 		GLFW_BLUE_BITS,
 		GLFW_CENTER_CURSOR,
-		GLFW_CLIENT_API,
 		GLFW_COCOA_FRAME_NAME,
 		GLFW_COCOA_GRAPHICS_SWITCHING,
 		GLFW_CONTEXT_CREATION_API,
@@ -35,14 +34,11 @@ use crate::{
 		GLFW_MAXIMIZED,
 		GLFW_MOUSE_PASSTHROUGH,
 		GLFW_NATIVE_CONTEXT_API,
-		GLFW_NO_API,
 		GLFW_NO_RESET_NOTIFICATION,
 		GLFW_NO_ROBUSTNESS,
 		GLFW_OPENGL_ANY_PROFILE,
-		GLFW_OPENGL_API,
 		GLFW_OPENGL_COMPAT_PROFILE,
 		GLFW_OPENGL_CORE_PROFILE,
-		GLFW_OPENGL_ES_API,
 		GLFW_OPENGL_FORWARD_COMPAT,
 		GLFW_OPENGL_PROFILE,
 		GLFW_OSMESA_CONTEXT_API,
@@ -82,14 +78,6 @@ use crate::{
 		Window,
 	},
 };
-
-/// Client APIs for window creation.
-pub enum ClientApi
-{
-	OpenGl,
-	OpenGlEs,
-	None,
-}
 
 /// Context creation APIs for window creation.
 pub enum ContextCreationApi
@@ -529,24 +517,6 @@ impl WindowBuilder
 			else
 			{
 				GLFW_DONT_CARE
-			},
-		));
-		self
-	}
-
-	/// Specifies which client API to create the context for. This is a hard
-	/// constraint.
-	///
-	/// **Default:** [ClientApi::OpenGl]
-	pub fn client_api(&mut self, value: ClientApi) -> &mut Self
-	{
-		self.hints.push(IntegerHint(
-			GLFW_CLIENT_API,
-			match value
-			{
-				| ClientApi::OpenGl => GLFW_OPENGL_API as i32,
-				| ClientApi::OpenGlEs => GLFW_OPENGL_ES_API as i32,
-				| ClientApi::None => GLFW_NO_API as i32,
 			},
 		));
 		self

@@ -155,6 +155,7 @@
 //! across platforms. The exception is synthetic key and mouse button release
 //! events, which are always delivered after the window defocus event.
 
+pub mod image;
 pub(crate) mod exec;
 
 use std::{
