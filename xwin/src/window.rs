@@ -5,9 +5,9 @@
 mod builder;
 mod config;
 pub(crate) mod context;
+mod control;
 mod event;
 pub mod input;
-mod control;
 
 use std::sync::mpsc::channel;
 
@@ -16,25 +16,17 @@ pub use event::*;
 
 use crate::{
 	bind::{
-		GLFW_DONT_CARE,
 		GLFW_FALSE,
-		GLFW_FOCUSED,
-		GLFW_HOVERED,
-		GLFW_ICONIFIED,
-		GLFW_MAXIMIZED,
 		GLFW_TRUE,
-		GLFW_VISIBLE,
 		GLFWwindow,
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
 	},
 	core::{
-		ScreenCoordinates,
 		XWin,
 		exec::XWinMessage,
 	},
 	error::XErr,
 	monitor::Monitor,
+	window::context::WindowContext,
 };
 
 pub struct Window(*mut GLFWwindow);
@@ -46,7 +38,7 @@ impl Window
 	// =======================
 	//       CONSTRUCTOR
 	// =======================
-	
+
 	/// This function creates a window. Options controlling how the window and
 	/// its context should be created are specified using other functions in
 	/// [WindowBuilder].
@@ -207,6 +199,13 @@ impl Window
 			),
 			rx,
 		)?
+	}
+
+	fn with_context<F>(&mut self, err: &str, func: F) -> Result<(), XErr>
+	where
+		F: FnOnce(&mut WindowContext),
+	{
+		WindowContext::with_context(&self.0, err, func)
 	}
 }
 

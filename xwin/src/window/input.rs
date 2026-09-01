@@ -31,7 +31,6 @@ use crate::{
 	window::{
 		KeyEvent,
 		Window,
-		context::WindowContext,
 	},
 };
 
@@ -42,6 +41,45 @@ impl Window
 	// =======================
 
 	/// TODO - events
+
+	/// Sets the [Sender] that will be used to send character events, which is
+	/// done when a Unicode character is input.
+	///
+	/// The character channel is intended for Unicode text input. As it deals
+	/// with characters, it is keyboard layout dependent, whereas the [key
+	/// channel](Window::set_key_channel) is not. Characters fo not map 1:1 to
+	/// physical keys, as a key may produce zero, one, or more characters. If
+	/// you want to know whether a specific physical key was pressed or
+	/// released, see [Window::set_key_channel] instead.
+	///
+	/// The character channel behaves as system text input normally does and
+	/// will not receive events if modifier keys are held down that would
+	/// prevent normal text input on that platform. For example a Super (Command)
+	/// key on macOS or Alt key on Windows.
+	/// 
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn set_char_channel<T>(&mut self, tx: T) -> Result<(), XErr>
+	where
+		T: Sender<u32> + Send + Sync + 'static,
+	{
+		self.with_context(
+			"Unable to set char channel when XWin is uninitialized",
+			|ctx| ctx.set_char_tx(tx),
+		)
+	}
+
+	/// Close the char event channel. See [Window::set_char_channel].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn clear_char_channel(&mut self) -> Result<(), XErr>
+	{
+		self.with_context(
+			"Unable to clear char channel when XWin is uninitialized",
+			|ctx| ctx.remove_char_tx(),
+		)
+	}
 
 	/// Sets the [Sender] that will be used to send key events for the window.
 	/// Events are sent when a key is pressed, repeated, or released.
@@ -69,33 +107,22 @@ impl Window
 	where
 		T: Sender<KeyEvent> + Send + Sync + 'static,
 	{
-		if let Some(ctx) = WindowContext::get(&self.0)
-		{
-			ctx.set_key_tx(tx);
-			Ok(())
-		}
-		else
-		{
-			Err(XErr::NotInitialized(
-				"Unable to set event channels when XWin is uninitialized".to_string(),
-			))
-		}
+		self.with_context(
+			"Unable to set event channel when XWin is uninitialized",
+			|ctx| ctx.set_key_tx(tx),
+		)
 	}
 
 	/// Close the key even channel. See [Window::set_key_channel].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
 	pub fn clear_key_channel<T>(&mut self) -> Result<(), XErr>
 	{
-		if let Some(ctx) = WindowContext::get(&self.0)
-		{
-			ctx.remove_key_tx();
-			Ok(())
-		}
-		else
-		{
-			Err(XErr::NotInitialized(
-				"Unable to set event channels when XWin is uninitialized".to_string(),
-			))
-		}
+		self.with_context(
+			"Unable to clear event channel when XWin is uninitialized",
+			|ctx| ctx.remove_key_tx(),
+		)
 	}
 
 	// =======================
@@ -219,7 +246,7 @@ impl Window
 	pub fn try_cursor_mode(&self) -> Result<CursorMode, XErr>
 	{
 		self.input_mode(GLFW_CURSOR)
-		    .map(|v| CursorMode::from_glfw(v))
+			.map(|v| CursorMode::from_glfw(v))
 	}
 
 	/// Returns the position of the cursor, in [ScreenCoordinates], relative to
@@ -269,7 +296,7 @@ impl Window
 	pub fn try_lock_key_mods(&self) -> Result<bool, XErr>
 	{
 		self.input_mode(GLFW_LOCK_KEY_MODS)
-		    .map(|v| if v == GLFW_TRUE { true } else { false })
+			.map(|v| if v == GLFW_TRUE { true } else { false })
 	}
 
 	/// Returns the last state reported for the specified mouse button to the
@@ -300,7 +327,7 @@ impl Window
 	pub fn try_raw_mouse_motion(&self) -> Result<bool, XErr>
 	{
 		self.input_mode(GLFW_RAW_MOUSE_MOTION)
-		    .map(|v| if v == GLFW_TRUE { true } else { false })
+			.map(|v| if v == GLFW_TRUE { true } else { false })
 	}
 
 	/// Returns whether sticky keys are enabled for the window. See
@@ -311,7 +338,7 @@ impl Window
 	pub fn try_sticky_keys(&self) -> Result<bool, XErr>
 	{
 		self.input_mode(GLFW_STICKY_KEYS)
-		    .map(|v| if v == GLFW_TRUE { true } else { false })
+			.map(|v| if v == GLFW_TRUE { true } else { false })
 	}
 
 	/// Returns whether sticky mouse buttons are enabled for the window. See
@@ -322,7 +349,7 @@ impl Window
 	pub fn try_sticky_mouse(&self) -> Result<bool, XErr>
 	{
 		self.input_mode(GLFW_STICKY_MOUSE_BUTTONS)
-		    .map(|v| if v == GLFW_TRUE { true } else { false })
+			.map(|v| if v == GLFW_TRUE { true } else { false })
 	}
 
 	/// Indicates whether the window is transparent to mouse input, letting any

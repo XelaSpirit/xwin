@@ -5,6 +5,7 @@ use crate::{
 		GLFWwindow,
 		glfwGetWindowUserPointer,
 	},
+	error::XErr,
 	window::{
 		KeyEvent,
 		WindowEvent,
@@ -13,8 +14,9 @@ use crate::{
 
 pub(crate) struct WindowContext
 {
-	ev_tx:  Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
-	key_tx: Option<Box<dyn Sender<KeyEvent> + Send + Sync>>,
+	cfg_tx:  Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
+	char_tx: Option<Box<dyn Sender<u32> + Send + Sync>>,
+	key_tx:  Option<Box<dyn Sender<KeyEvent> + Send + Sync>>,
 }
 
 impl WindowContext
@@ -22,26 +24,50 @@ impl WindowContext
 	pub(crate) fn new() -> Self
 	{
 		WindowContext {
-			ev_tx:  None,
-			key_tx: None,
+			cfg_tx:  None,
+			char_tx: None,
+			key_tx:  None,
 		}
 	}
 
-	pub(super) fn get(win: &*mut GLFWwindow) -> Option<&mut WindowContext>
+	pub(super) fn with_context<F>(win: &*mut GLFWwindow, err: &str, func: F) -> Result<(), XErr>
+	where
+		F: FnOnce(&mut WindowContext),
 	{
-		unsafe { (glfwGetWindowUserPointer(*win) as *mut WindowContext).as_mut() }
+		if let Some(ctx) =
+			unsafe { (glfwGetWindowUserPointer(*win) as *mut WindowContext).as_mut() }
+		{
+			func(ctx);
+			Ok(())
+		}
+		else
+		{
+			Err(XErr::NotInitialized(err.to_string()))
+		}
 	}
 
-	pub(super) fn set_ev_tx<T>(&mut self, tx: T)
+	pub(super) fn set_cfg_tx<T>(&mut self, tx: T)
 	where
 		T: Sender<WindowEvent> + Send + Sync + 'static,
 	{
-		self.ev_tx = Some(Box::new(tx));
+		self.cfg_tx = Some(Box::new(tx));
 	}
 
-	pub(super) fn remove_ev_tx(&mut self)
+	pub(super) fn remove_cfg_tx(&mut self)
 	{
-		self.ev_tx = None;
+		self.cfg_tx = None;
+	}
+
+	pub(super) fn set_char_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<u32> + Send + Sync + 'static,
+	{
+		self.char_tx = Some(Box::new(tx));
+	}
+
+	pub(super) fn remove_char_tx(&mut self)
+	{
+		self.char_tx = None;
 	}
 
 	pub(super) fn set_key_tx<T>(&mut self, tx: T)
@@ -58,11 +84,22 @@ impl WindowContext
 
 	pub(super) fn post_config(&mut self, evt: WindowEvent)
 	{
-		if let Some(tx) = &self.ev_tx
+		if let Some(tx) = &self.cfg_tx
 		{
 			if let Err(_) = tx.send(evt)
 			{
-				self.ev_tx = None;
+				self.cfg_tx = None;
+			}
+		}
+	}
+
+	pub(super) fn post_char(&mut self, evt: u32)
+	{
+		if let Some(tx) = &self.char_tx
+		{
+			if let Err(_) = tx.send(evt)
+			{
+				self.char_tx = None;
 			}
 		}
 	}

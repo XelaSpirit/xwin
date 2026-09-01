@@ -1,12 +1,16 @@
-use std::os::raw::{
-	c_float,
-	c_int,
+use std::{
+	ffi::c_uint,
+	os::raw::{
+		c_float,
+		c_int,
+	},
 };
 
 use crate::{
 	bind::{
 		GLFW_TRUE,
 		GLFWwindow,
+		glfwSetCharCallback,
 		glfwSetFramebufferSizeCallback,
 		glfwSetKeyCallback,
 		glfwSetWindowCloseCallback,
@@ -93,20 +97,9 @@ pub struct KeyEvent
 	mods:     Modifiers,
 }
 
-extern "C" fn pos_cb(win: *mut GLFWwindow, x: c_int, y: c_int)
+extern "C" fn char_cb(win: *mut GLFWwindow, codepoint: c_uint)
 {
-	config_event(win, WindowEvent::Position(ScreenCoordinates { x, y }));
-}
-
-extern "C" fn size_cb(win: *mut GLFWwindow, width: c_int, height: c_int)
-{
-	config_event(
-		win,
-		WindowEvent::Size(ScreenCoordinates {
-			x: width,
-			y: height,
-		}),
-	);
+	let _ = WindowContext::with_context(&win, "", |ctx| ctx.post_char(codepoint));
 }
 
 extern "C" fn close_cb(win: *mut GLFWwindow)
@@ -114,24 +107,14 @@ extern "C" fn close_cb(win: *mut GLFWwindow)
 	config_event(win, WindowEvent::Close);
 }
 
-extern "C" fn refresh_cb(win: *mut GLFWwindow)
+extern "C" fn content_scale_cb(win: *mut GLFWwindow, x: c_float, y: c_float)
 {
-	config_event(win, WindowEvent::Refresh);
+	config_event(win, WindowEvent::ContentScale(ContentScale { x, y }));
 }
 
 extern "C" fn focus_cb(win: *mut GLFWwindow, focused: c_int)
 {
 	config_event(win, WindowEvent::Focus(focused == GLFW_TRUE as i32));
-}
-
-extern "C" fn iconify_cb(win: *mut GLFWwindow, iconified: c_int)
-{
-	config_event(win, WindowEvent::Iconify(iconified == GLFW_TRUE as i32));
-}
-
-extern "C" fn maximize_cb(win: *mut GLFWwindow, maximized: c_int)
-{
-	config_event(win, WindowEvent::Maximize(maximized == GLFW_TRUE as i32));
 }
 
 extern "C" fn framebuffer_size_cb(win: *mut GLFWwindow, width: c_int, height: c_int)
@@ -145,55 +128,67 @@ extern "C" fn framebuffer_size_cb(win: *mut GLFWwindow, width: c_int, height: c_
 	);
 }
 
+extern "C" fn iconify_cb(win: *mut GLFWwindow, iconified: c_int)
+{
+	config_event(win, WindowEvent::Iconify(iconified == GLFW_TRUE as i32));
+}
+
 extern "C" fn key_cb(win: *mut GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int)
 {
-	key_event(
+	let _ = WindowContext::with_context(&win, "", |ctx| {
+		ctx.post_key(KeyEvent {
+			key: Key::from_glfw(key as u32),
+			scancode,
+			action: ButtonState::from_glfw(action as u32),
+			mods: Modifiers::from_glfw(mods),
+		})
+	});
+}
+
+extern "C" fn maximize_cb(win: *mut GLFWwindow, maximized: c_int)
+{
+	config_event(win, WindowEvent::Maximize(maximized == GLFW_TRUE as i32));
+}
+
+extern "C" fn pos_cb(win: *mut GLFWwindow, x: c_int, y: c_int)
+{
+	config_event(win, WindowEvent::Position(ScreenCoordinates { x, y }));
+}
+
+extern "C" fn refresh_cb(win: *mut GLFWwindow)
+{
+	config_event(win, WindowEvent::Refresh);
+}
+
+extern "C" fn size_cb(win: *mut GLFWwindow, width: c_int, height: c_int)
+{
+	config_event(
 		win,
-		Key::from_glfw(key as u32),
-		scancode,
-		ButtonState::from_glfw(action as u32),
-		Modifiers::from_glfw(mods),
+		WindowEvent::Size(ScreenCoordinates {
+			x: width,
+			y: height,
+		}),
 	);
 }
 
-extern "C" fn content_scale_cb(win: *mut GLFWwindow, x: c_float, y: c_float)
+fn config_event(win: *mut GLFWwindow, evt: WindowEvent)
 {
-	config_event(win, WindowEvent::ContentScale(ContentScale { x, y }));
-}
-
-fn config_event(win: *mut GLFWwindow, ev: WindowEvent)
-{
-	if let Some(ctx) = WindowContext::get(&win)
-	{
-		ctx.post_config(ev);
-	}
-}
-
-fn key_event(win: *mut GLFWwindow, key: Key, scancode: i32, action: ButtonState, mods: Modifiers)
-{
-	if let Some(ctx) = WindowContext::get(&win)
-	{
-		ctx.post_key(KeyEvent {
-			key,
-			scancode,
-			action,
-			mods,
-		});
-	}
+	let _ = WindowContext::with_context(&win, "", |ctx| ctx.post_config(evt));
 }
 
 pub(crate) fn set_window_callbacks(win: *mut GLFWwindow)
 {
 	unsafe {
-		glfwSetWindowPosCallback(win, Some(pos_cb));
-		glfwSetWindowSizeCallback(win, Some(size_cb));
+		glfwSetCharCallback(win, Some(char_cb));
+		glfwSetFramebufferSizeCallback(win, Some(framebuffer_size_cb));
+		glfwSetKeyCallback(win, Some(key_cb));
 		glfwSetWindowCloseCallback(win, Some(close_cb));
-		glfwSetWindowRefreshCallback(win, Some(refresh_cb));
+		glfwSetWindowContentScaleCallback(win, Some(content_scale_cb));
 		glfwSetWindowFocusCallback(win, Some(focus_cb));
 		glfwSetWindowIconifyCallback(win, Some(iconify_cb));
 		glfwSetWindowMaximizeCallback(win, Some(maximize_cb));
-		glfwSetFramebufferSizeCallback(win, Some(framebuffer_size_cb));
-		glfwSetWindowContentScaleCallback(win, Some(content_scale_cb));
-		glfwSetKeyCallback(win, Some(key_cb));
+		glfwSetWindowPosCallback(win, Some(pos_cb));
+		glfwSetWindowRefreshCallback(win, Some(refresh_cb));
+		glfwSetWindowSizeCallback(win, Some(size_cb));
 	}
 }

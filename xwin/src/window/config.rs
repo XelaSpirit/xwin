@@ -37,40 +37,32 @@ impl Window
 	/// Sets the [Sender] that will be used to send window config events. See
 	/// [WindowEvent] for the specific conditions under which each event is
 	/// sent.
-	pub fn set_config_channel<T>(&self, tx: T) -> Result<(), XErr>
+	/// 
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn set_config_channel<T>(&mut self, tx: T) -> Result<(), XErr>
 	where
 		T: Sender<WindowEvent> + Send + Sync + 'static,
 	{
-		if let Some(ctx) = WindowContext::get(&self.0)
-		{
-			ctx.set_ev_tx(tx);
-			Ok(())
-		}
-		else
-		{
-			Err(XErr::NotInitialized(
-				"Unable to set event channels when XWin is uninitialized".to_string(),
-			))
-		}
+		self.with_context(
+			"Unable to set config channel when XWin is uninitialized",
+			|ctx| ctx.set_cfg_tx(tx),
+		)
 	}
 
 	/// Close the window config event channel. See
 	/// [Window::set_config_channel].
-	pub fn clear_config_channel(&self) -> Result<(), XErr>
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn clear_config_channel(&mut self) -> Result<(), XErr>
 	{
-		if let Some(ctx) = WindowContext::get(&self.0)
-		{
-			ctx.remove_ev_tx();
-			Ok(())
-		}
-		else
-		{
-			Err(XErr::NotInitialized(
-				"Unable to set event channels when XWin is uninitialized".to_string(),
-			))
-		}
+		self.with_context(
+			"Unable to clear config channel when XWin is uninitialized",
+			|ctx| ctx.remove_cfg_tx(),
+		)
 	}
-	
+
 	// =======================
 	//     QUERY FUNCTIONS
 	// =======================
