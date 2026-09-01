@@ -3,16 +3,15 @@
 //! TODO documentation
 
 mod builder;
-mod config;
+pub mod config;
 pub(crate) mod context;
-mod control;
-mod event;
+pub mod control;
+pub(crate) mod event;
 pub mod input;
 
 use std::sync::mpsc::channel;
 
 pub use builder::*;
-pub use event::*;
 
 use crate::{
 	bind::{

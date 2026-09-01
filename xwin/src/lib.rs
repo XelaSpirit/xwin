@@ -29,6 +29,7 @@
 mod bind;
 pub mod core;
 pub mod error;
+pub mod event;
 pub mod input;
 pub mod monitor;
 pub(crate) mod utility;

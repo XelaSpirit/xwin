@@ -27,7 +27,7 @@ use crate::{
 };
 
 #[repr(u8)]
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum MouseButton
 {
 	#[default]

@@ -150,7 +150,7 @@ use crate::{
 };
 
 #[repr(i16)]
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key
 {
 	#[default]
@@ -357,7 +357,7 @@ impl Key
 ///
 /// Bitwise operators may be used to manipulate these flags. Utility functions
 /// have been provided for easily querying specific modifiers.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Modifiers(u8);
 
 impl Modifiers

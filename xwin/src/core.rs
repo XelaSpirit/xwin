@@ -54,13 +54,13 @@ use crate::{
 	},
 	core::exec::XWinMessage,
 	error::XErr,
+	event::{
+		MonitorEvent,
+		set_monitor_callback,
+	},
 	input::event::{
 		JoystickConfigEvent,
 		set_joystick_callback,
-	},
-	monitor::{
-		MonitorEvent,
-		set_monitor_callback,
 	},
 };
 

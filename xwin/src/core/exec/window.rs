@@ -33,7 +33,6 @@ use crate::{
 		glfwMaximizeWindow,
 		glfwRequestWindowAttention,
 		glfwRestoreWindow,
-		glfwSetClipboardString,
 		glfwSetWindowAspectRatio,
 		glfwSetWindowAttrib,
 		glfwSetWindowIcon,
@@ -58,9 +57,9 @@ use crate::{
 	window::{
 		WindowBuilder,
 		context::WindowContext,
-		set_window_callbacks,
 	},
 };
+use crate::event::set_window_callbacks;
 
 pub(super) fn set_window_attribute(
 	win: *mut GLFWwindow,

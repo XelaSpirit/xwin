@@ -19,6 +19,10 @@ use crate::{
 		exec::XWinMessage,
 	},
 	error::XErr,
+	event::{
+		KeyEvent,
+		MouseEvent,
+	},
 	input::{
 		ButtonState,
 		keyboard::Key,
@@ -28,11 +32,7 @@ use crate::{
 			MouseButton,
 		},
 	},
-	window::{
-		KeyEvent,
-		MouseEvent,
-		Window,
-	},
+	window::Window,
 };
 
 impl Window

@@ -51,6 +51,7 @@ use crate::{
 };
 
 /// Struct type for window events
+#[derive(Debug, Clone, Copy)]
 pub enum WindowEvent
 {
 	/// Sent when the window is moved. Contains the position, in screen
@@ -102,7 +103,7 @@ pub enum WindowEvent
 }
 
 /// Struct type for key events.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeyEvent
 {
 	key:      Key,
@@ -112,7 +113,7 @@ pub struct KeyEvent
 }
 
 /// Struct type for mouse button events
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MouseButtonEvent
 {
 	button: MouseButton,
@@ -121,7 +122,7 @@ pub struct MouseButtonEvent
 }
 
 /// Enum type for mouse events
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MouseEvent
 {
 	/// Sent when a mouse button is pressed or released.

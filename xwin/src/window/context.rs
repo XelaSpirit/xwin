@@ -6,7 +6,7 @@ use crate::{
 		glfwGetWindowUserPointer,
 	},
 	error::XErr,
-	window::{
+	event::{
 		KeyEvent,
 		MouseEvent,
 		WindowEvent,

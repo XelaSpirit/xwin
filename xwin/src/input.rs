@@ -7,7 +7,7 @@ use crate::{
 	glfw_enum,
 };
 
-pub mod event;
+pub(crate) mod event;
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;

@@ -15,7 +15,7 @@ use crate::{
 
 /// Describes a change to a joystick's configuration.
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JoystickConfigEvent
 {
 	Connected(Joystick) = GLFW_CONNECTED as u8,

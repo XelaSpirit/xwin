@@ -21,11 +21,8 @@ use crate::{
 		image::Image,
 	},
 	error::XErr,
-	window::{
-		Window,
-		WindowEvent,
-		context::WindowContext,
-	},
+	event::WindowEvent,
+	window::Window,
 };
 
 impl Window
