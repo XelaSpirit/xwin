@@ -45,5 +45,3 @@ mod bind;
 pub mod core;
 pub mod err;
 pub mod monitor;
-
-pub use linkme as __linkme;

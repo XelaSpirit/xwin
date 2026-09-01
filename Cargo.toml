@@ -3,5 +3,4 @@ resolver = "3"
 members = [
     "xwin",
     "sample_win",
-    "xwin_macro"
 ]

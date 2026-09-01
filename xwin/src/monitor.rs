@@ -63,33 +63,6 @@
 //! add_monitor_callback(monitor_callback);
 //! ```
 //!
-//! If the `linkme` feature is enabled (which it is by default), you can also
-//! use the [monitor_callback] attribute on a function to have it set as a
-//! monitor callback when XWin is initialized.
-//!
-//! ```
-//! # use xwin::core::XWin;
-//! # use xwin::monitor::{Monitor, MonitorEvent};
-//! # use xwin_macro::monitor_callback;
-//! # let xwin = XWin::default();
-//! #
-//! #[monitor_callback]
-//! fn monitor_callback(monitor: &Monitor, evt: MonitorEvent)
-//! {
-//! 	match evt
-//! 	{
-//! 		| MonitorEvent::Connected =>
-//! 		{ /* Monitor was connected */ },
-//! 		| MonitorEvent::Disconnected =>
-//! 		{ /* Monitor was disconnected */ },
-//! 	}
-//! }
-//! ```
-//!
-//! Note that the above macro relies on the [linkme](https://crates.io/crates/linkme)
-//! crate to function. If you prefer not to have the extra dependency, you can
-//! disable the `linkme` feature and simply use [add_monitor_callback].
-//!
 //! If a monitor is disconnected, all windows that are full screen on it will be
 //! switched to windowed mode before the callback is called. Only
 //! [Monitor::name] and [Monitor::userdata] will return useful values for a
@@ -286,30 +259,23 @@
 //! # }
 //! ```
 
+mod callback;
+mod gamma_ramp;
+mod video_mode;
+mod work_area;
+
 use std::{
 	ffi::CStr,
-	os::raw::{
-		c_int,
-		c_void,
-	},
-	sync::{
-		Arc,
-		LazyLock,
-		RwLock,
-	},
+	os::raw::c_void,
 };
 
-#[cfg(feature = "linkme")]
-use linkme::distributed_slice;
-#[cfg(feature = "linkme")]
-pub use xwin_macro::monitor_callback;
+pub use callback::*;
+pub use gamma_ramp::*;
+pub use video_mode::*;
+pub use work_area::*;
 
 use crate::{
 	bind::{
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
-		GLFWgammaramp,
-		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -323,228 +289,12 @@ use crate::{
 		glfwGetVideoModes,
 		glfwSetGamma,
 		glfwSetGammaRamp,
-		glfwSetMonitorCallback,
 		glfwSetMonitorUserPointer,
+		GLFWmonitor,
 	},
 	core::ScreenCoordinates,
 	err::XErr,
 };
-
-/// Alias for a monitor callback function.
-pub type MonitorCallback = fn(&Monitor, MonitorEvent);
-
-/// Container for all functions handling monitor configuration events.
-#[cfg(feature = "linkme")]
-#[distributed_slice]
-pub static __MONITOR_CALLBACKS: [MonitorCallback];
-
-static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorCallback>>>> =
-	LazyLock::new(RwLock::default);
-
-/// The area of a monitor not occupied by global task bars or menu bars is the
-/// work area. This is specified in screen coordinates and can be retrieved with
-/// [Monitor::work_area].
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct WorkArea
-{
-	pub pos:  ScreenCoordinates,
-	pub size: ScreenCoordinates,
-}
-
-impl Default for WorkArea
-{
-	fn default() -> WorkArea
-	{
-		WorkArea {
-			pos:  ScreenCoordinates::default(),
-			size: ScreenCoordinates::default(),
-		}
-	}
-}
-
-/// A struct containing the width, height, rgb bit depth, and refresh rate of a
-/// video mode for a monitor.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct VideoMode
-{
-	width:        i32,
-	height:       i32,
-	red_bits:     i32,
-	green_bits:   i32,
-	blue_bits:    i32,
-	refresh_rate: i32,
-}
-
-impl VideoMode
-{
-	/// The width, in screen coordinates, of the video mode.
-	pub fn width(&self) -> i32
-	{
-		self.width
-	}
-
-	/// The height, in screen coordinates, of the video mode
-	pub fn height(&self) -> i32
-	{
-		self.height
-	}
-
-	/// The bit depth of the red channel of the video mode.
-	pub fn red_bits(&self) -> i32
-	{
-		self.red_bits
-	}
-
-	/// The bit depth of the green channel of the video mode.
-	pub fn green_bits(&self) -> i32
-	{
-		self.green_bits
-	}
-
-	/// The bit depth of the blue channel of the video mode.
-	pub fn blue_bits(&self) -> i32
-	{
-		self.blue_bits
-	}
-
-	/// The refresh rate, in Hz, of the video mode.
-	pub fn refresh_rate(&self) -> i32
-	{
-		self.refresh_rate
-	}
-}
-
-#[derive(Clone, Debug)]
-pub struct GammaRamp
-{
-	size:  u32,
-	red:   Vec<u16>,
-	green: Vec<u16>,
-	blue:  Vec<u16>,
-}
-
-impl Default for GammaRamp
-{
-	/// Constructs and returns a new [GammaRamp], with no values in each channel
-	fn default() -> Self
-	{
-		GammaRamp {
-			size:  0,
-			red:   vec![],
-			green: vec![],
-			blue:  vec![],
-		}
-	}
-}
-
-impl GammaRamp
-{
-	/// Constructs and returns a new [GammaRamp] with a given size, where all
-	/// values are set to `fill`
-	pub fn new(size: u32, fill: u16) -> Self
-	{
-		GammaRamp {
-			size,
-			red: vec![fill; size as usize],
-			green: vec![fill; size as usize],
-			blue: vec![fill; size as usize],
-		}
-	}
-
-	/// Constructs and returns a new [GammaRamp], where all values are set to
-	/// the value returned by calling `f` with the index of that value (`0..S`).
-	pub fn from_fn<F>(size: u32, f: F) -> Self
-	where
-		F: Fn(u32) -> u16,
-	{
-		let mut ramp = GammaRamp {
-			size,
-			red: Vec::with_capacity(size as usize),
-			green: Vec::with_capacity(size as usize),
-			blue: Vec::with_capacity(size as usize),
-		};
-
-		for idx in 0..size
-		{
-			ramp.red.push(f(idx as u32));
-			ramp.green.push(f(idx as u32));
-			ramp.blue.push(f(idx as u32));
-		}
-		ramp
-	}
-
-	fn from_glfw(ramp: &GLFWgammaramp) -> Self
-	{
-		unsafe {
-			GammaRamp {
-				size:  ramp.size,
-				red:   Vec::from_raw_parts(ramp.red, ramp.size as usize, ramp.size as usize)
-					.clone(),
-				green: Vec::from_raw_parts(ramp.green, ramp.size as usize, ramp.size as usize)
-					.clone(),
-				blue:  Vec::from_raw_parts(ramp.blue, ramp.size as usize, ramp.size as usize)
-					.clone(),
-			}
-		}
-	}
-
-	/// Returns the size of the array stored in this ramp.
-	pub fn size(&self) -> u32
-	{
-		self.size
-	}
-
-	/// Returns the value in the red array at index `idx`.
-	pub fn red(&self, idx: usize) -> u16
-	{
-		self.red[idx]
-	}
-
-	/// Returns the value in the green array at index `idx`.
-	pub fn green(&self, idx: usize) -> u16
-	{
-		self.green[idx]
-	}
-
-	/// Returns the value in the blue array at index `idx`.
-	pub fn blue(&self, idx: usize) -> u16
-	{
-		self.blue[idx]
-	}
-
-	/// Sets the value in the red array at index `idx`.
-	pub fn set_red(&mut self, idx: usize, val: u16)
-	{
-		self.red[idx] = val;
-	}
-
-	/// Sets the value in the green array at index `idx`.
-	pub fn set_green(&mut self, idx: usize, val: u16)
-	{
-		self.green[idx] = val;
-	}
-
-	/// Sets the value in the blue array at index `idx`.
-	pub fn set_blue(&mut self, idx: usize, val: u16)
-	{
-		self.blue[idx] = val;
-	}
-
-	/// Runs the function `f`, passing in a [GLFWgammaramp] constructed from
-	/// this ramp.
-	pub(crate) fn with_glfw<F, R>(&mut self, f: F) -> R
-	where
-		F: FnOnce(&GLFWgammaramp) -> R,
-	{
-		let ramp = GLFWgammaramp {
-			size:  self.size,
-			red:   self.red.as_mut_ptr(),
-			green: self.green.as_mut_ptr(),
-			blue:  self.blue.as_mut_ptr(),
-		};
-		f(&ramp)
-	}
-}
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Monitor(*mut GLFWmonitor);
@@ -804,15 +554,7 @@ impl Monitor
 			let mut arr = Vec::<VideoMode>::with_capacity(count as usize);
 			for idx in 0..count as usize
 			{
-				let vm = unsafe { *vms.add(idx) };
-				arr.push(VideoMode {
-					width:        vm.width,
-					height:       vm.height,
-					red_bits:     vm.redBits,
-					green_bits:   vm.greenBits,
-					blue_bits:    vm.blueBits,
-					refresh_rate: vm.refreshRate,
-				});
+				arr.push(VideoMode::from_glfw(unsafe { &*vms.add(idx) }));
 			}
 			Ok(arr)
 		}
@@ -837,17 +579,7 @@ impl Monitor
 		match unsafe { vm_ptr.as_ref() }
 		{
 			| None => Err(XErr::get()),
-			| Some(vm) =>
-			{
-				Ok(VideoMode {
-					width:        vm.width,
-					height:       vm.height,
-					red_bits:     vm.redBits,
-					green_bits:   vm.greenBits,
-					blue_bits:    vm.blueBits,
-					refresh_rate: vm.refreshRate,
-				})
-			},
+			| Some(vm) => Ok(VideoMode::from_glfw(vm)),
 		}
 	}
 
@@ -933,86 +665,4 @@ impl Monitor
 	{
 		Monitor(monitor)
 	}
-}
-
-/// Describes a change to a monitor's configuration
-///
-/// If a monitor is disconnected, all windows that are full screen on it will be
-/// switched to windowed mode before the callback is called.
-///
-/// Only [Monitor::name] and [Monitor::userdata] will return useful values for a
-/// disconnected monitor and only before the monitor callback returns.
-#[derive(Copy, Clone, Debug)]
-pub enum MonitorEvent
-{
-	Connected,
-	Disconnected,
-}
-
-/// Adds a monitor configuration callback. This is called when a monitor is
-/// connected to or disconnected from the system.
-///
-/// # Returns
-/// An [Arc] referring to the callback, which may be used to later remove the
-/// callback using [remove_monitor_callback].
-///
-/// # Thread Safety
-/// This function may be called from any thread.
-///
-/// # See Also
-/// - [MonitorCallback]
-pub fn add_monitor_callback(f: MonitorCallback) -> Arc<MonitorCallback>
-{
-	let arc = Arc::new(f);
-	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
-	{
-		vec.push(arc.clone());
-	}
-	arc
-}
-
-/// Removed a monitor configuration callback, such that it will no longer be
-/// called when a monitor is connected to or disconnected from the system.
-///
-/// # Thread Safety
-/// This function may be called from any thread.
-///
-/// # See Also
-/// - [MonitorCallback]
-pub fn remove_monitor_callback(f: Arc<MonitorCallback>)
-{
-	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
-	{
-		(*vec).retain(|cb| !Arc::ptr_eq(&f, cb));
-	}
-}
-
-extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
-{
-	let monitor = Monitor::from_glfw(mon);
-	let event = match ev as u32
-	{
-		| GLFW_CONNECTED => MonitorEvent::Connected,
-		| GLFW_DISCONNECTED => MonitorEvent::Disconnected,
-		| _ => return,
-	};
-
-	#[cfg(feature = "linkme")]
-	for cb in __MONITOR_CALLBACKS
-	{
-		cb(&monitor, event);
-	}
-
-	if let Ok(vec) = MONITOR_CALLBACKS.read()
-	{
-		for cb in &*vec
-		{
-			cb(&monitor, event);
-		}
-	}
-}
-
-pub(crate) fn set_monitor_callback()
-{
-	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
 }
