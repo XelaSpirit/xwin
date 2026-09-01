@@ -1,8 +1,6 @@
 //! Window related functions of XWin
 //!
-//! # Window Guide
-//! TODO -
-//! ## Context Related Hints
+//! TODO documentation
 
 mod builder;
 pub(crate) mod context;
