@@ -9,8 +9,6 @@ use std::{
 
 use crate::{
 	bind::{
-		GLFWgammaramp,
-		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -25,6 +23,8 @@ use crate::{
 		glfwSetGamma,
 		glfwSetGammaRamp,
 		glfwSetMonitorUserPointer,
+		GLFWgammaramp,
+		GLFWmonitor,
 	},
 	core::ScreenCoordinates,
 	err::XErr,
@@ -246,7 +246,7 @@ impl Monitor
 	/// This function must only be called from the main thread.
 	///
 	/// # See Also
-	/// - [primary_monitor]
+	/// - [Monitor::primary]
 	pub fn all() -> Result<Vec<Monitor>, XErr>
 	{
 		let mut count = 0i32;
@@ -272,7 +272,8 @@ impl Monitor
 	/// This function must only be called from the main thread.
 	///
 	/// # Remarks
-	/// The primary monitor is always first in the [Vec] returned by [monitors]
+	/// The primary monitor is always first in the [Vec] returned by
+	/// [Monitor::all]
 	pub fn primary() -> Result<Monitor, XErr>
 	{
 		let monitor = Monitor(unsafe { glfwGetPrimaryMonitor() });
