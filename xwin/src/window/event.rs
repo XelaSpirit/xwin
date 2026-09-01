@@ -209,10 +209,10 @@ extern "C" fn key_cb(win: *mut GLFWwindow, key: c_int, scancode: c_int, action: 
 {
 	let _ = WindowContext::with_context(&win, "", |ctx| {
 		ctx.post_key(KeyEvent {
-			key: Key::from_glfw(key as u32),
+			key: unsafe { Key::from_glfw(key as u32) },
 			scancode,
-			action: ButtonEvent::from_glfw(action as u32),
-			mods: Modifiers::from_glfw(mods),
+			action: unsafe { ButtonEvent::from_glfw(action as u32) },
+			mods: Modifiers::from_glfw_crate(mods),
 		})
 	});
 }
@@ -226,9 +226,9 @@ extern "C" fn mouse_button_cb(win: *mut GLFWwindow, button: c_int, action: c_int
 {
 	let _ = WindowContext::with_context(&win, "", |ctx| {
 		ctx.post_mouse(MouseEvent::Button(MouseButtonEvent {
-			button: MouseButton::from_glfw(button as u32),
-			action: ButtonState::from_glfw(action as u32),
-			mods:   Modifiers::from_glfw(mods),
+			button: unsafe { MouseButton::from_glfw(button as u32) },
+			action: unsafe { ButtonState::from_glfw(action as u32) },
+			mods:   Modifiers::from_glfw_crate(mods),
 		}))
 	});
 }

@@ -9,7 +9,10 @@ pub mod control;
 pub(crate) mod event;
 pub mod input;
 
-use std::sync::mpsc::channel;
+use std::{
+	ptr::null_mut,
+	sync::mpsc::channel,
+};
 
 pub use builder::*;
 
@@ -34,10 +37,6 @@ unsafe impl Sync for Window {}
 
 impl Window
 {
-	// =======================
-	//       CONSTRUCTOR
-	// =======================
-
 	/// This function creates a window. Options controlling how the window and
 	/// its context should be created are specified using other functions in
 	/// [WindowBuilder].
@@ -152,22 +151,59 @@ impl Window
 				},
 				rx,
 			)?
-			.map(|win| Self::from_glfw(win))
+			.map(|win| unsafe { Self::from_glfw(win) })
 	}
 
-	// =======================
-	//     CRATE FUNCTIONS
-	// =======================
+	/// Convert the [Window] to a raw `*mut GLFWwindow`.
+	///
+	/// XWin will no longer own this pointer, and it is up to the caller to keep
+	/// track of it, and to destroy the GLFW window when it is no longer in use.
+	///
+	/// Refer to the GLFW documentation for more information about how to handle
+	/// this pointer safely.
+	#[cfg(feature = "glfw")]
+	pub unsafe fn to_glfw(mut self) -> *mut GLFWwindow
+	{
+		let value = self.0;
+		self.0 = null_mut();
+		value
+	}
 
-	/// Construct a new [Window] from a `GLFWwindow`.
-	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
+	/// Returns the raw `*mut GLFWwindow` that this [Window] represents.
+	///
+	/// XWin still treats this pointer as being owned by the [Window], meaning
+	/// XWin will destroy the GLFW window if this [Window] is dropped.
+	///
+	/// Refer to the GLFW documentation for more information about how to handle
+	/// this pointer safely.
+	#[cfg(feature = "glfw")]
+	pub unsafe fn as_glfw(&self) -> *mut GLFWwindow
+	{
+		self.0
+	}
+
+	/// Construct a new [Window] from a `*mut GLFWwindow`.
+	///
+	/// After this function is called, the specified window pointer should no
+	/// longer be used by the caller, as it is treated as owned by the returned
+	/// [Window]. This window will also be automatically destroyed by XWin when
+	/// the returned [Window] is dropped, meaning copies of the given pointer
+	/// will no longer be valid.
+	///
+	/// Note that XWin can only automatically destroy the window if GLFW was
+	/// initialized with [crate::core::init].
+	#[cfg(feature = "glfw")]
+	pub unsafe fn from_glfw(win: *mut GLFWwindow) -> Self
 	{
 		Window(win)
 	}
 
-	// =======================
-	//    PRIVATE FUNCTIONS
-	// =======================
+	/// Construct a new [Window] from a `GLFWwindow`.
+	#[cfg(not(feature = "glfw"))]
+	pub(crate) unsafe fn from_glfw(win: *mut GLFWwindow) -> Self
+	{
+		Window(win)
+	}
 
 	fn attr(&self, attr: u32) -> Result<bool, XErr>
 	{
@@ -217,6 +253,11 @@ impl Drop for Window
 	/// This function must not be called from a callback.
 	fn drop(&mut self)
 	{
+		if self.0 == null_mut()
+		{
+			return;
+		}
+
 		let (tx, rx) = channel();
 		if let Ok(xwin) = XWin::get()
 		{

@@ -22,6 +22,7 @@ use crate::{
 		exec::XWinMessage,
 	},
 	error::XErr,
+	window::Window,
 };
 
 /// Almost all positions and sizes in XWin are measured in
@@ -75,7 +76,7 @@ impl Monitor
 			.post_rcv(XWinMessage::GetMonitors(tx), rx)?
 			.map(|vec| {
 				vec.iter()
-					.map(|monitor| Self::from_glfw(*monitor))
+					.map(|monitor| unsafe { Self::from_glfw(*monitor) })
 					.collect()
 			})
 	}
@@ -103,7 +104,7 @@ impl Monitor
 			.read()
 			.unwrap()
 			.post_rcv(XWinMessage::GetPrimaryMonitor(tx), rx)?
-			.map(|monitor| Self::from_glfw(monitor))
+			.map(|monitor| unsafe { Self::from_glfw(monitor) })
 	}
 
 	/// Returns the position `(x, y)`, in **screen coordinates**, of the
@@ -377,14 +378,43 @@ impl Monitor
 		self.try_set_gamma_ramp(ramp).unwrap_or_default()
 	}
 
+	/// Convert the [Monitor] to a raw `*mut GLFWmonitor`.
+	///
+	/// Refer to the GLFW documentation for further information about how to
+	/// handle this pointer safely.
+	#[cfg(feature = "glfw")]
+	pub unsafe fn to_glfw(self) -> *mut GLFWmonitor
+	{
+		self.0
+	}
+
+	/// Returns the raw `*mut GLFWmonitor` that this [Monitor] represents.
+	///
+	/// Refer to the GLFW documentation for more information about how to handle
+	/// this pointer safely.
+	#[cfg(feature = "glfw")]
+	pub unsafe fn as_glfw(&self) -> *mut GLFWmonitor
+	{
+		self.0
+	}
+
+	/// Construct a new [Monitor] from a `*mut GLFWmonitor`.
+	#[cfg(feature = "glfw")]
+	pub unsafe fn from_glfw(monitor: *mut GLFWmonitor) -> Self
+	{
+		Monitor(monitor)
+	}
+
 	/// Construct a new [Monitor] from a `GLFWmonitor`.
-	pub(crate) fn from_glfw(monitor: *mut GLFWmonitor) -> Self
+	#[cfg(not(feature = "glfw"))]
+	pub(crate) unsafe fn from_glfw(monitor: *mut GLFWmonitor) -> Self
 	{
 		Monitor(monitor)
 	}
 
 	/// Return the `GLFWmonitor` held by this [Monitor].
-	pub(crate) fn as_glfw(&self) -> *mut GLFWmonitor
+	#[cfg(not(feature = "glfw"))]
+	pub(crate) unsafe fn as_glfw(&self) -> *mut GLFWmonitor
 	{
 		self.0
 	}

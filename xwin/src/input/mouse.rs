@@ -25,6 +25,7 @@ use crate::{
 	error::XErr,
 	glfw_enum,
 };
+use crate::monitor::Monitor;
 
 #[repr(u8)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +42,25 @@ pub enum MouseButton
 	Eight  = GLFW_MOUSE_BUTTON_8 as u8,
 }
 glfw_enum!(MouseButton, u8);
+
+#[repr(u32)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CursorMode
+{
+	/// Default. Makes the cursor visible and behave normally.
+	Normal   = GLFW_CURSOR_NORMAL,
+	/// Makes the cursor invisible when it is over the content area of the
+	/// window but does not restrict the cursor from leaving.
+	Hidden   = GLFW_CURSOR_HIDDEN,
+	/// Hides and grabs the cursor, providing virtual and unlimited cursor
+	/// movement. This is useful for implementing, for example, 3D camera
+	/// controls.
+	Disabled = GLFW_CURSOR_DISABLED,
+	/// Makes the cursor visible and confines it to the content area of the
+	/// window.
+	Captured = GLFW_CURSOR_CAPTURED,
+}
+glfw_enum!(CursorMode, u32, CursorMode::Normal);
 
 pub enum CursorShape
 {
@@ -76,25 +96,6 @@ pub enum CursorShape
 	Custom(Image, Pixels),
 }
 
-#[repr(u32)]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CursorMode
-{
-	/// Default. Makes the cursor visible and behave normally.
-	Normal   = GLFW_CURSOR_NORMAL,
-	/// Makes the cursor invisible when it is over the content area of the
-	/// window but does not restrict the cursor from leaving.
-	Hidden   = GLFW_CURSOR_HIDDEN,
-	/// Hides and grabs the cursor, providing virtual and unlimited cursor
-	/// movement. This is useful for implementing, for example, 3D camera
-	/// controls.
-	Disabled = GLFW_CURSOR_DISABLED,
-	/// Makes the cursor visible and confines it to the content area of the
-	/// window.
-	Captured = GLFW_CURSOR_CAPTURED,
-}
-glfw_enum!(CursorMode, u32, CursorMode::Normal);
-
 pub struct Cursor(*mut GLFWcursor);
 
 impl Cursor
@@ -116,15 +117,44 @@ impl Cursor
 			.map(|win| Self::from_glfw(win))
 	}
 
+	/// Convert the [Cursor] to a raw `*mut GLFWcursor`.
+	///
+	/// Refer to the GLFW documentation for further information about how to
+	/// handle this pointer safely.
+	#[cfg(feature = "glfw")]
+	pub fn to_glfw(self) -> *mut GLFWcursor
+	{
+		self.0
+	}
+
+	/// Returns the raw `*mut GLFWcursor` for the [Cursor].
+	///
+	/// Refer to the GLFW documentation for further information about how to
+	/// handle this pointer safely.
+	#[cfg(feature = "glfw")]
+	pub fn as_glfw(&self) -> *mut GLFWcursor
+	{
+		self.0
+	}
+
+	/// Construct a new [Cursor] from a raw `*mut GLFWcursor`.
+	#[cfg(feature = "glfw")]
+	pub fn from_glfw(cursor: *mut GLFWcursor) -> Self
+	{
+		Self(cursor)
+	}
+
+	#[cfg(not(feature = "glfw"))]
 	pub(crate) fn as_glfw(&self) -> *mut GLFWcursor
 	{
 		self.0
 	}
 
 	/// Construct a new [Cursor] from a `GLFWcursor`.
-	fn from_glfw(win: *mut GLFWcursor) -> Self
+	#[cfg(not(feature = "glfw"))]
+	fn from_glfw(cursor: *mut GLFWcursor) -> Self
 	{
-		Self(win)
+		Self(cursor)
 	}
 }
 

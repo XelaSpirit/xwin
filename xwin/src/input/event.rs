@@ -24,15 +24,31 @@ pub enum JoystickConfigEvent
 
 impl JoystickConfigEvent
 {
-	pub(crate) fn from_glfw(jid: u32, evt: u32) -> Self
+	#[cfg(feature = "glfw")]
+	pub unsafe fn from_glfw(jid: u32, evt: u32) -> Self
+	{
+		unsafe { Self::from_glfw_crate(jid, evt) }
+	}
+
+	#[cfg(feature = "glfw")]
+	pub fn as_glfw(&self) -> u32
+	{
+		match self
+		{
+			| JoystickConfigEvent::Connected(_) => GLFW_CONNECTED,
+			| JoystickConfigEvent::Disconnected(_) => GLFW_DISCONNECTED,
+		}
+	}
+
+	pub(crate) fn from_glfw_crate(jid: u32, evt: u32) -> Self
 	{
 		if evt == GLFW_CONNECTED
 		{
-			JoystickConfigEvent::Connected(Joystick::from_glfw(jid))
+			JoystickConfigEvent::Connected(unsafe { Joystick::from_glfw(jid) })
 		}
 		else
 		{
-			JoystickConfigEvent::Disconnected(Joystick::from_glfw(jid))
+			JoystickConfigEvent::Disconnected(unsafe { Joystick::from_glfw(jid) })
 		}
 	}
 }
@@ -83,7 +99,7 @@ extern "C" fn joystick_handler(jid: c_int, evt: c_int)
 		{
 			if let Some(tx) = xwin.joystick_tx()
 			{
-				let _ = tx.send(JoystickConfigEvent::from_glfw(jid as u32, evt as u32));
+				let _ = tx.send(JoystickConfigEvent::from_glfw_crate(jid as u32, evt as u32));
 			}
 		}
 	}

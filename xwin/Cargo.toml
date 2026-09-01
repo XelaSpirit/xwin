@@ -5,7 +5,8 @@ edition = "2024"
 
 [features]
 default = ["vulkan"]
-vulkan = []
+vulkan = ["glfw"]
+glfw = []
 
 [build-dependencies]
 cmake = "0.1"

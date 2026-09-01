@@ -300,7 +300,7 @@ impl Window
 	pub fn try_cursor_mode(&self) -> Result<CursorMode, XErr>
 	{
 		self.input_mode(GLFW_CURSOR)
-			.map(|v| CursorMode::from_glfw(v))
+			.map(|v| unsafe { CursorMode::from_glfw(v) })
 	}
 
 	/// Returns the position of the cursor, in [ScreenCoordinates], relative to
@@ -336,10 +336,10 @@ impl Window
 	pub fn try_key_state(&self, key: Key) -> Result<ButtonState, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::GetKey(self.0, key.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::GetKey(self.0, unsafe { key.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns whether lock key mods are enabled for the window. See
@@ -368,7 +368,7 @@ impl Window
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::GetMouseButton(self.0, button.as_glfw() as i32, tx),
+			XWinMessage::GetMouseButton(self.0, unsafe { button.as_glfw() } as i32, tx),
 			rx,
 		)?
 	}
@@ -445,7 +445,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_cursor_mode(&mut self, mode: CursorMode) -> Result<(), XErr>
 	{
-		self.set_input_mode(GLFW_CURSOR, mode.as_glfw())
+		self.set_input_mode(GLFW_CURSOR, unsafe { mode.as_glfw() })
 	}
 
 	/// Sets the position, in [ScreenCoordinates], of the cursor relative to the

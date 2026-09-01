@@ -35,7 +35,7 @@ impl MonitorEvent
 {
 	fn from_glfw(mon: *mut GLFWmonitor, evt: u32) -> MonitorEvent
 	{
-		let monitor = Monitor::from_glfw(mon);
+		let monitor = unsafe { Monitor::from_glfw(mon) };
 		if evt == GLFW_CONNECTED
 		{
 			MonitorEvent::Connected(monitor)
@@ -69,7 +69,7 @@ impl Clone for MonitorEvent
 		{
 			| MonitorEvent::Connected(monitor) =>
 			{
-				MonitorEvent::Connected(Monitor(monitor.as_glfw()))
+				MonitorEvent::Connected(Monitor(unsafe { monitor.as_glfw() }))
 			},
 			| MonitorEvent::Disconnected(name) => MonitorEvent::Disconnected(name.clone()),
 		}

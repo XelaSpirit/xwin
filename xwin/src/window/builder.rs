@@ -142,7 +142,7 @@ impl WindowBuilder
 				},
 				rx,
 			)?
-			.map(|win| Window::from_glfw(win))
+			.map(|win| unsafe { Window::from_glfw(win) })
 	}
 
 	/// Specifies whether the windowed mode window will be resizable by the

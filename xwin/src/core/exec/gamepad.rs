@@ -72,7 +72,7 @@ pub(super) fn joystick_buttons(jid: i32, tx: Sender<Result<Option<Vec<ButtonStat
 			Some(
 				unsafe { std::slice::from_raw_parts(buttons, count as usize) }
 					.iter()
-					.map(|value| ButtonState::from_glfw(*value as u32))
+					.map(|value| unsafe { ButtonState::from_glfw(*value as u32) })
 					.collect(),
 			)
 		}
@@ -93,7 +93,7 @@ pub(super) fn joystick_hats(jid: i32, tx: Sender<Result<Option<Vec<JoystickHatSt
 			Some(
 				unsafe { std::slice::from_raw_parts(hats, count as usize) }
 					.iter()
-					.map(|value| JoystickHatState::from_glfw(*value as u32))
+					.map(|value| unsafe { JoystickHatState::from_glfw(*value as u32) })
 					.collect(),
 			)
 		}

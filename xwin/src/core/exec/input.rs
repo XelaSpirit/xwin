@@ -124,13 +124,17 @@ pub(super) fn key_name(key: i32, scancode: i32, tx: Sender<Result<Option<String>
 pub(super) fn key(win: *mut GLFWwindow, key: i32, tx: Sender<Result<ButtonState, XErr>>)
 {
 	let value = unsafe { glfwGetKey(win, key) };
-	let _ = tx.send(XErr::result(|| ButtonState::from_glfw(value as u32)));
+	let _ = tx.send(XErr::result(|| unsafe {
+		ButtonState::from_glfw(value as u32)
+	}));
 }
 
 pub(super) fn mouse_button(win: *mut GLFWwindow, button: i32, tx: Sender<Result<ButtonState, XErr>>)
 {
 	let value = unsafe { glfwGetMouseButton(win, button) };
-	let _ = tx.send(XErr::result(|| ButtonState::from_glfw(value as u32)));
+	let _ = tx.send(XErr::result(|| unsafe {
+		ButtonState::from_glfw(value as u32)
+	}));
 }
 
 pub(super) fn cursor_pos(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates<f64>, XErr>>)

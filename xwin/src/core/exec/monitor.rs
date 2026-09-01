@@ -45,7 +45,7 @@ pub(super) fn gamma_ramp(mon: *mut GLFWmonitor, tx: Sender<Result<GammaRamp, XEr
 	let _ = tx.send(match unsafe { ramp.as_ref() }
 	{
 		| None => Err(XErr::get()),
-		| Some(gr) => Ok(GammaRamp::from_glfw(gr)),
+		| Some(gr) => Ok(GammaRamp::from_glfw_crate(gr)),
 	});
 }
 
@@ -61,7 +61,7 @@ pub(super) fn monitor_video_mode(mon: *mut GLFWmonitor, tx: Sender<Result<VideoM
 	let _ = tx.send(match unsafe { vm_ptr.as_ref() }
 	{
 		| None => Err(XErr::get()),
-		| Some(vm) => Ok(VideoMode::from_glfw(vm)),
+		| Some(vm) => Ok(VideoMode::from_glfw_crate(vm)),
 	});
 }
 
@@ -79,7 +79,7 @@ pub(super) fn monitor_video_modes(mon: *mut GLFWmonitor, tx: Sender<Result<Vec<V
 			let mut vec = Vec::<VideoMode>::with_capacity(count as usize);
 			for idx in 0..count as usize
 			{
-				vec.push(VideoMode::from_glfw(unsafe { &*vms.add(idx) }));
+				vec.push(VideoMode::from_glfw_crate(unsafe { &*vms.add(idx) }));
 			}
 			Ok(vec)
 		},

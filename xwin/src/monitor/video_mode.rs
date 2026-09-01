@@ -51,8 +51,27 @@ impl VideoMode
 		self.refresh_rate
 	}
 
+	#[cfg(feature = "glfw")]
+	pub fn as_glfw(&self) -> GLFWvidmode
+	{
+		GLFWvidmode {
+			width:       self.width,
+			height:      self.height,
+			redBits:     self.red_bits,
+			greenBits:   self.green_bits,
+			blueBits:    self.blue_bits,
+			refreshRate: self.refresh_rate,
+		}
+	}
+
+	#[cfg(feature = "glfw")]
+	pub fn from_glfw(vm: &GLFWvidmode) -> Self
+	{
+		Self::from_glfw_crate(vm)
+	}
+
 	/// Construct a video mode from a GLFWvidmode
-	pub(crate) fn from_glfw(vm: &GLFWvidmode) -> Self
+	pub(crate) fn from_glfw_crate(vm: &GLFWvidmode) -> Self
 	{
 		VideoMode {
 			width:        vm.width,

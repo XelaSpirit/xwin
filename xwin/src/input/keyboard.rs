@@ -323,10 +323,10 @@ impl Key
 	pub fn try_name(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::GetKeyName(self.as_glfw() as i32, -1, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::GetKeyName(unsafe { self.as_glfw() } as i32, -1, tx),
+			rx,
+		)?
 	}
 
 	/// See [Key::try_name].
@@ -405,7 +405,19 @@ impl Modifiers
 		self.0 & GLFW_MOD_SUPER as u8 > 0
 	}
 
-	pub(crate) fn from_glfw(value: i32) -> Modifiers
+	#[cfg(feature = "glfw")]
+	pub fn from_glfw(value: u8) -> Self
+	{
+		Self::from_glfw_crate(value as i32)
+	}
+	
+	#[cfg(feature = "glfw")]
+	pub fn as_glfw(&self) -> u8
+	{
+		self.0
+	}
+	
+	pub(crate) fn from_glfw_crate(value: i32) -> Modifiers
 	{
 		Modifiers((value & 0xff) as u8)
 	}

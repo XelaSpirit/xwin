@@ -54,6 +54,19 @@ impl Image
 		self.2 = parts.2;
 	}
 
+	#[cfg(feature = "glfw")]
+	pub fn to_glfw(mut self) -> GLFWimage
+	{
+		self.1 = 0;
+		self.0
+	}
+
+	#[cfg(feature = "glfw")]
+	pub fn from_glfw(img: GLFWimage) -> Self
+	{
+		Self(img, img.width as usize * img.height as usize, img.width as usize * img.height as usize)
+	}
+
 	/// Returns the underlying [GLFWimage] descriptor used by GLFW APIs.
 	pub(crate) fn as_glfw(&self) -> GLFWimage
 	{

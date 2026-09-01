@@ -87,8 +87,36 @@ impl GammaRamp
 		self.blue[idx] = val;
 	}
 
+	#[cfg(feature = "glfw")]
+	pub fn to_glfw(self) -> GLFWgammaramp
+	{
+		GLFWgammaramp {
+			size:  self.size(),
+			red:   self.red.into_raw_parts().0,
+			green: self.green.into_raw_parts().0,
+			blue:  self.blue.into_raw_parts().0,
+		}
+	}
+
+	#[cfg(feature = "glfw")]
+	pub fn as_glfw(&mut self) -> GLFWgammaramp
+	{
+		GLFWgammaramp {
+			size:  self.size,
+			red:   self.red.as_mut_ptr(),
+			green: self.green.as_mut_ptr(),
+			blue:  self.blue.as_mut_ptr(),
+		}
+	}
+
+	#[cfg(feature = "glfw")]
+	pub unsafe fn from_glfw(ramp: GLFWgammaramp) -> Self
+	{
+		Self::from_glfw_crate(&ramp)
+	}
+
 	/// Construct a gamma ramp from a GLFWgammaramp.
-	pub(crate) fn from_glfw(ramp: &GLFWgammaramp) -> Self
+	pub(crate) fn from_glfw_crate(ramp: &GLFWgammaramp) -> Self
 	{
 		let mut gr = GammaRamp {
 			size:  ramp.size,

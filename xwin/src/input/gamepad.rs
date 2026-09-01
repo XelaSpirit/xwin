@@ -29,6 +29,13 @@ use crate::{
 		GLFW_HAT_RIGHT,
 		GLFW_HAT_UP,
 		GLFW_JOYSTICK_1,
+		GLFW_JOYSTICK_10,
+		GLFW_JOYSTICK_11,
+		GLFW_JOYSTICK_12,
+		GLFW_JOYSTICK_13,
+		GLFW_JOYSTICK_14,
+		GLFW_JOYSTICK_15,
+		GLFW_JOYSTICK_16,
 		GLFW_JOYSTICK_2,
 		GLFW_JOYSTICK_3,
 		GLFW_JOYSTICK_4,
@@ -37,13 +44,6 @@ use crate::{
 		GLFW_JOYSTICK_7,
 		GLFW_JOYSTICK_8,
 		GLFW_JOYSTICK_9,
-		GLFW_JOYSTICK_10,
-		GLFW_JOYSTICK_11,
-		GLFW_JOYSTICK_12,
-		GLFW_JOYSTICK_13,
-		GLFW_JOYSTICK_14,
-		GLFW_JOYSTICK_15,
-		GLFW_JOYSTICK_16,
 		GLFWgamepadstate,
 	},
 	core::{
@@ -128,48 +128,95 @@ impl GamepadState
 		self.axes[axis.as_glfw() as usize]
 	}
 
-	pub(crate) fn from_glfw(state: GLFWgamepadstate) -> GamepadState
+	#[cfg(feature = "glfw")]
+	pub unsafe fn from_glfw(state: GLFWgamepadstate) -> GamepadState
 	{
-		GamepadState {
+		Self::from_glfw_crate(state)
+	}
+	
+	#[cfg(feature = "glfw")]
+	pub fn as_glfw(&self) -> GLFWgamepadstate
+	{
+		GLFWgamepadstate
+		{
 			buttons: [
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_A as usize] as u32),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_B as usize] as u32),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_X as usize] as u32),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_Y as usize] as u32),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as usize] as u32,
-				),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as usize] as u32,
-				),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_BACK as usize] as u32),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_START as usize] as u32),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_GUIDE as usize] as u32),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB as usize] as u32,
-				),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as usize] as u32,
-				),
-				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP as usize] as u32),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as usize] as u32,
-				),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN as usize] as u32,
-				),
-				ButtonState::from_glfw(
-					state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT as usize] as u32,
-				),
+				self.buttons[GLFW_GAMEPAD_BUTTON_A as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_B as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_X as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_Y as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_BACK as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_START as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_GUIDE as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN as usize].as_glfw(),
+				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT as usize].as_glfw(),
 			],
-			axes:    [
-				state.axes[GLFW_GAMEPAD_AXIS_LEFT_X as usize],
-				state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y as usize],
-				state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X as usize],
-				state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y as usize],
-				state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER as usize],
-				state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER as usize],
-			],
+			axes: [
+				self.axes[GLFW_GAMEPAD_AXIS_LEFT_X as usize],
+				self.axes[GLFW_GAMEPAD_AXIS_LEFT_Y as usize],
+				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_X as usize],
+				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y as usize],
+				self.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER as usize],
+				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER as usize],
+			]
+		}
+	}
+
+	pub(crate) fn from_glfw_crate(state: GLFWgamepadstate) -> GamepadState
+	{
+		unsafe {
+			GamepadState {
+				buttons: [
+					ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_A as usize] as u32),
+					ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_B as usize] as u32),
+					ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_X as usize] as u32),
+					ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_Y as usize] as u32),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as usize] as u32,
+					),
+					ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_BACK as usize] as u32),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_START as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_GUIDE as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN as usize] as u32,
+					),
+					ButtonState::from_glfw(
+						state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT as usize] as u32,
+					),
+				],
+				axes:    [
+					state.axes[GLFW_GAMEPAD_AXIS_LEFT_X as usize],
+					state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y as usize],
+					state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X as usize],
+					state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y as usize],
+					state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER as usize],
+					state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER as usize],
+				],
+			}
 		}
 	}
 }
@@ -273,10 +320,10 @@ impl Joystick
 	pub fn try_axes(&self) -> Result<Option<Vec<f32>>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::JoystickAxes(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickAxes(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the state of all buttons of the joystick.
@@ -290,10 +337,10 @@ impl Joystick
 	pub fn try_buttons(&self) -> Result<Option<Vec<ButtonState>>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::JoystickButtons(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickButtons(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the human-readable name of the gamepad from the gamepad mapping
@@ -309,10 +356,10 @@ impl Joystick
 	pub fn try_gamepad_name(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::GetGamepadName(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::GetGamepadName(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the SDL compatible GUID, as a hexadecimal string, of the
@@ -338,10 +385,10 @@ impl Joystick
 	pub fn try_guid(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::JoystickGuid(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickGuid(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the state of all hats of the joystick.
@@ -355,10 +402,10 @@ impl Joystick
 	pub fn try_hats(&self) -> Result<Option<Vec<JoystickHatState>>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::JoystickHats(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickHats(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns whether the joystick is both present and has a gamepad mapping.
@@ -374,7 +421,7 @@ impl Joystick
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.read().unwrap().post_rcv(
-			XWinMessage::JoystickIsGamepad(self.as_glfw() as i32, tx),
+			XWinMessage::JoystickIsGamepad(unsafe { self.as_glfw() } as i32, tx),
 			rx,
 		)?
 	}
@@ -390,10 +437,10 @@ impl Joystick
 	pub fn try_is_present(&self) -> Result<bool, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::JoystickPresent(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickPresent(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the name of the joystick.
@@ -407,10 +454,10 @@ impl Joystick
 	pub fn try_name(&self) -> Result<Option<String>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?
-			.read()
-			.unwrap()
-			.post_rcv(XWinMessage::JoystickName(self.as_glfw() as i32, tx), rx)?
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::JoystickName(unsafe { self.as_glfw() } as i32, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the state of the joystick remapped to an Xbox-like gamepad.
@@ -435,8 +482,11 @@ impl Joystick
 		XWin::get()?
 			.read()
 			.unwrap()
-			.post_rcv(XWinMessage::GetGamepadState(self.as_glfw() as i32, tx), rx)?
-			.map(|opt| opt.map(|state| GamepadState::from_glfw(state)))
+			.post_rcv(
+				XWinMessage::GetGamepadState(unsafe { self.as_glfw() } as i32, tx),
+				rx,
+			)?
+			.map(|opt| opt.map(|state| GamepadState::from_glfw_crate(state)))
 	}
 }
 

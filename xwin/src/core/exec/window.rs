@@ -115,7 +115,7 @@ pub(super) fn window_monitor(win: *mut GLFWwindow, tx: Sender<Result<Option<Moni
 		}
 		else
 		{
-			Some(Monitor::from_glfw(monitor))
+			Some(unsafe { Monitor::from_glfw(monitor) })
 		}
 	}));
 }
