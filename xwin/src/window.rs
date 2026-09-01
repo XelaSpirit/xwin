@@ -22,32 +22,6 @@
 //! what kind of context is created. See [context related
 //! hints](#context-related-hints) in the Window Guide below.
 //!
-//! ## Context Object Sharing
-//! When creating a window and its OpenGL or OpenGL ES context, you can specify
-//! another window whose context the new one should share its objects (textures,
-//! vertex, and element buffers, etc.) with.
-//!
-//! Object sharing is implemented by the operating system and graphics driver.
-//! On platforms where it is possible to choose which types of object are
-//! shared, XWin requests that all types are shared.
-//!
-//! ```
-//! # use xwin::core::{Platform, XWin};
-//! # use xwin::window::Window;
-//! # XWin::set_platform(Platform::Null);
-//! # XWin::init(|| {
-//! # let other_window = Window::create(1920, 1080, "Title", None, None).unwrap();
-//! let win = Window::create(1920, 1080, "title", None, Some(other_window));
-//! # });
-//! // TODO - this is panicking somehow (first Window::create() returning Err)
-//! // TODO - also applies to doctest below
-//! ```
-//!
-//! See the relevant chapter of the OpenGL or OpenGL ES reference documents for
-//! more information. The name and number of this chapter unfortunately varies
-//! between versions and APIs, but has at times been named *Shared Object and
-//! Multiple Contexts*.
-//!
 //! ## Offscreen Contexts
 //! XWin doesn't support creating contexts without an associated window.
 //! However, contexts with hidden windows can be created with the
@@ -56,11 +30,10 @@
 //! ```
 //! # use xwin::core::{Platform, XWin};
 //! # use xwin::window::WindowBuilder;
-//! # XWin::set_platform(Platform::Null);
 //! # XWin::init(|| {
 //! let win = WindowBuilder::new()
 //! 	.visible(false)
-//! 	.create(1920, 1080, "title", None, None);
+//! 	.create(1920, 1080, "title", None);
 //! # });
 //! ```
 //!
@@ -84,11 +57,6 @@
 //! context of the correct type. A context can only be current for a single
 //! thread at a time, and a thread can only have a single context current at a
 //! time.
-//!
-//! When moving a [Window] between threads, the context is automatically
-//! detached from its current thread before moving.
-//!
-//! TODO - implement above
 //!
 //! The context of a window is made current with [Window::set_current]. Whether
 //! a window's context is current can be queried with [Window::is_current].
@@ -133,8 +101,8 @@ mod callback;
 use std::{
 	ptr::null_mut,
 	sync::{
-		mpsc::channel,
 		Mutex,
+		mpsc::channel,
 	},
 };
 
@@ -143,18 +111,18 @@ pub use callback::*;
 
 use crate::{
 	bind::{
+		GLFW_FALSE,
+		GLFW_TRUE,
+		GLFWwindow,
 		glfwGetCurrentContext,
 		glfwMakeContextCurrent,
 		glfwSetWindowShouldClose,
 		glfwSwapInterval,
 		glfwWindowShouldClose,
-		GLFWwindow,
-		GLFW_FALSE,
-		GLFW_TRUE,
 	},
 	core::{
-		exec::XWinMessage,
 		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 	monitor::Monitor,
@@ -166,9 +134,6 @@ pub struct Window
 	lock:   Mutex<()>,
 }
 
-unsafe impl Send for Window {}
-unsafe impl Sync for Window {}
-
 impl Window
 {
 	/// This function creates a window and its associated OpenGL or OpenGL ES
@@ -177,9 +142,6 @@ impl Window
 	///
 	/// Successful creation does not change which context is current. Before you
 	/// can use the newly created context, you need to make it current.
-	///
-	/// For information about the `share` parameter, see [Context Object
-	/// Sharing](crate::window#context-object-sharing).
 	///
 	/// The created window, framebuffer, and context may differ from what you
 	/// requested, as not all parameters and hints are hard constraints. This
@@ -217,9 +179,6 @@ impl Window
 	///
 	/// The swap interval is not set during window creation and the initial
 	/// value may vary depending on driver settings and defaults.
-	///
-	/// # Panics
-	/// Will panic if `title` contains any null bytes (`\0`).
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidEnum],
@@ -277,22 +236,22 @@ impl Window
 		height: i32,
 		title: &str,
 		monitor: Option<Monitor>,
-		share: Option<Window>,
 	) -> Result<Self, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::CreateWindow {
-				width,
-				height,
-				title: String::from(title),
-				monitor,
-				share,
-				builder: None,
-				tx,
-			},
-			rx,
-		)?
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::CreateWindow {
+					width,
+					height,
+					title: String::from(title),
+					monitor,
+					builder: None,
+					tx,
+				},
+				rx,
+			)?
+			.map(|win| Self::from_glfw(win))
 	}
 
 	/// If this window is the current context, detaches it.
@@ -411,9 +370,6 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # Thread Safety
-	/// This function may be called from any thread. Access is not synchronized.
 	pub fn set_should_close(&self, value: bool) -> Result<(), XErr>
 	{
 		let lock = self.lock.lock().unwrap();
@@ -433,6 +389,41 @@ impl Window
 		drop(lock);
 
 		XErr::result(|| {})
+	}
+
+	/// This function returns the title of this window. This is the title set
+	/// previously by [Window::create] or [Window::set_title].
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	///
+	/// # Remarks
+	/// The returned title is currently a copy of the title last set by
+	/// [Window::create] or [Window::set_title]. It does not include any
+	/// additional text which may be appended by the platform or another
+	/// program.
+	pub fn title(&self) -> Result<String, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowTitle(self.window, tx), rx)?
+	}
+
+	/// This function sets the title of this window.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::PlatformError],
+	/// and [XErr::InvalidValue].
+	///
+	/// # Remarks
+	/// - **MacOS**: The window title will not be updated until the next time
+	///   you process events.
+	pub fn set_title(&self, title: &str) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowTitle(self.window, String::from(title), tx),
+			rx,
+		)?
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.
@@ -465,17 +456,9 @@ impl Drop for Window
 	{
 		let _ = self.detach();
 		let (tx, rx) = channel();
-		match XWin::get()
+		if let Ok(xwin) = XWin::get()
 		{
-			| Err(_) =>
-			{},
-			| Ok(xwin) =>
-			{
-				let _ = xwin.post_rcv(
-					XWinMessage::DestroyWindow(Window::from_glfw(self.window), tx),
-					rx,
-				);
-			},
-		};
+			let _ = xwin.post_rcv(XWinMessage::DestroyWindow(self.window, tx), rx);
+		}
 	}
 }

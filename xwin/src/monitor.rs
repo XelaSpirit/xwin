@@ -247,8 +247,8 @@ mod work_area;
 use std::{
 	os::raw::c_void,
 	sync::{
-		mpsc::channel,
 		Mutex,
+		mpsc::channel,
 	},
 };
 
@@ -259,15 +259,15 @@ pub use work_area::*;
 
 use crate::{
 	bind::{
+		GLFWmonitor,
 		glfwGetMonitorUserPointer,
 		glfwSetMonitorUserPointer,
-		GLFWmonitor,
 	},
 	core::{
-		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 };
@@ -313,7 +313,13 @@ impl Monitor
 	pub fn all() -> Result<Vec<Monitor>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitors(tx), rx)?
+		XWin::get()?
+			.post_rcv(XWinMessage::GetMonitors(tx), rx)?
+			.map(|vec| {
+				vec.iter()
+					.map(|monitor| Self::from_glfw(*monitor))
+					.collect()
+			})
 	}
 
 	/// Returns the primary monitor. This is usually the monitor where elements
@@ -329,7 +335,9 @@ impl Monitor
 	pub fn primary() -> Result<Monitor, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetPrimaryMonitor(tx), rx)?
+		XWin::get()?
+			.post_rcv(XWinMessage::GetPrimaryMonitor(tx), rx)?
+			.map(|monitor| Self::from_glfw(monitor))
 	}
 
 	/// Returns the position `(x, y)`, in **screen coordinates**, of the
@@ -340,10 +348,7 @@ impl Monitor
 	pub fn position(&self) -> Result<ScreenCoordinates, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorPos(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorPos(self.monitor, tx), rx)?
 	}
 
 	/// Returns the position, in screen coordinates, of the upper-left corner of
@@ -361,10 +366,7 @@ impl Monitor
 	pub fn work_area(&self) -> Result<WorkArea, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorWorkArea(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorWorkArea(self.monitor, tx), rx)?
 	}
 
 	/// Returns the size, in millimetres, of the display area
@@ -384,10 +386,7 @@ impl Monitor
 	pub fn physical_size(&self) -> Result<Millimeters, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorPhysicalSize(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorPhysicalSize(self.monitor, tx), rx)?
 	}
 
 	/// Returns the content scale for the specified monitor.
@@ -411,10 +410,7 @@ impl Monitor
 	pub fn content_scale(&self) -> Result<ContentScale, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorContentScale(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorContentScale(self.monitor, tx), rx)?
 	}
 
 	/// Returns a human-readable name, encoded as UTF-8, of this monitor. The
@@ -426,10 +422,7 @@ impl Monitor
 	pub fn name(&self) -> Result<String, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorName(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorName(self.monitor, tx), rx)?
 	}
 
 	/// Sets the user-defined pointer of this monitor. The current value is
@@ -488,10 +481,7 @@ impl Monitor
 	pub fn video_modes(&self) -> Result<Vec<VideoMode>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorVideoModes(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoModes(self.monitor, tx), rx)?
 	}
 
 	/// This function returns the current video mode of this monitor. If you
@@ -506,10 +496,7 @@ impl Monitor
 	pub fn video_mode(&self) -> Result<VideoMode, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GetMonitorVideoMode(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoMode(self.monitor, tx), rx)?
 	}
 
 	/// This function generates an appropriately sized gamma ramp from the
@@ -531,10 +518,7 @@ impl Monitor
 	pub fn set_gamma(&self, gamma: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetGamma(Monitor::from_glfw(self.monitor), gamma, tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::SetGamma(self.monitor, gamma, tx), rx)?
 	}
 
 	/// Returns the current gamma ramp of this monitor.
@@ -549,10 +533,7 @@ impl Monitor
 	pub fn gamma_ramp(&self) -> Result<GammaRamp, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::GammaRamp(Monitor::from_glfw(self.monitor), tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::GammaRamp(self.monitor, tx), rx)?
 	}
 
 	/// Sets the current gamma ramp for this monitor. The original gamma ramp
@@ -579,10 +560,7 @@ impl Monitor
 	pub fn set_gamma_ramp(&self, ramp: GammaRamp) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetGammaRamp(Monitor::from_glfw(self.monitor), ramp, tx),
-			rx,
-		)?
+		XWin::get()?.post_rcv(XWinMessage::SetGammaRamp(self.monitor, ramp, tx), rx)?
 	}
 
 	/// Construct a new [Monitor] from a `GLFWmonitor`.

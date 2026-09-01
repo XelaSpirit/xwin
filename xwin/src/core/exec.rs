@@ -12,6 +12,8 @@ use std::{
 
 use crate::{
 	bind::{
+		GLFWmonitor,
+		GLFWwindow,
 		glfwCreateWindow,
 		glfwDefaultWindowHints,
 		glfwDestroyWindow,
@@ -25,8 +27,10 @@ use crate::{
 		glfwGetPrimaryMonitor,
 		glfwGetVideoMode,
 		glfwGetVideoModes,
+		glfwGetWindowTitle,
 		glfwSetGamma,
 		glfwSetGammaRamp,
+		glfwSetWindowTitle,
 	},
 	core::{
 		ContentScale,
@@ -41,10 +45,7 @@ use crate::{
 		VideoMode,
 		WorkArea,
 	},
-	window::{
-		Window,
-		WindowBuilder,
-	},
+	window::WindowBuilder,
 };
 
 /// Used internally by XWin for sending messages to the main thread, for GLFW
@@ -55,18 +56,18 @@ pub(crate) enum XWinMessage
 	Terminate,
 
 	// Monitor
-	GetMonitors(Sender<Result<Vec<Monitor>, XErr>>),
-	GetPrimaryMonitor(Sender<Result<Monitor, XErr>>),
-	GetMonitorPos(Monitor, Sender<Result<ScreenCoordinates, XErr>>),
-	GetMonitorWorkArea(Monitor, Sender<Result<WorkArea, XErr>>),
-	GetMonitorPhysicalSize(Monitor, Sender<Result<Millimeters, XErr>>),
-	GetMonitorContentScale(Monitor, Sender<Result<ContentScale, XErr>>),
-	GetMonitorName(Monitor, Sender<Result<String, XErr>>),
-	GetMonitorVideoModes(Monitor, Sender<Result<Vec<VideoMode>, XErr>>),
-	GetMonitorVideoMode(Monitor, Sender<Result<VideoMode, XErr>>),
-	SetGamma(Monitor, f32, Sender<Result<(), XErr>>),
-	GammaRamp(Monitor, Sender<Result<GammaRamp, XErr>>),
-	SetGammaRamp(Monitor, GammaRamp, Sender<Result<(), XErr>>),
+	GetMonitors(Sender<Result<Vec<*mut GLFWmonitor>, XErr>>),
+	GetPrimaryMonitor(Sender<Result<*mut GLFWmonitor, XErr>>),
+	GetMonitorPos(*mut GLFWmonitor, Sender<Result<ScreenCoordinates, XErr>>),
+	GetMonitorWorkArea(*mut GLFWmonitor, Sender<Result<WorkArea, XErr>>),
+	GetMonitorPhysicalSize(*mut GLFWmonitor, Sender<Result<Millimeters, XErr>>),
+	GetMonitorContentScale(*mut GLFWmonitor, Sender<Result<ContentScale, XErr>>),
+	GetMonitorName(*mut GLFWmonitor, Sender<Result<String, XErr>>),
+	GetMonitorVideoModes(*mut GLFWmonitor, Sender<Result<Vec<VideoMode>, XErr>>),
+	GetMonitorVideoMode(*mut GLFWmonitor, Sender<Result<VideoMode, XErr>>),
+	SetGamma(*mut GLFWmonitor, f32, Sender<Result<(), XErr>>),
+	GammaRamp(*mut GLFWmonitor, Sender<Result<GammaRamp, XErr>>),
+	SetGammaRamp(*mut GLFWmonitor, GammaRamp, Sender<Result<(), XErr>>),
 
 	// Window
 	CreateWindow
@@ -75,12 +76,14 @@ pub(crate) enum XWinMessage
 		height:  i32,
 		title:   String,
 		monitor: Option<Monitor>,
-		share:   Option<Window>,
 		builder: Option<WindowBuilder>,
-		tx:      Sender<Result<Window, XErr>>,
+		tx:      Sender<Result<*mut GLFWwindow, XErr>>,
 	},
-	DestroyWindow(Window, Sender<Result<(), XErr>>),
+	DestroyWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	GetWindowTitle(*mut GLFWwindow, Sender<Result<String, XErr>>),
+	SetWindowTitle(*mut GLFWwindow, String, Sender<Result<(), XErr>>),
 }
+unsafe impl Send for XWinMessage {}
 
 impl XWin
 {
@@ -135,19 +138,46 @@ impl XWin
 					height,
 					title,
 					monitor,
-					share,
 					builder,
 					tx,
-				} => create_window(width, height, title, monitor, share, builder, tx),
+				} => create_window(width, height, title, monitor, builder, tx),
 				| XWinMessage::DestroyWindow(win, tx) => destroy_window(win, tx),
+				| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
+				| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
 			};
 		}
 	}
 }
 
-fn destroy_window(win: Window, tx: Sender<Result<(), XErr>>)
+fn set_window_title(win: *mut GLFWwindow, title: String, tx: Sender<Result<(), XErr>>)
 {
-	unsafe { glfwDestroyWindow(win.get_glfw()) };
+	let str = CString::new(title)
+		.map_err(|_| XErr::InvalidValue(String::from("Window title may not contain null bytes")));
+	if let Err(err) = str
+	{
+		let _ = tx.send(Err(err));
+		return;
+	}
+	let str = str.unwrap();
+
+	unsafe { glfwSetWindowTitle(win, str.as_ptr()) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn window_title(win: *mut GLFWwindow, tx: Sender<Result<String, XErr>>)
+{
+	let title = unsafe { glfwGetWindowTitle(win) };
+	let _ = tx.send(XErr::result(|| {
+		unsafe { CStr::from_ptr(title) }
+			.to_str()
+			.unwrap_or_else(|_| "")
+			.to_owned()
+	}));
+}
+
+fn destroy_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwDestroyWindow(win) };
 	let _ = tx.send(XErr::result(|| ()));
 }
 
@@ -156,9 +186,8 @@ fn create_window(
 	height: i32,
 	title: String,
 	monitor: Option<Monitor>,
-	share: Option<Window>,
 	builder: Option<WindowBuilder>,
-	tx: Sender<Result<Window, XErr>>,
+	tx: Sender<Result<*mut GLFWwindow, XErr>>,
 )
 {
 	unsafe { glfwDefaultWindowHints() };
@@ -177,7 +206,16 @@ fn create_window(
 		}
 	}
 
-	let str = CString::new(title).expect("Title contains a null byte");
+	let str = CString::new(title)
+		.map_err(|_| XErr::InvalidValue(String::from("Title contains a null byte")));
+	if let Err(err) = str
+	{
+		let _ = tx.send(Err(err));
+		return;
+	}
+
+	let str = str.unwrap();
+
 	let win = unsafe {
 		glfwCreateWindow(
 			width,
@@ -188,11 +226,7 @@ fn create_window(
 				| Some(mon) => mon.get_glfw(),
 				| None => null_mut(),
 			},
-			match share
-			{
-				| Some(win) => win.get_glfw(),
-				| None => null_mut(),
-			},
+			null_mut(),
 		)
 	};
 
@@ -202,20 +236,20 @@ fn create_window(
 	}
 	else
 	{
-		tx.send(Ok(Window::from_glfw(win)))
+		tx.send(Ok(win))
 	};
 }
 
-fn set_gamma_ramp(mon: Monitor, ramp: GammaRamp, tx: Sender<Result<(), XErr>>)
+fn set_gamma_ramp(mon: *mut GLFWmonitor, ramp: GammaRamp, tx: Sender<Result<(), XErr>>)
 {
 	let mut ramp = ramp;
-	ramp.with_glfw(|ramp| unsafe { glfwSetGammaRamp(mon.get_glfw(), ramp) });
+	ramp.with_glfw(|ramp| unsafe { glfwSetGammaRamp(mon, ramp) });
 	let _ = tx.send(XErr::result(|| ()));
 }
 
-fn gamma_ramp(mon: Monitor, tx: Sender<Result<GammaRamp, XErr>>)
+fn gamma_ramp(mon: *mut GLFWmonitor, tx: Sender<Result<GammaRamp, XErr>>)
 {
-	let ramp = unsafe { glfwGetGammaRamp(mon.get_glfw()) };
+	let ramp = unsafe { glfwGetGammaRamp(mon) };
 	let _ = tx.send(match unsafe { ramp.as_ref() }
 	{
 		| None => Err(XErr::get()),
@@ -223,15 +257,15 @@ fn gamma_ramp(mon: Monitor, tx: Sender<Result<GammaRamp, XErr>>)
 	});
 }
 
-fn set_gamma(mon: Monitor, gamma: f32, tx: Sender<Result<(), XErr>>)
+fn set_gamma(mon: *mut GLFWmonitor, gamma: f32, tx: Sender<Result<(), XErr>>)
 {
-	unsafe { glfwSetGamma(mon.get_glfw(), gamma) };
+	unsafe { glfwSetGamma(mon, gamma) };
 	let _ = tx.send(XErr::result(|| ()));
 }
 
-fn monitor_video_mode(mon: Monitor, tx: Sender<Result<VideoMode, XErr>>)
+fn monitor_video_mode(mon: *mut GLFWmonitor, tx: Sender<Result<VideoMode, XErr>>)
 {
-	let vm_ptr = unsafe { glfwGetVideoMode(mon.get_glfw()) };
+	let vm_ptr = unsafe { glfwGetVideoMode(mon) };
 	let _ = tx.send(match unsafe { vm_ptr.as_ref() }
 	{
 		| None => Err(XErr::get()),
@@ -239,10 +273,10 @@ fn monitor_video_mode(mon: Monitor, tx: Sender<Result<VideoMode, XErr>>)
 	});
 }
 
-fn monitor_video_modes(mon: Monitor, tx: Sender<Result<Vec<VideoMode>, XErr>>)
+fn monitor_video_modes(mon: *mut GLFWmonitor, tx: Sender<Result<Vec<VideoMode>, XErr>>)
 {
 	let mut count = 0i32;
-	let vms = unsafe { glfwGetVideoModes(mon.get_glfw(), &mut count) };
+	let vms = unsafe { glfwGetVideoModes(mon, &mut count) };
 	let _ = tx.send(
 		if vms.is_null()
 		{
@@ -260,9 +294,9 @@ fn monitor_video_modes(mon: Monitor, tx: Sender<Result<Vec<VideoMode>, XErr>>)
 	);
 }
 
-fn monitor_name(mon: Monitor, tx: Sender<Result<String, XErr>>)
+fn monitor_name(mon: *mut GLFWmonitor, tx: Sender<Result<String, XErr>>)
 {
-	let title = unsafe { glfwGetMonitorName(mon.get_glfw()) };
+	let title = unsafe { glfwGetMonitorName(mon) };
 	let _ = tx.send(
 		if title.is_null()
 		{
@@ -278,11 +312,11 @@ fn monitor_name(mon: Monitor, tx: Sender<Result<String, XErr>>)
 	);
 }
 
-fn monitor_content_scale(mon: Monitor, tx: Sender<Result<ContentScale, XErr>>)
+fn monitor_content_scale(mon: *mut GLFWmonitor, tx: Sender<Result<ContentScale, XErr>>)
 {
 	let mut xscale = 0.0f32;
 	let mut yscale = 0.0f32;
-	unsafe { glfwGetMonitorContentScale(mon.get_glfw(), &mut xscale, &mut yscale) };
+	unsafe { glfwGetMonitorContentScale(mon, &mut xscale, &mut yscale) };
 	let _ = tx.send(XErr::result(|| {
 		ContentScale {
 			x: xscale,
@@ -291,11 +325,11 @@ fn monitor_content_scale(mon: Monitor, tx: Sender<Result<ContentScale, XErr>>)
 	}));
 }
 
-fn monitor_physical_size(mon: Monitor, tx: Sender<Result<Millimeters, XErr>>)
+fn monitor_physical_size(mon: *mut GLFWmonitor, tx: Sender<Result<Millimeters, XErr>>)
 {
 	let mut width = 0i32;
 	let mut height = 0i32;
-	unsafe { glfwGetMonitorPhysicalSize(mon.get_glfw(), &mut width, &mut height) };
+	unsafe { glfwGetMonitorPhysicalSize(mon, &mut width, &mut height) };
 	let _ = tx.send(XErr::result(|| {
 		Millimeters {
 			x: width,
@@ -304,12 +338,12 @@ fn monitor_physical_size(mon: Monitor, tx: Sender<Result<Millimeters, XErr>>)
 	}));
 }
 
-fn monitor_work_area(mon: Monitor, tx: Sender<Result<WorkArea, XErr>>)
+fn monitor_work_area(mon: *mut GLFWmonitor, tx: Sender<Result<WorkArea, XErr>>)
 {
 	let mut area = WorkArea::default();
 	unsafe {
 		glfwGetMonitorWorkarea(
-			mon.get_glfw(),
+			mon,
 			&mut area.pos.x,
 			&mut area.pos.y,
 			&mut area.size.x,
@@ -319,14 +353,14 @@ fn monitor_work_area(mon: Monitor, tx: Sender<Result<WorkArea, XErr>>)
 	let _ = tx.send(XErr::result(|| area));
 }
 
-fn monitor_pos(mon: Monitor, tx: Sender<Result<ScreenCoordinates, XErr>>)
+fn monitor_pos(mon: *mut GLFWmonitor, tx: Sender<Result<ScreenCoordinates, XErr>>)
 {
 	let mut pos = ScreenCoordinates::default();
-	unsafe { glfwGetMonitorPos(mon.get_glfw(), &mut pos.x, &mut pos.y) };
+	unsafe { glfwGetMonitorPos(mon, &mut pos.x, &mut pos.y) };
 	let _ = tx.send(XErr::result(|| pos));
 }
 
-fn primary_monitor(tx: Sender<Result<Monitor, XErr>>)
+fn primary_monitor(tx: Sender<Result<*mut GLFWmonitor, XErr>>)
 {
 	let monitor = unsafe { glfwGetPrimaryMonitor() };
 	let _ = tx.send(
@@ -336,12 +370,12 @@ fn primary_monitor(tx: Sender<Result<Monitor, XErr>>)
 		}
 		else
 		{
-			Ok(Monitor::from_glfw(monitor))
+			Ok(monitor)
 		},
 	);
 }
 
-fn monitors(tx: Sender<Result<Vec<Monitor>, XErr>>)
+fn monitors(tx: Sender<Result<Vec<*mut GLFWmonitor>, XErr>>)
 {
 	let mut count = 0i32;
 	let monitors = unsafe { glfwGetMonitors(&mut count) };
@@ -353,10 +387,10 @@ fn monitors(tx: Sender<Result<Vec<Monitor>, XErr>>)
 		}
 		else
 		{
-			let mut vec = Vec::<Monitor>::with_capacity(count as usize);
+			let mut vec = Vec::with_capacity(count as usize);
 			for idx in 0..count as usize
 			{
-				vec.push(Monitor::from_glfw(unsafe { *monitors.add(idx) }));
+				vec.push(unsafe { *monitors.add(idx) });
 			}
 			Ok(vec)
 		},

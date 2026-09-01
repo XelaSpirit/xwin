@@ -105,12 +105,13 @@ impl GammaRamp
 	pub(crate) fn from_glfw(ramp: &GLFWgammaramp) -> Self
 	{
 		let mut gr = GammaRamp {
-			size: ramp.size,
-			red: Vec::with_capacity(ramp.size as usize),
+			size:  ramp.size,
+			red:   Vec::with_capacity(ramp.size as usize),
 			green: Vec::with_capacity(ramp.size as usize),
-			blue: Vec::with_capacity(ramp.size as usize),
+			blue:  Vec::with_capacity(ramp.size as usize),
 		};
-		for idx in 0..ramp.size as usize {
+		for idx in 0..ramp.size as usize
+		{
 			gr.red.push(unsafe { *ramp.red.add(idx) });
 			gr.green.push(unsafe { *ramp.green.add(idx) });
 			gr.blue.push(unsafe { *ramp.blue.add(idx) });

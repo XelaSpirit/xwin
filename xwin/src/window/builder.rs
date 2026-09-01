@@ -181,9 +181,6 @@ impl WindowBuilder
 	/// set in this [WindowBuilder]. See [Window::create] for a more complete
 	/// description.
 	///
-	/// # Panics
-	/// Will panic if `title` contains any null bytes (`\0`).
-	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidEnum],
 	/// [XErr::InvalidValue], [XErr::ApiUnavailable],
@@ -195,22 +192,22 @@ impl WindowBuilder
 		height: i32,
 		title: &str,
 		monitor: Option<Monitor>,
-		share: Option<Window>,
 	) -> Result<Window, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::CreateWindow {
-				width,
-				height,
-				title: String::from(title),
-				monitor,
-				share,
-				builder: Some(self.clone()),
-				tx,
-			},
-			rx,
-		)?
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::CreateWindow {
+					width,
+					height,
+					title: String::from(title),
+					monitor,
+					builder: Some(self.clone()),
+					tx,
+				},
+				rx,
+			)?
+			.map(|win| Window::from_glfw(win))
 	}
 
 	/// Specifies whether the windowed mode window will be resizable by the
@@ -787,7 +784,8 @@ impl WindowBuilder
 	/// Applies the hints stored in this `WindowBuilder`.
 	///
 	/// # Errors
-	/// Possible errors include [XErr::NotInitialized] and [XErr::InvalidEnum]
+	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidEnum] and
+	/// [XErr::InvalidValue].
 	///
 	/// # Thread Safety
 	/// This function must be called on the main thread.
@@ -808,7 +806,9 @@ impl WindowBuilder
 
 		for hint in &self.strings
 		{
-			let str = CString::new(hint.1.as_str()).expect("String hint contains a null byte");
+			let str = CString::new(hint.1.as_str()).map_err(|_| {
+				XErr::InvalidValue(String::from("String hint contains a null byte"))
+			})?;
 			unsafe { glfwWindowHintString(hint.0 as i32, str.as_ptr()) };
 			XErr::result(|| ())?;
 		}
