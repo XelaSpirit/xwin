@@ -55,7 +55,7 @@ impl Window
 	}
 
 	/// Close the window config event channel. See
-	/// [WindowConfig::set_config_channel].
+	/// [Window::set_config_channel].
 	pub fn clear_config_channel(&self) -> Result<(), XErr>
 	{
 		if let Some(ctx) = WindowContext::get(&self.0)
@@ -75,67 +75,67 @@ impl Window
 	//     QUERY FUNCTIONS
 	// =======================
 
-	/// See [WindowConfig::try_content_scale].
+	/// See [Window::try_content_scale].
 	pub fn content_scale(&self) -> ContentScale
 	{
 		self.try_content_scale().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_frame_size].
+	/// See [Window::try_frame_size].
 	pub fn frame_size(&self) -> (u32, u32, u32, u32)
 	{
 		self.try_frame_size().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_framebuffer_size].
+	/// See [Window::try_framebuffer_size].
 	pub fn framebuffer_size(&self) -> Pixels
 	{
 		self.try_framebuffer_size().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_has_transparent_framebuffer].
+	/// See [Window::try_has_transparent_framebuffer].
 	pub fn has_transparent_framebuffer(&self) -> bool
 	{
 		self.try_has_transparent_framebuffer().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_is_decorated].
+	/// See [Window::try_is_decorated].
 	pub fn is_decorated(&self) -> bool
 	{
 		self.try_is_decorated().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_is_floating].
+	/// See [Window::try_is_floating].
 	pub fn is_floating(&self) -> bool
 	{
 		self.try_is_floating().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_is_resizable].
+	/// See [Window::try_is_resizable].
 	pub fn is_resizable(&self) -> bool
 	{
 		self.try_is_resizable().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_opacity].
+	/// See [Window::try_opacity].
 	pub fn opacity(&self) -> f32
 	{
 		self.try_opacity().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_title].
+	/// See [Window::try_title].
 	pub fn title(&self) -> String
 	{
 		self.try_title().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_will_focus].
+	/// See [Window::try_will_focus].
 	pub fn will_focus(&self) -> bool
 	{
 		self.try_will_focus().unwrap_or_default()
 	}
 
-	/// See [WindowConfig::try_will_iconify].
+	/// See [Window::try_will_iconify].
 	pub fn will_iconify(&self) -> bool
 	{
 		self.try_will_iconify().unwrap_or_default()
@@ -145,61 +145,61 @@ impl Window
 	//    UPDATE FUNCTIONS
 	// =======================
 
-	/// See [WindowConfig::try_set_aspect_ratio].
+	/// See [Window::try_set_aspect_ratio].
 	pub fn set_aspect_ratio(&mut self, ratio: Option<(i32, i32)>)
 	{
 		let _ = self.try_set_aspect_ratio(ratio);
 	}
 
-	/// See [WindowConfig::try_set_decorated].
+	/// See [Window::try_set_decorated].
 	pub fn set_decorated(&mut self, value: bool)
 	{
 		let _ = self.try_set_decorated(value);
 	}
 
-	/// See [WindowConfig::try_set_floating].
+	/// See [Window::try_set_floating].
 	pub fn set_floating(&mut self, value: bool)
 	{
 		let _ = self.try_set_floating(value);
 	}
 
-	/// See [WindowConfig::try_set_icon].
+	/// See [Window::try_set_icon].
 	pub fn set_icon(&mut self, icons: Vec<Image>)
 	{
 		let _ = self.try_set_icon(icons);
 	}
 
-	/// See [WindowConfig::try_set_opacity].
+	/// See [Window::try_set_opacity].
 	pub fn set_opacity(&mut self, opacity: f32)
 	{
 		let _ = self.try_set_opacity(opacity);
 	}
 
-	/// See [WindowConfig::try_set_resizable].
+	/// See [Window::try_set_resizable].
 	pub fn set_resizable(&mut self, value: bool)
 	{
 		let _ = self.try_set_resizable(value);
 	}
 
-	/// See [WindowConfig::try_set_size_limits].
+	/// See [Window::try_set_size_limits].
 	pub fn set_size_limits(&mut self, min: ScreenCoordinates<i32>, max: ScreenCoordinates<i32>)
 	{
 		let _ = self.try_set_size_limits(min, max);
 	}
 
-	/// See [WindowConfig::try_set_title].
+	/// See [Window::try_set_title].
 	pub fn set_title(&mut self, title: &str)
 	{
 		let _ = self.try_set_title(title);
 	}
 
-	/// See [WindowConfig::try_set_will_focus].
+	/// See [Window::try_set_will_focus].
 	pub fn set_will_focus(&mut self, value: bool)
 	{
 		let _ = self.try_set_will_focus(value);
 	}
 
-	/// See [WindowConfig::try_set_will_iconify].
+	/// See [Window::try_set_will_iconify].
 	pub fn set_will_iconify(&mut self, value: bool)
 	{
 		let _ = self.try_set_will_iconify(value);
@@ -330,14 +330,14 @@ impl Window
 	}
 
 	/// This function returns the title of the window. This is the title set
-	/// previously by [Window::try_new] or [WindowConfig::set_title].
+	/// previously by [Window::try_new] or [Window::set_title].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	///
 	/// # Remarks
 	/// The returned title is currently a copy of the title last set by
-	/// [Window::try_new] or [WindowConfig::set_title]. It does not include any
+	/// [Window::try_new] or [Window::set_title]. It does not include any
 	/// additional text which may be appended by the platform or another
 	/// program.
 	pub fn try_title(&self) -> Result<String, XErr>

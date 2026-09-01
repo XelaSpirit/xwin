@@ -298,40 +298,40 @@ impl Modifiers
 	pub const SHIFT: Modifiers = Modifiers(GLFW_MOD_SHIFT as u8);
 	pub const SUPER: Modifiers = Modifiers(GLFW_MOD_SUPER as u8);
 
-	/// Returns whether the [SHIFT] flag is set.
-	pub fn is_shift(&self) -> bool
-	{
-		self.0 & GLFW_MOD_SHIFT as u8 > 0
-	}
-
-	/// Returns whether the [CONTROL] flag is set.
-	pub fn is_control(&self) -> bool
-	{
-		self.0 & GLFW_MOD_CONTROL as u8 > 0
-	}
-
-	/// Returns whether the [ALT] flag is set.
+	/// Returns whether the [ALT](Modifiers::ALT) flag is set.
 	pub fn is_alt(&self) -> bool
 	{
 		self.0 & GLFW_MOD_ALT as u8 > 0
 	}
 
-	/// Returns whether the [SUPER] flag is set.
-	pub fn is_super(&self) -> bool
-	{
-		self.0 & GLFW_MOD_SUPER as u8 > 0
-	}
-
-	/// Returns whether the [CAPS_LOCK] flag is set.
+	/// Returns whether the [CAPS_LOCK](Modifiers::CAPS_LOCK) flag is set.
 	pub fn is_caps_lock(&self) -> bool
 	{
 		self.0 & GLFW_MOD_CAPS_LOCK as u8 > 0
 	}
 
-	/// Returns whether the [NUM_LOCK] flag is set.
+	/// Returns whether the [CONTROL](Modifiers::CONTROL) flag is set.
+	pub fn is_control(&self) -> bool
+	{
+		self.0 & GLFW_MOD_CONTROL as u8 > 0
+	}
+
+	/// Returns whether the [NUM_LOCK](Modifiers::NUM_LOCK) flag is set.
 	pub fn is_num_lock(&self) -> bool
 	{
 		self.0 & GLFW_MOD_NUM_LOCK as u8 > 0
+	}
+
+	/// Returns whether the [SHIFT](Modifiers::SHIFT) flag is set.
+	pub fn is_shift(&self) -> bool
+	{
+		self.0 & GLFW_MOD_SHIFT as u8 > 0
+	}
+
+	/// Returns whether the [SUPER](Modifiers::SUPER) flag is set.
+	pub fn is_super(&self) -> bool
+	{
+		self.0 & GLFW_MOD_SUPER as u8 > 0
 	}
 
 	pub(crate) fn from_glfw(value: i32) -> Modifiers

@@ -48,7 +48,7 @@ impl Window
 	///
 	/// The key channel deals with physical keys, with layout independent key
 	/// tokens named after their values in the standard US keyboard layout. If
-	/// you want to input text, use [WindowInput::set_char_channel] instead.
+	/// you want to input text, use [Window::set_char_channel] instead.
 	///
 	/// When a window loses input focus, it will generate synthetic key release
 	/// events for all pressed keys with associated key tokens. These synthetic
@@ -58,7 +58,7 @@ impl Window
 	/// that machine. Scancodes are intended to allow users to bind keys that
 	/// don't have an associated key token. Such keys will be sent with
 	/// [Key::Unknown]. Their state is not saved and so it cannot be queried
-	/// with [WindowInput::key_state].
+	/// with [Window::key_state].
 	///
 	/// Sometimes XWin needs to generate synthetic key events, in which case the
 	/// scancode may be zero.
@@ -82,7 +82,7 @@ impl Window
 		}
 	}
 
-	/// Close the key even channel. See [WindowInput::set_key_channel].
+	/// Close the key even channel. See [Window::set_key_channel].
 	pub fn clear_key_channel<T>(&mut self) -> Result<(), XErr>
 	{
 		if let Some(ctx) = WindowContext::get(&self.0)
@@ -102,55 +102,55 @@ impl Window
 	//     QUERY FUNCTIONS
 	// =======================
 
-	/// See [WindowInput::try_cursor_mode].
+	/// See [Window::try_cursor_mode].
 	pub fn cursor_mode(&self) -> CursorMode
 	{
 		self.try_cursor_mode().unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_cursor_pos].
+	/// See [Window::try_cursor_pos].
 	pub fn cursor_pos(&self) -> ScreenCoordinates<f64>
 	{
 		self.try_cursor_pos().unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_key_state].
+	/// See [Window::try_key_state].
 	pub fn key_state(&self, key: Key) -> ButtonState
 	{
 		self.try_key_state(key).unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_lock_key_mods].
+	/// See [Window::try_lock_key_mods].
 	pub fn lock_key_mods(&self) -> bool
 	{
 		self.try_lock_key_mods().unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_mouse_state].
+	/// See [Window::try_mouse_state].
 	pub fn mouse_state(&self, button: MouseButton) -> ButtonState
 	{
 		self.try_mouse_state(button).unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_raw_mouse_motion].
+	/// See [Window::try_raw_mouse_motion].
 	pub fn raw_mouse_motion(&self) -> bool
 	{
 		self.try_raw_mouse_motion().unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_sticky_keys].
+	/// See [Window::try_sticky_keys].
 	pub fn sticky_keys(&self) -> bool
 	{
 		self.try_sticky_keys().unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_sticky_mouse].
+	/// See [Window::try_sticky_mouse].
 	pub fn sticky_mouse(&self) -> bool
 	{
 		self.try_sticky_mouse().unwrap_or_default()
 	}
 
-	/// See [WindowInput::try_will_mouse_passthrough].
+	/// See [Window::try_will_mouse_passthrough].
 	pub fn will_mouse_passthrough(&self) -> bool
 	{
 		self.try_will_mouse_passthrough().unwrap_or_default()
@@ -160,49 +160,49 @@ impl Window
 	//    UPDATE FUNCTIONS
 	// =======================
 
-	/// See [WindowInput::try_set_cursor].
+	/// See [Window::try_set_cursor].
 	pub fn set_cursor(&mut self, cursor: Cursor)
 	{
 		let _ = self.try_set_cursor(cursor);
 	}
 
-	/// See [WindowInput::try_set_cursor_mode].
+	/// See [Window::try_set_cursor_mode].
 	pub fn set_cursor_mode(&mut self, mode: CursorMode)
 	{
 		let _ = self.try_set_cursor_mode(mode);
 	}
 
-	/// See [WindowInput::try_set_cursor_pos].
+	/// See [Window::try_set_cursor_pos].
 	pub fn set_cursor_pos(&mut self, pos: ScreenCoordinates<f64>)
 	{
 		let _ = self.try_set_cursor_pos(pos);
 	}
 
-	/// See [WindowInput::try_set_lock_key_mods].
+	/// See [Window::try_set_lock_key_mods].
 	pub fn set_lock_key_mods(&mut self, value: bool)
 	{
 		let _ = self.try_set_lock_key_mods(value);
 	}
 
-	/// See [WindowInput::try_set_mouse_passthrough].
+	/// See [Window::try_set_mouse_passthrough].
 	pub fn set_mouse_passthrough(&mut self, value: bool)
 	{
 		let _ = self.try_set_mouse_passthrough(value);
 	}
 
-	/// See [WindowInput::try_set_raw_mouse_motion].
+	/// See [Window::try_set_raw_mouse_motion].
 	pub fn set_raw_mouse_motion(&mut self, value: bool)
 	{
 		let _ = self.try_set_raw_mouse_motion(value);
 	}
 
-	/// See [WindowInput::try_set_sticky_keys].
+	/// See [Window::try_set_sticky_keys].
 	pub fn set_sticky_keys(&mut self, value: bool)
 	{
 		let _ = self.try_set_sticky_keys(value);
 	}
 
-	/// See [WindowInput::try_set_sticky_mouse].
+	/// See [Window::try_set_sticky_mouse].
 	pub fn set_sticky_mouse(&mut self, value: bool)
 	{
 		let _ = self.try_set_sticky_mouse(value);
@@ -224,7 +224,7 @@ impl Window
 
 	/// Returns the position of the cursor, in [ScreenCoordinates], relative to
 	/// the upper-left corner of the content area of the window. If the cursor
-	/// is [disabled](WindowInput::set_cursor_mode) then the cursor position is
+	/// is [disabled](Window::set_cursor_mode) then the cursor position is
 	/// unbounded and limited only by the minimum and maximum values of a
 	/// double.
 	///
@@ -244,7 +244,7 @@ impl Window
 	/// [ButtonState::Release]. The action [ButtonState::Repeat] is only
 	/// reported during a key event.
 	///
-	/// If [sticky keys](WindowInput::set_sticky_keys) are enabled, this
+	/// If [sticky keys](Window::set_sticky_keys) are enabled, this
 	/// function returns [ButtonState::Press] the first time you call it for a
 	/// key that was pressed, even if that key has already been released.
 	///
@@ -262,7 +262,7 @@ impl Window
 	}
 
 	/// Returns whether lock key mods are enabled for the window. See
-	/// [WindowInput::try_set_lock_key_mods].
+	/// [Window::try_set_lock_key_mods].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
@@ -276,7 +276,7 @@ impl Window
 	/// window. The returned state is one of [ButtonState::Press] or
 	/// [ButtonState::Release].
 	///
-	/// If [sticky mouse buttons](WindowInput::set_sticky_mouse) are enabled,
+	/// If [sticky mouse buttons](Window::set_sticky_mouse) are enabled,
 	/// this function returns [ButtonState::Press] the first time you call it
 	/// for a mouse button that was pressed, even if that mouse button has
 	/// already been released.
@@ -293,7 +293,7 @@ impl Window
 	}
 
 	/// Returns whether raw mouse motion is enabled for the window. See
-	/// [WindowInput::try_set_raw_mouse_motion].
+	/// [Window::try_set_raw_mouse_motion].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
@@ -304,7 +304,7 @@ impl Window
 	}
 
 	/// Returns whether sticky keys are enabled for the window. See
-	/// [WindowInput::try_set_sticky_keys].
+	/// [Window::try_set_sticky_keys].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
@@ -315,7 +315,7 @@ impl Window
 	}
 
 	/// Returns whether sticky mouse buttons are enabled for the window. See
-	/// [WindowInput::try_set_sticky_mouse].
+	/// [Window::try_set_sticky_mouse].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
@@ -341,7 +341,7 @@ impl Window
 
 	/// Sets the cursor image to be used when the cursor is over the content
 	/// area of the window. The set cursor will only be visible when the [cursor
-	/// mode](WindowInput::try_cursor_mode) of the window is
+	/// mode](Window::try_cursor_mode) of the window is
 	/// [CursorMode::Normal].
 	///
 	/// On some platforms, the set cursor may not be visible unless the window
@@ -375,7 +375,7 @@ impl Window
 	/// **Do not use this function** to implement things like camera controls.
 	/// XWin already provides [CursorMode::Disabled] which hides the cursor,
 	/// transparently re-centers it and provides unconstrained cursor motion.
-	/// See [WindowInput::set_cursor_mode] for more information.
+	/// See [Window::set_cursor_mode] for more information.
 	///
 	/// If the cursor mode is [CursorMode::Disabled], then the cursor position
 	/// is unconstrained and limited only by the maximum and minimum values of
@@ -450,7 +450,7 @@ impl Window
 	/// Enables or disables sticky keys on the window.
 	///
 	/// If sticky keys are enabled, a key press will ensure that
-	/// [WindowInput::try_key_state] returns [ButtonState::Press] the next time
+	/// [Window::try_key_state] returns [ButtonState::Press] the next time
 	/// it is called even if the key had been released before the call. This is
 	/// useful when you are only interested in whether keys have been pressed
 	/// but not when or in which order.
@@ -465,7 +465,7 @@ impl Window
 	/// Enables or disables sticky mouse buttons on the window.
 	///
 	/// If sticky mouse buttons are enabled, a mouse button press will ensure
-	/// that [WindowInput::try_mouse_state] returns [ButtonState::Press] the
+	/// that [Window::try_mouse_state] returns [ButtonState::Press] the
 	/// next time it is called even if the mouse button has been released
 	/// before the call. This is useful when you are only interested in whether
 	/// mouse buttons have been pressed but not when or in which order.
