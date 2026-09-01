@@ -30,7 +30,7 @@ use crate::{
 			Modifiers,
 		},
 	},
-	window::ctx::WindowContext,
+	window::context::WindowContext,
 };
 
 /// Struct type for window events

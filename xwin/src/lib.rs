@@ -9,7 +9,7 @@
 //! Rather than just raw bindings, XWin wraps the GLFW API in a more
 //! rust-friendly api that should be easier to work with. Still, those familiar
 //! with the GLFW API from another language should find this library relatively
-//! easy to learn. XWin does not, however, provide any means of working with
+//! easy to learn. XWin does not, however, provide any means of rendering with
 //! OpenGL or Vulkan. This means another library will be needed to perform the
 //! actual rendering
 //!
@@ -17,22 +17,7 @@
 //!
 //! Since this is just a wrapper library, much of the documentation is taken
 //! directly from the [GLFW documentation](https://www.glfw.org/docs/latest/index.html),
-//! with some alteration where necessary to better match the XWin API.
-//!
-//! # Introduction
-//! For an introduction to the basic concepts of XWin, including initialization
-//! and error handling, see the documentation for the [core module](core).
-//!
-//! For a broad but shallow tutorial, see [#Getting Started] below.
-//!
-//! Different modules also contain their own guides introducing their
-//! functionality:
-//! - [core]
-//! - [error]
-//! - [monitor]
-//!
-//! There are also guides for the other areas of XWin:
-//! 	 - TODO window, context, monitor, input, (Vulkan?)
+//! with some alteration where necessary to better describe the XWin API.
 //!
 //! # Getting Started
 //! TODO give `Cargo.lock` entry
@@ -46,5 +31,5 @@ pub mod core;
 pub mod error;
 pub mod input;
 pub mod monitor;
-pub(crate) mod util;
+pub(crate) mod utility;
 pub mod window;

@@ -56,7 +56,7 @@ use crate::{
 	monitor::Monitor,
 	window::{
 		WindowBuilder,
-		ctx::WindowContext,
+		context::WindowContext,
 		set_window_callbacks,
 	},
 };
