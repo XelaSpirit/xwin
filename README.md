@@ -28,8 +28,20 @@ Add `xwin` to your application's `Cargo.toml`:
 
 ```toml
 [dependencies]
-xwin = { git = "https://github.com/XelaSpirit/xela_build.git", branch = "master" }
+xwin = { git = "https://github.com/XelaSpirit/xwin.git", branch = "master" }
 ```
+
+## Documentation
+
+This README provides an overview and quick start. For more complete documentation of the available modules, types,
+functions, and platform-specific behavior, generate and open the crate's Cargo documentation from the repository root:
+
+```console
+cargo doc -p xwin --all-features --open
+```
+
+Using `--all-features` includes the feature-gated GLFW and Vulkan APIs. Omit it to document only the default feature
+set.
 
 ## Quick start
 
@@ -127,7 +139,7 @@ For example:
 
 ```toml
 [dependencies]
-xwin = { git = "https://github.com/XelaSpirit/xela_build.git", branch = "master", features = ["vulkan", "tracing"] }
+xwin = { git = "https://github.com/XelaSpirit/xwin.git", branch = "master", features = ["vulkan", "tracing"] }
 ```
 
 ## Running the sample
