@@ -16,8 +16,8 @@
 //! **Reported errors are never fatal.** As long as XWin was successfully
 //! initialized, it will remain initialized and in a safe state until terminated
 //! regardless of how many errors occur. If an error occurs during
-//! initialization that causes [XWin::new] to fail, any part of the library that
-//! was initialized will be safely terminated.
+//! initialization that causes [XWin::new](crate::core::XWin::new) to fail, any
+//! part of the library that was initialized will be safely terminated.
 //!
 //! Do not rely on a currently invalid call to generate a specific error, as in
 //! the future that same call may generate a different error or become valid.

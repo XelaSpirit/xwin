@@ -10,9 +10,10 @@
 //! rust-friendly api that should be easier to work with. Still, those familiar
 //! with the GLFW API from another language should find this library relatively
 //! easy to learn. XWin does not, however, provide any means of working with
-//! OpenGL or Vulkan.
+//! OpenGL or Vulkan. This means another library will be needed to perform the
+//! actual rendering
 //!
-//! TODO - add links to Vulkan library
+//! TODO - add links to rendering library
 //!
 //! Since this is just a wrapper library, much of the documentation is taken
 //! directly from the [GLFW documentation](https://www.glfw.org/docs/latest/index.html),

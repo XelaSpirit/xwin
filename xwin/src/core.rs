@@ -5,19 +5,48 @@
 
 use std::{
 	ffi::CStr,
-	os::raw::c_char,
+	os::raw::{
+		c_char,
+		c_int,
+	},
 	ptr::null,
 };
 
 use crate::{
 	bind::{
+		GLFW_ANY_PLATFORM,
+		GLFW_COCOA_CHDIR_RESOURCES,
+		GLFW_COCOA_MENUBAR,
+		GLFW_FALSE,
+		GLFW_PLATFORM,
+		GLFW_PLATFORM_COCOA,
+		GLFW_PLATFORM_NULL,
+		GLFW_PLATFORM_WAYLAND,
+		GLFW_PLATFORM_WIN32,
+		GLFW_PLATFORM_X11,
 		GLFW_TRUE,
+		GLFW_WAYLAND_DISABLE_LIBDECOR,
+		GLFW_WAYLAND_LIBDECOR,
+		GLFW_WAYLAND_PREFER_LIBDECOR,
 		glfwGetError,
 		glfwInit,
+		glfwInitHint,
 		glfwTerminate,
 	},
 	err::XErr,
 };
+
+/// Used to configure [XWin]. Specifies the platform to use for windowing and
+/// input.
+pub enum Platform
+{
+	Any,
+	Windows,
+	Cocoa,
+	Wayland,
+	X11,
+	Null,
+}
 
 pub struct XWin(());
 
@@ -77,7 +106,7 @@ impl XWin
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn new() -> Result<XWin, XErr>
+	pub fn default() -> Result<Self, XErr>
 	{
 		let init = unsafe { glfwInit() };
 		if init != GLFW_TRUE as i32
@@ -102,6 +131,124 @@ impl XWin
 		}
 
 		Ok(XWin(()))
+	}
+
+	/// Initialize the XWin library. See [XWin::default] for a full description.
+	pub fn init(&self) -> Result<Self, XErr>
+	{
+		XWin::default()
+	}
+
+	/// Returns an uninitialized XWin that can be used to configure XWin before
+	/// initialization.
+	///
+	/// Configuration you set is never reset by XWin, but it only takes effect
+	/// during initialization. Once XWin has been initialized, any further
+	/// configuration will be ignored until the library is terminated and
+	/// initialized again (this would require dropping the XWin instance and
+	/// creating a new one).
+	///
+	/// Some configuration is platform specific. These may be set on any
+	/// platform, but they will only affect their specific platform. Other
+	/// platforms will ignore them. Setting such configuration requires no
+	/// platform-specific crates or functions
+	///
+	/// After configuration is complete, call [XWin::init] to complete
+	/// initialization of the library.
+	pub fn new() -> Self
+	{
+		XWin(())
+	}
+
+	/// Set the platform to use for windowing and input.
+	///
+	/// **Default:** [`Platform::Any`]
+	pub fn platform(&self, platform: Platform) -> &Self
+	{
+		unsafe {
+			glfwInitHint(
+				GLFW_PLATFORM as c_int,
+				match platform
+				{
+					| Platform::Any => GLFW_ANY_PLATFORM as c_int,
+					| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
+					| Platform::Cocoa => GLFW_PLATFORM_COCOA as c_int,
+					| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
+					| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
+					| Platform::Null => GLFW_PLATFORM_NULL as c_int,
+				},
+			);
+		}
+		self
+	}
+
+	/// **MacOS Specific**
+	///
+	/// Specifies whether to set the current directory to the application to the
+	/// `Contents/Resources` subdirectory of the application's bundle, if
+	/// present. This is ignored on other platforms.
+	pub fn cocoa_dir_resources(&self, value: bool) -> &Self
+	{
+		unsafe {
+			glfwInitHint(
+				GLFW_COCOA_CHDIR_RESOURCES as c_int,
+				if value
+				{
+					GLFW_TRUE as c_int
+				}
+				else
+				{
+					GLFW_FALSE as c_int
+				},
+			)
+		};
+		self
+	}
+
+	/// **MacOS Specific**
+	///
+	/// Specifies whether to create the menu bar and dock icon when XWin is
+	/// initialized. This applies whether the menu bar is created from a nib or
+	/// manually by XWin. This is ignored on other platforms.
+	pub fn cocoa_menubar(&self, value: bool) -> &Self
+	{
+		unsafe {
+			glfwInitHint(
+				GLFW_COCOA_MENUBAR as c_int,
+				if value
+				{
+					GLFW_TRUE as c_int
+				}
+				else
+				{
+					GLFW_FALSE as c_int
+				},
+			)
+		};
+		self
+	}
+
+	/// **Wayland Specific**
+	///
+	/// specifies whether to use [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor)
+	/// for window decorations where available. This is ignored on other
+	/// platforms.
+	pub fn wayland_libdecor(&self, value: bool) -> &Self
+	{
+		unsafe {
+			glfwInitHint(
+				GLFW_WAYLAND_LIBDECOR as c_int,
+				if value
+				{
+					GLFW_WAYLAND_PREFER_LIBDECOR as c_int
+				}
+				else
+				{
+					GLFW_WAYLAND_DISABLE_LIBDECOR as c_int
+				},
+			)
+		};
+		self
 	}
 }
 
