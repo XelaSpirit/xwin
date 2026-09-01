@@ -41,10 +41,10 @@ impl Image
 	}
 
 	/// Update the pixels in this [Image]. The given [Vec] must have a length
-	/// equal to `width * height`.
+	/// equal to `width * height * 4`.
 	pub fn set_pixels(&mut self, width: i32, height: i32, pixels: Vec<u8>)
 	{
-		debug_assert_eq!(width as usize * height as usize, pixels.len());
+		debug_assert_eq!(width as usize * height as usize * 4, pixels.len());
 		self.0.width = width;
 		self.0.height = height;
 
@@ -52,6 +52,12 @@ impl Image
 		self.0.pixels = parts.0;
 		self.1 = parts.1;
 		self.2 = parts.2;
+	}
+
+	/// Returns the underlying [GLFWimage] descriptor used by GLFW APIs.
+	pub(crate) fn as_glfw(&self) -> GLFWimage
+	{
+		self.0
 	}
 }
 

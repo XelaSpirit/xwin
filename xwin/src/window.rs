@@ -319,9 +319,10 @@ impl Window
 		)?
 	}
 
-	pub fn set_icon(&self, icons: Vec<Image>)
+	pub fn set_icon(&self, icons: Vec<Image>) -> Result<(), XErr>
 	{
-		todo!()
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::SetWindowIcon(self.0, icons, tx), rx)?
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.

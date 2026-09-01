@@ -12,6 +12,11 @@ use std::{
 
 use crate::{
 	bind::{
+		GLFW_CLIENT_API,
+		GLFW_NO_API,
+		GLFWimage,
+		GLFWmonitor,
+		GLFWwindow,
 		glfwCreateWindow,
 		glfwDefaultWindowHints,
 		glfwDestroyWindow,
@@ -28,18 +33,15 @@ use crate::{
 		glfwGetWindowTitle,
 		glfwSetGamma,
 		glfwSetGammaRamp,
+		glfwSetWindowIcon,
 		glfwSetWindowTitle,
 		glfwWindowHint,
-		GLFWmonitor,
-		GLFWwindow,
-		GLFW_CLIENT_API,
-		GLFW_NO_API,
 	},
 	core::{
 		ContentScale,
 		ScreenCoordinates,
-		XWin
-		,
+		XWin,
+		image::Image,
 	},
 	err::XErr,
 	monitor::{
@@ -86,7 +88,7 @@ pub(crate) enum XWinMessage
 	DestroyWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
 	GetWindowTitle(*mut GLFWwindow, Sender<Result<String, XErr>>),
 	SetWindowTitle(*mut GLFWwindow, String, Sender<Result<(), XErr>>),
-	// SetWindowIcon(Vec<Image>, Sender<Result<(), XErr>>)
+	SetWindowIcon(*mut GLFWwindow, Vec<Image>, Sender<Result<(), XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -149,9 +151,31 @@ impl XWin
 				| XWinMessage::DestroyWindow(win, tx) => destroy_window(win, tx),
 				| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
 				| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
+				| XWinMessage::SetWindowIcon(win, icons, tx) => set_window_icon(win, icons, tx),
 			};
 		}
 	}
+}
+
+fn set_window_icon(win: *mut GLFWwindow, icons: Vec<Image>, tx: Sender<Result<(), XErr>>)
+{
+	let glfw_icons: Vec<GLFWimage> = icons.iter().map(Image::as_glfw).collect();
+
+	unsafe {
+		glfwSetWindowIcon(
+			win,
+			glfw_icons.len() as i32,
+			if glfw_icons.is_empty()
+			{
+				null_mut()
+			}
+			else
+			{
+				glfw_icons.as_ptr()
+			},
+		)
+	};
+	let _ = tx.send(XErr::result(|| ()));
 }
 
 fn set_window_title(win: *mut GLFWwindow, title: String, tx: Sender<Result<(), XErr>>)
