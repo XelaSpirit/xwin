@@ -25,5 +25,5 @@ fn main()
 			}
 		}
 	})
-	.expect("Failed to initialize xwin");
+	.expect("Failed to initialize XWin");
 }
