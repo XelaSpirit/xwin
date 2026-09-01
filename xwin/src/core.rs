@@ -190,6 +190,7 @@ use crate::{
 		glfwTerminate,
 	},
 	err::XErr,
+	monitor::set_monitor_callback,
 };
 
 /// XWin has two primary coordinate systems: the **virtual screen** and the
@@ -222,6 +223,7 @@ use crate::{
 /// every other machine, for example on a Mac with a Retina display. The ratio
 /// between screen coordinates and pixels may also change at run-time depending
 /// on which monitor the window is currently considered to be on.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ScreenCoordinates
 {
 	pub x: i32,
@@ -316,12 +318,12 @@ impl XWin
 	///   text input.
 	pub fn init(&self) -> Result<Self, XErr>
 	{
+		set_monitor_callback();
+
 		#[cfg(feature = "tracing")]
 		set_error_log();
 
-		let init = unsafe { glfwInit() };
-
-		if init != GLFW_TRUE as i32
+		if unsafe { glfwInit() } != GLFW_TRUE as i32
 		{
 			Err(XErr::get())
 		}

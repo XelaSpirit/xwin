@@ -4,8 +4,13 @@
 
 use std::{
 	ffi::CStr,
-	os::raw::c_void,
+	os::raw::{
+		c_int,
+		c_void,
+	},
 };
+
+use linkme::distributed_slice;
 
 use crate::{
 	bind::{
@@ -22,17 +27,27 @@ use crate::{
 		glfwGetVideoModes,
 		glfwSetGamma,
 		glfwSetGammaRamp,
+		glfwSetMonitorCallback,
 		glfwSetMonitorUserPointer,
 		GLFWgammaramp,
 		GLFWmonitor,
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
 	},
 	core::ScreenCoordinates,
 	err::XErr,
 };
 
+pub use xwin_macro::monitor_callback;
+
+/// Container for all functions handling monitor configuration events
+#[distributed_slice]
+pub static MONITOR_CALLBACKS: [fn(&Monitor, MonitorEvent)];
+
 /// The area of a monitor not occupied by global task bars or menu bars is the
 /// work area. This is specified in screen coordinates and can be retrieved with
 /// [Monitor::work_area].
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct WorkArea
 {
 	pub pos:  ScreenCoordinates,
@@ -52,6 +67,7 @@ impl Default for WorkArea
 
 /// A struct containing the width, height, rgb bit depth, and refresh rate of a
 /// video mode for a monitor.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct VideoMode
 {
 	width:        i32,
@@ -101,6 +117,7 @@ impl VideoMode
 	}
 }
 
+#[derive(Clone, Debug)]
 pub struct GammaRamp
 {
 	size:  u32,
@@ -232,6 +249,7 @@ impl GammaRamp
 	}
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Monitor(*mut GLFWmonitor);
 
 impl Monitor
@@ -461,26 +479,6 @@ impl Monitor
 		XErr::result(|| data as usize)
 	}
 
-	/// This function sets the monitor configuration callback, or removes the
-	/// currently set callback. This is called when a monitor is connected to or
-	/// disconnected from the system.
-	///
-	/// # Returns
-	/// The previously set callback if one was set.
-	///
-	/// # Callback signature
-	/// `fn monitor_callback(monitor: &Monitor, event: MonitorEvent)`
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	pub fn set_callback<F>(&self, _callback: F) -> Result<(), XErr>
-	{
-		todo!()
-	}
-
 	/// This function returns a [Vec] of all video modes supported by this
 	/// monitor. The returned list is sorted in ascending order, first by color
 	/// bit depth (the sum of all channel depths), then by resolution area (the
@@ -633,4 +631,60 @@ impl Monitor
 		ramp.with_glfw(|ramp| unsafe { glfwSetGammaRamp(self.0, ramp) });
 		XErr::result(|| ())
 	}
+
+	fn from_glfw(monitor: *mut GLFWmonitor) -> Self
+	{
+		Monitor(monitor)
+	}
+}
+
+/// Describes a change to a monitor's configuration
+///
+/// If a monitor is disconnected, all windows that are full screen on it will be
+/// switched to windowed mode before the callback is called.
+///
+/// Only [Monitor::name] and [Monitor::userdata] will return useful values for a
+/// disconnected monitor and only before the monitor callback returns.
+#[derive(Copy, Clone, Debug)]
+pub enum MonitorEvent
+{
+	Connected,
+	Disconnected,
+}
+
+extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
+{
+	let monitor = Monitor::from_glfw(mon);
+	let event = match ev as u32
+	{
+		| GLFW_CONNECTED => MonitorEvent::Connected,
+		| GLFW_DISCONNECTED => MonitorEvent::Disconnected,
+		| _ => return,
+	};
+
+	for cb in MONITOR_CALLBACKS
+	{
+		cb(&monitor, event);
+	}
+}
+
+/// This function sets the monitor configuration callback, or removes the
+/// currently set callback. This is called when a monitor is connected to or
+/// disconnected from the system.
+///
+/// # Returns
+/// The previously set callback if one was set.
+///
+/// # Callback signature
+/// `fn monitor_callback(monitor: &Monitor, event: MonitorEvent)`
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub(crate) fn set_monitor_callback()
+{
+	// TODO - add non-linkme callbacks
+	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
 }
