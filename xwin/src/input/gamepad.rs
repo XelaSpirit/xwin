@@ -47,6 +47,7 @@ use crate::{
 };
 
 #[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GamepadAxis
 {
 	LeftX        = GLFW_GAMEPAD_AXIS_LEFT_X as u8,
@@ -59,6 +60,7 @@ pub enum GamepadAxis
 glfw_enum!(GamepadAxis, u8);
 
 #[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GamepadButton
 {
 	A           = GLFW_GAMEPAD_BUTTON_A as u8,
@@ -80,6 +82,7 @@ pub enum GamepadButton
 glfw_enum!(GamepadButton, u8);
 
 #[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JoystickHatState
 {
 	Centered  = GLFW_HAT_CENTERED as u8,
@@ -95,6 +98,7 @@ pub enum JoystickHatState
 glfw_enum!(JoystickHatState, u8);
 
 #[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Joystick
 {
 	One      = GLFW_JOYSTICK_1 as u8,

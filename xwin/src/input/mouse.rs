@@ -2,6 +2,7 @@ use std::sync::mpsc::channel;
 
 use crate::{
 	bind::{
+		GLFWcursor,
 		GLFW_MOUSE_BUTTON_4,
 		GLFW_MOUSE_BUTTON_5,
 		GLFW_MOUSE_BUTTON_6,
@@ -10,12 +11,11 @@ use crate::{
 		GLFW_MOUSE_BUTTON_LEFT,
 		GLFW_MOUSE_BUTTON_MIDDLE,
 		GLFW_MOUSE_BUTTON_RIGHT,
-		GLFWcursor,
 	},
 	core::{
-		XWin,
 		exec::XWinMessage,
 		image::Image,
+		XWin,
 	},
 	error::XErr,
 	glfw_enum,
@@ -23,6 +23,7 @@ use crate::{
 };
 
 #[repr(u8)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MouseButton
 {
 	Left   = GLFW_MOUSE_BUTTON_LEFT as u8,

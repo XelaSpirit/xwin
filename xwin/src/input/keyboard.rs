@@ -1,3 +1,12 @@
+use std::ops::{
+	BitAnd,
+	BitAndAssign,
+	BitOr,
+	BitOrAssign,
+	BitXor,
+	BitXorAssign,
+};
+
 use crate::{
 	bind::{
 		GLFW_KEY_0,
@@ -28,14 +37,6 @@ use crate::{
 		GLFW_KEY_ESCAPE,
 		GLFW_KEY_F,
 		GLFW_KEY_F1,
-		GLFW_KEY_F2,
-		GLFW_KEY_F3,
-		GLFW_KEY_F4,
-		GLFW_KEY_F5,
-		GLFW_KEY_F6,
-		GLFW_KEY_F7,
-		GLFW_KEY_F8,
-		GLFW_KEY_F9,
 		GLFW_KEY_F10,
 		GLFW_KEY_F11,
 		GLFW_KEY_F12,
@@ -46,12 +47,20 @@ use crate::{
 		GLFW_KEY_F17,
 		GLFW_KEY_F18,
 		GLFW_KEY_F19,
+		GLFW_KEY_F2,
 		GLFW_KEY_F20,
 		GLFW_KEY_F21,
 		GLFW_KEY_F22,
 		GLFW_KEY_F23,
 		GLFW_KEY_F24,
 		GLFW_KEY_F25,
+		GLFW_KEY_F3,
+		GLFW_KEY_F4,
+		GLFW_KEY_F5,
+		GLFW_KEY_F6,
+		GLFW_KEY_F7,
+		GLFW_KEY_F8,
+		GLFW_KEY_F9,
 		GLFW_KEY_G,
 		GLFW_KEY_GRAVE_ACCENT,
 		GLFW_KEY_H,
@@ -131,6 +140,7 @@ use crate::{
 };
 
 #[repr(u16)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Key
 {
 	Space          = GLFW_KEY_SPACE as u16,
@@ -256,10 +266,18 @@ pub enum Key
 }
 glfw_enum!(Key, u16);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Modifier(u8);
 
 impl Modifier
 {
+	pub const ALT: Modifier = Modifier(GLFW_MOD_ALT as u8);
+	pub const CAPS_LOCK: Modifier = Modifier(GLFW_MOD_CAPS_LOCK as u8);
+	pub const CONTROL: Modifier = Modifier(GLFW_MOD_CONTROL as u8);
+	pub const NUM_LOCK: Modifier = Modifier(GLFW_MOD_NUM_LOCK as u8);
+	pub const SHIFT: Modifier = Modifier(GLFW_MOD_SHIFT as u8);
+	pub const SUPER: Modifier = Modifier(GLFW_MOD_SUPER as u8);
+
 	pub fn is_shift(&self) -> bool
 	{
 		self.0 & GLFW_MOD_SHIFT as u8 > 0
@@ -289,13 +307,58 @@ impl Modifier
 	{
 		self.0 & GLFW_MOD_NUM_LOCK as u8 > 0
 	}
+}
 
-	pub(super) fn from_glfw(value: u32) -> Modifier
+impl BitAnd<Modifier> for Modifier
+{
+	type Output = Modifier;
+
+	fn bitand(self, rhs: Modifier) -> Modifier
 	{
-		debug_assert!(
-			value <= u8::MAX as u32,
-			"Attempted to convert invalid glfw modifier value"
-		);
-		Modifier(value as u8)
+		Modifier(self.0 & rhs.0)
+	}
+}
+
+impl BitAndAssign<Modifier> for Modifier
+{
+	fn bitand_assign(&mut self, rhs: Modifier)
+	{
+		self.0 &= rhs.0;
+	}
+}
+
+impl BitOr<Modifier> for Modifier
+{
+	type Output = Modifier;
+
+	fn bitor(self, rhs: Modifier) -> Modifier
+	{
+		Modifier(self.0 | rhs.0)
+	}
+}
+
+impl BitOrAssign<Modifier> for Modifier
+{
+	fn bitor_assign(&mut self, rhs: Modifier)
+	{
+		self.0 |= rhs.0;
+	}
+}
+
+impl BitXor<Modifier> for Modifier
+{
+	type Output = Modifier;
+
+	fn bitxor(self, rhs: Modifier) -> Modifier
+	{
+		Modifier(self.0 ^ rhs.0)
+	}
+}
+
+impl BitXorAssign<Modifier> for Modifier
+{
+	fn bitxor_assign(&mut self, rhs: Modifier)
+	{
+		self.0 ^= rhs.0;
 	}
 }
