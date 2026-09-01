@@ -22,9 +22,9 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
+//! # });
 //! ```
 //!
 //! You can retrieve all currently connected monitors with [Monitor::all].
@@ -32,9 +32,9 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let monitors = Monitor::all();
+//! # });
 //! ```
 //!
 //! The primary monitor is always the first monitor in the returned [Vec], but
@@ -48,8 +48,7 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::{add_monitor_callback, Monitor, MonitorEvent};
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! fn monitor_callback(monitor: &Monitor, evt: MonitorEvent)
 //! {
 //! 	match evt
@@ -61,6 +60,7 @@
 //! 	}
 //! }
 //! add_monitor_callback(monitor_callback);
+//! # });
 //! ```
 //!
 //! If a monitor is disconnected, all windows that are full screen on it will be
@@ -85,12 +85,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let video_modes = primary.unwrap().video_modes().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! To get the current video mode of a monitor call [Monitor::video_mode].
@@ -98,12 +96,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let video_mode = primary.unwrap().video_mode().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! The resolution of a video mode is specified in [ScreenCoordinates], not
@@ -117,12 +113,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let size_mm = primary.unwrap().physical_size().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! While this can be used to calculate the raw DPI of a monitor, this is often
@@ -137,12 +131,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let content_scale = primary.unwrap().content_scale().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! For more information on what the content scale is and how to use it, see
@@ -157,12 +149,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let position = primary.unwrap().position().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! ## Work Area
@@ -173,12 +163,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let work_area = primary.unwrap().work_area().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! ## Human-Readable Name
@@ -187,12 +175,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let name = primary.unwrap().name().unwrap();
-//! # }
+//! # });
 //! ```
 //!
 //! ## User Data
@@ -213,8 +199,7 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::{GammaRamp, Monitor};
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let mut ramp = GammaRamp::new(256, 0);
 //!
 //! for idx in 0..256
@@ -223,9 +208,8 @@
 //! }
 //!
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
-//! let name = primary.unwrap().set_gamma_ramp(&mut ramp);
-//! # }
+//! let name = primary.unwrap().set_gamma_ramp(ramp);
+//! # });
 //! ```
 //!
 //! It is recommended that your gamma ramp have the same size as the current
@@ -236,12 +220,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
-//! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
-//! let gamma_ramp = primary.unwrap().gamma_ramp().unwrap();
-//! # }
+//! # let xwin = XWin::init(|| {
+//! let primary = Monitor::primary().unwrap();
+//! let gamma_ramp = primary.gamma_ramp().unwrap();
+//! # });
 //! ```
 //!
 //! If you wish to set a regular gamma ramp, you can have XWin calculate it for
@@ -251,12 +233,10 @@
 //! ```
 //! # use xwin::core::XWin;
 //! # use xwin::monitor::Monitor;
-//! # let xwin = XWin::default();
-//! #
+//! # let xwin = XWin::init(|| {
 //! let primary = Monitor::primary();
-//! # if false { // GLFW doesn't seem to initialize in doc tests
 //! let gamma_ramp = primary.unwrap().set_gamma(1.0);
-//! # }
+//! # });
 //! ```
 
 mod callback;
@@ -267,8 +247,8 @@ mod work_area;
 use std::{
 	os::raw::c_void,
 	sync::{
-		Mutex,
 		mpsc::channel,
+		Mutex,
 	},
 };
 
@@ -279,15 +259,15 @@ pub use work_area::*;
 
 use crate::{
 	bind::{
-		GLFWmonitor,
 		glfwGetMonitorUserPointer,
 		glfwSetMonitorUserPointer,
+		GLFWmonitor,
 	},
 	core::{
+		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::XWinMessage,
 	},
 	err::XErr,
 };

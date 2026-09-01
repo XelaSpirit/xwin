@@ -104,17 +104,18 @@ impl GammaRamp
 	/// Construct a gamma ramp from a GLFWgammaramp.
 	pub(crate) fn from_glfw(ramp: &GLFWgammaramp) -> Self
 	{
-		unsafe {
-			GammaRamp {
-				size:  ramp.size,
-				red:   Vec::from_raw_parts(ramp.red, ramp.size as usize, ramp.size as usize)
-					.clone(),
-				green: Vec::from_raw_parts(ramp.green, ramp.size as usize, ramp.size as usize)
-					.clone(),
-				blue:  Vec::from_raw_parts(ramp.blue, ramp.size as usize, ramp.size as usize)
-					.clone(),
-			}
+		let mut gr = GammaRamp {
+			size: ramp.size,
+			red: Vec::with_capacity(ramp.size as usize),
+			green: Vec::with_capacity(ramp.size as usize),
+			blue: Vec::with_capacity(ramp.size as usize),
+		};
+		for idx in 0..ramp.size as usize {
+			gr.red.push(unsafe { *ramp.red.add(idx) });
+			gr.green.push(unsafe { *ramp.green.add(idx) });
+			gr.blue.push(unsafe { *ramp.blue.add(idx) });
 		}
+		gr
 	}
 
 	/// Runs the function `f`, passing in a [GLFWgammaramp] constructed from

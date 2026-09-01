@@ -32,11 +32,15 @@
 //! shared, XWin requests that all types are shared.
 //!
 //! ```
-//! # use xwin::window::{Window, WindowBuilder};
-//! # if false { // GLFW doesn't seem to initialize in doc tests
-//! # let other_window: Window = WindowBuilder::new().create(1920, 1080, "Title", None, None).unwrap();
-//! let win = WindowBuilder::new().create(1920, 1080, "title", None, Some(other_window));
-//! # }
+//! # use xwin::core::{Platform, XWin};
+//! # use xwin::window::Window;
+//! # XWin::set_platform(Platform::Null);
+//! # XWin::init(|| {
+//! # let other_window = Window::create(1920, 1080, "Title", None, None).unwrap();
+//! let win = Window::create(1920, 1080, "title", None, Some(other_window));
+//! # });
+//! // TODO - this is panicking somehow (first Window::create() returning Err)
+//! // TODO - also applies to doctest below
 //! ```
 //!
 //! See the relevant chapter of the OpenGL or OpenGL ES reference documents for
@@ -50,12 +54,14 @@
 //! [WindowBuilder::visible] window hint.
 //!
 //! ```
-//! # use xwin::window::{Window, WindowBuilder};
-//! # if false { // GLFW doesn't seem to initialize in doc tests
+//! # use xwin::core::{Platform, XWin};
+//! # use xwin::window::WindowBuilder;
+//! # XWin::set_platform(Platform::Null);
+//! # XWin::init(|| {
 //! let win = WindowBuilder::new()
 //! 	.visible(false)
 //! 	.create(1920, 1080, "title", None, None);
-//! # }
+//! # });
 //! ```
 //!
 //! The window never needs to be shown and its context can be used as a plain
@@ -127,8 +133,8 @@ mod callback;
 use std::{
 	ptr::null_mut,
 	sync::{
-		Mutex,
 		mpsc::channel,
+		Mutex,
 	},
 };
 
@@ -137,18 +143,18 @@ pub use callback::*;
 
 use crate::{
 	bind::{
-		GLFW_FALSE,
-		GLFW_TRUE,
-		GLFWwindow,
 		glfwGetCurrentContext,
 		glfwMakeContextCurrent,
 		glfwSetWindowShouldClose,
 		glfwSwapInterval,
 		glfwWindowShouldClose,
+		GLFWwindow,
+		GLFW_FALSE,
+		GLFW_TRUE,
 	},
 	core::{
-		XWin,
 		exec::XWinMessage,
+		XWin,
 	},
 	err::XErr,
 	monitor::Monitor,

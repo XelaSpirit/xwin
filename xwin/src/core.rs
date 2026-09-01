@@ -27,7 +27,7 @@
 //!
 //! ```
 //! # use xwin::core::XWin;
-//! let xwin = XWin::init(|| {})
+//! let xwin = XWin::init(|| {});
 //! ```
 //! The closure passed to [XWin::init] will be called on a new thread before the
 //! function blocks. It is intended that all code dealing with XWin aside from
@@ -102,7 +102,7 @@
 //! You can test whether a library binary was compiled with support for a
 //! specific platform with [XWin::platform_supported].
 //! ```
-//! # use xwin::core::{platform_supported, Platform, XWin};
+//! # use xwin::core::{Platform, XWin};
 //! if XWin::platform_supported(Platform::X11)
 //! {
 //! 	XWin::set_platform(Platform::X11);
@@ -113,9 +113,10 @@
 //! Once XWin has been initialized, you can query which platform was selected
 //! with [XWin::platform].
 //! ```
-//! # use xwin::core::{platform, XWin};
-//! # let xwin = XWin::default();
+//! # use xwin::core::XWin;
+//! # let xwin = XWin::init(|| {
 //! let platform = XWin::platform();
+//! # });
 //! ```
 //!
 //! ## Terminating XWin
@@ -149,9 +150,6 @@
 //! their documentation that they must be called from the main thread under
 //! 'Thread Safety'
 //!
-//! Because event processing must be performed on the main thread, all callbacks
-//! will only be called on that thread.
-//!
 //! ## Event Order
 //! The order of arrival of related events is not guaranteed to be consistent
 //! across platforms. The exception is synthetic key and mouse button release
@@ -162,11 +160,11 @@ pub(crate) mod exec;
 use std::{
 	os::raw::c_int,
 	sync::{
-		OnceLock,
 		mpsc::{
-			Sender,
 			channel,
+			Sender,
 		},
+		OnceLock,
 	},
 	thread,
 };
@@ -175,6 +173,12 @@ use std::{
 use crate::err::set_error_log;
 use crate::{
 	bind::{
+		glfwGetPlatform,
+		glfwGetVersion,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -189,12 +193,6 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
-		glfwGetPlatform,
-		glfwGetVersion,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 	},
 	core::exec::XWinMessage,
 	err::XErr,
