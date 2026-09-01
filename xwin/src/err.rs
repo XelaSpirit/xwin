@@ -22,10 +22,41 @@
 //! Do not rely on a currently invalid call to generate a specific error, as in
 //! the future that same call may generate a different error or become valid.
 
-use std::ffi::CStr;
-use std::os::raw::c_char;
-use std::ptr::null;
-use crate::bind::{GLFW_API_UNAVAILABLE, GLFW_CURSOR_UNAVAILABLE, GLFW_FEATURE_UNAVAILABLE, GLFW_FEATURE_UNIMPLEMENTED, GLFW_FORMAT_UNAVAILABLE, GLFW_INVALID_ENUM, GLFW_INVALID_VALUE, GLFW_NO_CURRENT_CONTEXT, GLFW_NO_ERROR, GLFW_NO_WINDOW_CONTEXT, GLFW_NOT_INITIALIZED, GLFW_OUT_OF_MEMORY, GLFW_PLATFORM_ERROR, GLFW_PLATFORM_UNAVAILABLE, GLFW_VERSION_UNAVAILABLE, glfwGetError};
+use std::{
+	ffi::CStr,
+	os::raw::{
+		c_char,
+		c_int,
+	},
+	ptr::null,
+};
+
+#[cfg(feature = "tracing")]
+use tracing::{
+	instrument,
+	warn,
+};
+
+#[cfg(feature = "tracing")]
+use crate::bind::glfwSetErrorCallback;
+use crate::bind::{
+	GLFW_API_UNAVAILABLE,
+	GLFW_CURSOR_UNAVAILABLE,
+	GLFW_FEATURE_UNAVAILABLE,
+	GLFW_FEATURE_UNIMPLEMENTED,
+	GLFW_FORMAT_UNAVAILABLE,
+	GLFW_INVALID_ENUM,
+	GLFW_INVALID_VALUE,
+	GLFW_NO_CURRENT_CONTEXT,
+	GLFW_NO_ERROR,
+	GLFW_NO_WINDOW_CONTEXT,
+	GLFW_NOT_INITIALIZED,
+	GLFW_OUT_OF_MEMORY,
+	GLFW_PLATFORM_ERROR,
+	GLFW_PLATFORM_UNAVAILABLE,
+	GLFW_VERSION_UNAVAILABLE,
+	glfwGetError,
+};
 
 /// Error codes used throughout the XWin API.
 #[repr(u32)]
@@ -200,53 +231,71 @@ pub enum XErr
 
 impl XErr
 {
-	fn from_code(code: u32, msg: String) -> XErr
+	fn from_code(code: c_int, msg: *const c_char) -> XErr
 	{
-		match code
+		let str = if !msg.is_null()
 		{
-			| GLFW_NO_ERROR => XErr::None(msg),
-			| GLFW_NOT_INITIALIZED => XErr::NotInitialized(msg),
-			| GLFW_NO_CURRENT_CONTEXT => XErr::NoCurrentContext(msg),
-			| GLFW_INVALID_ENUM => XErr::InvalidEnum(msg),
-			| GLFW_INVALID_VALUE => XErr::InvalidValue(msg),
-			| GLFW_OUT_OF_MEMORY => XErr::OutOfMemory(msg),
-			| GLFW_API_UNAVAILABLE => XErr::ApiUnavailable(msg),
-			| GLFW_VERSION_UNAVAILABLE => XErr::VersionUnavailable(msg),
-			| GLFW_PLATFORM_ERROR => XErr::PlatformError(msg),
-			| GLFW_FORMAT_UNAVAILABLE => XErr::FormatUnavailable(msg),
-			| GLFW_NO_WINDOW_CONTEXT => XErr::NoWindowContext(msg),
-			| GLFW_CURSOR_UNAVAILABLE => XErr::CursorUnavailable(msg),
-			| GLFW_FEATURE_UNAVAILABLE => XErr::FeatureUnavailable(msg),
-			| GLFW_FEATURE_UNIMPLEMENTED => XErr::FeatureUnimplemented(msg),
-			| GLFW_PLATFORM_UNAVAILABLE => XErr::PlatformUnavailable(msg),
+			unsafe { CStr::from_ptr(msg) }
+				.to_str()
+				.unwrap_or_else(|_| "")
+				.to_string()
+		}
+		else
+		{
+			String::default()
+		};
+
+		match code as u32
+		{
+			| GLFW_NO_ERROR => XErr::None(str),
+			| GLFW_NOT_INITIALIZED => XErr::NotInitialized(str),
+			| GLFW_NO_CURRENT_CONTEXT => XErr::NoCurrentContext(str),
+			| GLFW_INVALID_ENUM => XErr::InvalidEnum(str),
+			| GLFW_INVALID_VALUE => XErr::InvalidValue(str),
+			| GLFW_OUT_OF_MEMORY => XErr::OutOfMemory(str),
+			| GLFW_API_UNAVAILABLE => XErr::ApiUnavailable(str),
+			| GLFW_VERSION_UNAVAILABLE => XErr::VersionUnavailable(str),
+			| GLFW_PLATFORM_ERROR => XErr::PlatformError(str),
+			| GLFW_FORMAT_UNAVAILABLE => XErr::FormatUnavailable(str),
+			| GLFW_NO_WINDOW_CONTEXT => XErr::NoWindowContext(str),
+			| GLFW_CURSOR_UNAVAILABLE => XErr::CursorUnavailable(str),
+			| GLFW_FEATURE_UNAVAILABLE => XErr::FeatureUnavailable(str),
+			| GLFW_FEATURE_UNIMPLEMENTED => XErr::FeatureUnimplemented(str),
+			| GLFW_PLATFORM_UNAVAILABLE => XErr::PlatformUnavailable(str),
 			| _ => XErr::Unknown,
 		}
 	}
-	
-	pub(crate) fn get() -> XErr {
+
+	pub(crate) fn get() -> XErr
+	{
 		let mut desc: *const c_char = null();
 		let code = unsafe { glfwGetError(&mut desc) };
-		
-		XErr::from_code(
-			code as u32,
-			if !desc.is_null()
-			{
-				unsafe { CStr::from_ptr(desc) }
-					.to_str()
-					.unwrap_or_else(|_| "")
-					.to_string()
-			}
-			else
-			{
-				String::default()
-			},
-		)
+
+		XErr::from_code(code, desc)
 	}
+}
+
+#[cfg(feature = "tracing")]
+#[instrument(level = "warn", skip_all)]
+extern "C" fn glfw_error_handler(code: c_int, desc: *const c_char)
+{
+	warn!("{:?}", XErr::from_code(code, desc));
+}
+
+#[cfg(feature = "tracing")]
+pub(crate) fn set_error_log()
+{
+	unsafe { glfwSetErrorCallback(Some(glfw_error_handler)) };
 }
 
 #[cfg(test)]
 mod tests
 {
+	use std::{
+		ffi::CString,
+		os::raw::c_int,
+	};
+
 	use crate::{
 		bind::{
 			GLFW_API_UNAVAILABLE,
@@ -271,8 +320,9 @@ mod tests
 	#[test]
 	fn no_error()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_NO_ERROR, String::default()),
+			XErr::from_code(GLFW_NO_ERROR as c_int, str.as_ptr()),
 			XErr::None(String::default())
 		);
 	}
@@ -280,8 +330,9 @@ mod tests
 	#[test]
 	fn not_initialized()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_NOT_INITIALIZED, String::default()),
+			XErr::from_code(GLFW_NOT_INITIALIZED as c_int, str.as_ptr()),
 			XErr::NotInitialized(String::default())
 		);
 	}
@@ -289,8 +340,9 @@ mod tests
 	#[test]
 	fn no_current_context()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_NO_CURRENT_CONTEXT, String::default()),
+			XErr::from_code(GLFW_NO_CURRENT_CONTEXT as c_int, str.as_ptr()),
 			XErr::NoCurrentContext(String::default())
 		);
 	}
@@ -298,8 +350,9 @@ mod tests
 	#[test]
 	fn invalid_enum()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_INVALID_ENUM, String::default()),
+			XErr::from_code(GLFW_INVALID_ENUM as c_int, str.as_ptr()),
 			XErr::InvalidEnum(String::default())
 		);
 	}
@@ -307,8 +360,9 @@ mod tests
 	#[test]
 	fn invalid_value()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_INVALID_VALUE, String::default()),
+			XErr::from_code(GLFW_INVALID_VALUE as c_int, str.as_ptr()),
 			XErr::InvalidValue(String::default())
 		);
 	}
@@ -316,8 +370,9 @@ mod tests
 	#[test]
 	fn out_of_memory()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_OUT_OF_MEMORY, String::default()),
+			XErr::from_code(GLFW_OUT_OF_MEMORY as c_int, str.as_ptr()),
 			XErr::OutOfMemory(String::default())
 		);
 	}
@@ -325,8 +380,9 @@ mod tests
 	#[test]
 	fn api_unavailable()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_API_UNAVAILABLE, String::default()),
+			XErr::from_code(GLFW_API_UNAVAILABLE as c_int, str.as_ptr()),
 			XErr::ApiUnavailable(String::default())
 		);
 	}
@@ -334,8 +390,9 @@ mod tests
 	#[test]
 	fn version_unavailable()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_VERSION_UNAVAILABLE, String::default()),
+			XErr::from_code(GLFW_VERSION_UNAVAILABLE as c_int, str.as_ptr()),
 			XErr::VersionUnavailable(String::default())
 		);
 	}
@@ -343,8 +400,9 @@ mod tests
 	#[test]
 	fn platform_error()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_PLATFORM_ERROR, String::default()),
+			XErr::from_code(GLFW_PLATFORM_ERROR as c_int, str.as_ptr()),
 			XErr::PlatformError(String::default())
 		);
 	}
@@ -352,8 +410,9 @@ mod tests
 	#[test]
 	fn format_unavailable()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_FORMAT_UNAVAILABLE, String::default()),
+			XErr::from_code(GLFW_FORMAT_UNAVAILABLE as c_int, str.as_ptr()),
 			XErr::FormatUnavailable(String::default())
 		);
 	}
@@ -361,8 +420,9 @@ mod tests
 	#[test]
 	fn no_window_context()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_NO_WINDOW_CONTEXT, String::default()),
+			XErr::from_code(GLFW_NO_WINDOW_CONTEXT as c_int, str.as_ptr()),
 			XErr::NoWindowContext(String::default())
 		);
 	}
@@ -370,8 +430,9 @@ mod tests
 	#[test]
 	fn cursor_unavailable()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_CURSOR_UNAVAILABLE, String::default()),
+			XErr::from_code(GLFW_CURSOR_UNAVAILABLE as c_int, str.as_ptr()),
 			XErr::CursorUnavailable(String::default())
 		);
 	}
@@ -379,8 +440,9 @@ mod tests
 	#[test]
 	fn feature_unavailable()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_FEATURE_UNAVAILABLE, String::default()),
+			XErr::from_code(GLFW_FEATURE_UNAVAILABLE as c_int, str.as_ptr()),
 			XErr::FeatureUnavailable(String::default())
 		);
 	}
@@ -388,8 +450,9 @@ mod tests
 	#[test]
 	fn feature_unimplemented()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_FEATURE_UNIMPLEMENTED, String::default()),
+			XErr::from_code(GLFW_FEATURE_UNIMPLEMENTED as c_int, str.as_ptr()),
 			XErr::FeatureUnimplemented(String::default())
 		);
 	}
@@ -397,8 +460,9 @@ mod tests
 	#[test]
 	fn platform_unavailable()
 	{
+		let str = CString::new("").unwrap();
 		assert_eq!(
-			XErr::from_code(GLFW_PLATFORM_UNAVAILABLE, String::default()),
+			XErr::from_code(GLFW_PLATFORM_UNAVAILABLE as c_int, str.as_ptr()),
 			XErr::PlatformUnavailable(String::default())
 		);
 	}

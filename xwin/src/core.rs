@@ -5,14 +5,10 @@
 
 use std::os::raw::c_int;
 
+#[cfg(feature = "tracing")]
+use crate::err::set_error_log;
 use crate::{
 	bind::{
-		glfwGetPlatform,
-		glfwGetVersion,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -27,6 +23,12 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
+		glfwGetPlatform,
+		glfwGetVersion,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 	},
 	err::XErr,
 };
@@ -47,6 +49,13 @@ pub struct XWin(());
 
 impl XWin
 {
+	/// Initialize the XWin library with default configuration. See [XWin::init]
+	/// for a full description.
+	pub fn default() -> Result<Self, XErr>
+	{
+		XWin::new().init()
+	}
+
 	/// This function initializes the XWin library. Before most XWin functions
 	/// can be used, XWin must be initialized. When an [XWin] goes out of scope,
 	/// the library is terminated in order to free any resources allocation
@@ -68,7 +77,7 @@ impl XWin
 	/// was compiled to support.
 	///
 	/// TODO add link to platform init hint
-	/// 
+	///
 	/// # Returns
 	/// A new XWin instance if successful, or an error if one occurred
 	///
@@ -104,8 +113,11 @@ impl XWin
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn default() -> Result<Self, XErr>
+	pub fn init(&self) -> Result<Self, XErr>
 	{
+		#[cfg(feature = "tracing")]
+		set_error_log();
+
 		let init = unsafe { glfwInit() };
 
 		if init != GLFW_TRUE as i32
@@ -116,12 +128,6 @@ impl XWin
 		{
 			Ok(XWin(()))
 		}
-	}
-
-	/// Initialize the XWin library. See [XWin::default] for a full description.
-	pub fn init(&self) -> Result<Self, XErr>
-	{
-		XWin::default()
 	}
 
 	/// Returns an uninitialized XWin that can be used to configure XWin before
