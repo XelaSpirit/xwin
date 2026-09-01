@@ -9,26 +9,23 @@ pub(crate) mod context;
 mod events;
 
 use std::sync::mpsc::{
-	channel,
-	sync_channel,
 	Receiver,
+	channel,
 };
 
 pub use builder::*;
 pub use events::*;
+use xch::Sender;
 
 use crate::{
 	bind::{
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
-		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUSED,
 		GLFW_FOCUS_ON_SHOW,
+		GLFW_FOCUSED,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
 		GLFW_MAXIMIZED,
@@ -37,13 +34,16 @@ use crate::{
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
+		GLFWwindow,
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
 	},
 	core::{
-		exec::XWinMessage,
-		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
+		image::Image,
 	},
 	err::XErr,
 	monitor::Monitor,
@@ -1244,19 +1244,19 @@ impl Window
 		self.try_set_mouse_passthrough(value).unwrap_or_default()
 	}
 
-	/// Returns a [Receiver] which will be sent window events whenever a general
-	/// window event occurs. See [WindowEvent] for the specific conditions
-	/// under which each event is sent.
+	/// Subscribes to general window events on the given channel. See
+	/// [WindowEvent] for the specific conditions under which each event is
+	/// sent.
 	///
 	/// See [crate::core#event-handling]
-	pub fn subscribe(&self, bound: usize) -> Receiver<WindowEvent>
+	pub fn subscribe<T>(&self, tx: T)
+	where
+		T: Sender<WindowEvent> + Send + Sync + 'static,
 	{
-		let (tx, rx) = sync_channel(bound);
 		if let Some(ctx) = WindowContext::get(&self.0)
 		{
-			ctx.set_ev_tx(Some(tx));
+			ctx.set_ev_tx(tx);
 		}
-		rx
 	}
 
 	/// Disconnects the channel handling general window events. See [subscribe].
@@ -1264,7 +1264,7 @@ impl Window
 	{
 		if let Some(ctx) = WindowContext::get(&self.0)
 		{
-			ctx.set_ev_tx(None);
+			ctx.remove_ev_tx();
 		}
 	}
 

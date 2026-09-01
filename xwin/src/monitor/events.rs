@@ -1,11 +1,9 @@
 use std::{
 	ffi::CStr,
 	os::raw::c_int,
-	sync::mpsc::{
-		Receiver,
-		sync_channel,
-	},
 };
+
+use xch::Sender;
 
 use crate::{
 	bind::{
@@ -18,7 +16,6 @@ use crate::{
 	core::XWin,
 	err::XErr,
 	monitor::Monitor,
-	window::WindowEvent::Position,
 };
 
 /// Describes a change to a monitor's configuration
@@ -50,26 +47,22 @@ impl Clone for MonitorEvent
 	}
 }
 
-/// Creates a new synchronous channel on which monitor configuration events
-/// will be sent. A new event will be pushed to the channel each time a
-/// [Monitor] is connected or disconnected.
+/// Subscribes to monitor configuration events on the given channel. A new event
+/// will be pushed to the channel each time a [Monitor] is connected or
+/// disconnected.
 ///
 /// See [crate::core#event-handling]
 ///
 /// # Errors
 /// Possible errors include [XErr::NotInitialized].
-///
-/// # Returns
-/// A [Receiver] from which monitor configuration events can be received.
-pub fn subscribe_monitors(bound: usize) -> Result<Receiver<MonitorEvent>, XErr>
+pub fn subscribe_monitors<T>(tx: T) -> Result<(), XErr>
+where
+	T: Sender<MonitorEvent> + Send + Sync + 'static,
 {
 	let mut xwin = XWin::get()?.write().unwrap();
-
-	let (tx, rx) = sync_channel(bound);
-	xwin.set_monitor_tx(Some(tx));
+	xwin.set_monitor_tx(tx);
 	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
-
-	Ok(rx)
+	Ok(())
 }
 
 /// Closes the monitor event channel, disconnecting the event sender (if one
@@ -79,7 +72,7 @@ pub fn subscribe_monitors(bound: usize) -> Result<Receiver<MonitorEvent>, XErr>
 pub fn unsubscribe_monitors() -> Result<(), XErr>
 {
 	unsafe { glfwSetMonitorCallback(None) };
-	XWin::get()?.write().unwrap().set_monitor_tx(None);
+	XWin::get()?.write().unwrap().remove_monitor_tx();
 	Ok(())
 }
 
@@ -126,7 +119,7 @@ extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
 					// wouldn't be the thing preventing this lock.
 					if let Ok(mut xwin) = lock.try_write()
 					{
-						xwin.set_monitor_tx(None);
+						xwin.remove_monitor_tx();
 					}
 				}
 			}

@@ -1,9 +1,13 @@
-use std::os::raw::c_int;
+use std::os::raw::{
+	c_float,
+	c_int,
+};
 
 use crate::{
 	bind::{
-		GLFWwindow,
 		glfwSetWindowPosCallback,
+		GLFWwindow,
+		GLFW_TRUE,
 	},
 	core::{
 		ContentScale,
@@ -11,6 +15,7 @@ use crate::{
 	},
 	window::context::WindowContext,
 };
+use crate::bind::{glfwSetFramebufferSizeCallback, glfwSetWindowCloseCallback, glfwSetWindowContentScaleCallback, glfwSetWindowFocusCallback, glfwSetWindowIconifyCallback, glfwSetWindowMaximizeCallback, glfwSetWindowRefreshCallback, glfwSetWindowSizeCallback};
 
 /// Almost all positions and sizes in XWin are measured in
 /// [ScreenCoordinates](ScreenCoordinates). However, framebuffer sizes
@@ -68,14 +73,66 @@ pub enum WindowEvent
 	/// Sent when the window is maximized or restored.
 	Maximize(bool),
 	/// Sent when the framebuffer of the window is resized.
-	BufferSize(Pixels),
+	FramebufferSize(Pixels),
 	/// Sent when the content scale of the window changes.
 	ContentScale(ContentScale),
 }
 
-extern "C" fn window_pos_callback(win: *mut GLFWwindow, x: c_int, y: c_int)
+extern "C" fn pos_cb(win: *mut GLFWwindow, x: c_int, y: c_int)
 {
 	event(win, WindowEvent::Position(ScreenCoordinates { x, y }));
+}
+
+extern "C" fn size_cb(win: *mut GLFWwindow, width: c_int, height: c_int)
+{
+	event(
+		win,
+		WindowEvent::Size(ScreenCoordinates {
+			x: width,
+			y: height,
+		}),
+	);
+}
+
+extern "C" fn close_cb(win: *mut GLFWwindow)
+{
+	event(win, WindowEvent::Close);
+}
+
+extern "C" fn refresh_cb(win: *mut GLFWwindow)
+{
+	event(win, WindowEvent::Refresh);
+}
+
+extern "C" fn focus_cb(win: *mut GLFWwindow, focused: c_int)
+{
+	event(win, WindowEvent::Focus(focused == GLFW_TRUE as i32));
+}
+
+extern "C" fn iconify_cb(win: *mut GLFWwindow, iconified: c_int)
+{
+	event(win, WindowEvent::Iconify(iconified == GLFW_TRUE as i32));
+}
+
+extern "C" fn maximize_cb(win: *mut GLFWwindow, maximized: c_int)
+{
+	event(win, WindowEvent::Maximize(maximized == GLFW_TRUE as i32));
+}
+
+extern "C" fn framebuffer_size_cb(win: *mut GLFWwindow, width: c_int, height: c_int)
+{
+	event(
+		win,
+		WindowEvent::FramebufferSize(Pixels {
+			x: width,
+			y: height,
+		}),
+	);
+}
+
+extern "C" fn content_scale_cb(win: *mut GLFWwindow, x: c_float, y: c_float)
+{
+	event(win, WindowEvent::ContentScale(ContentScale { x, y }));
 }
 
 fn event(win: *mut GLFWwindow, ev: WindowEvent)
@@ -89,6 +146,14 @@ fn event(win: *mut GLFWwindow, ev: WindowEvent)
 pub(crate) fn set_window_callbacks(win: *mut GLFWwindow)
 {
 	unsafe {
-		glfwSetWindowPosCallback(win, Some(window_pos_callback));
+		glfwSetWindowPosCallback(win, Some(pos_cb));
+		glfwSetWindowSizeCallback(win, Some(size_cb));
+		glfwSetWindowCloseCallback(win, Some(close_cb));
+		glfwSetWindowRefreshCallback(win, Some(refresh_cb));
+		glfwSetWindowFocusCallback(win, Some(focus_cb));
+		glfwSetWindowIconifyCallback(win, Some(iconify_cb));
+		glfwSetWindowMaximizeCallback(win, Some(maximize_cb));
+		glfwSetFramebufferSizeCallback(win, Some(framebuffer_size_cb));
+		glfwSetWindowContentScaleCallback(win, Some(content_scale_cb));
 	}
 }

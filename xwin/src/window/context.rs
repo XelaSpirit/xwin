@@ -1,4 +1,4 @@
-use std::sync::mpsc::SyncSender;
+use xch::Sender;
 
 use crate::{
 	bind::{
@@ -10,7 +10,7 @@ use crate::{
 
 pub(crate) struct WindowContext
 {
-	ev_tx: Option<SyncSender<WindowEvent>>,
+	ev_tx: Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
 }
 
 impl WindowContext
@@ -25,9 +25,16 @@ impl WindowContext
 		unsafe { (glfwGetWindowUserPointer(*win) as *mut WindowContext).as_mut() }
 	}
 
-	pub(super) fn set_ev_tx(&mut self, tx: Option<SyncSender<WindowEvent>>)
+	pub(super) fn set_ev_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<WindowEvent> + Send + Sync + 'static,
 	{
-		self.ev_tx = tx;
+		self.ev_tx = Some(Box::new(tx));
+	}
+
+	pub(super) fn remove_ev_tx(&mut self)
+	{
+		self.ev_tx = None;
 	}
 
 	pub(super) fn post(&mut self, event: WindowEvent)

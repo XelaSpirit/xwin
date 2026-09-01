@@ -138,13 +138,15 @@
 //! main thread under 'Thread Safety'
 //!
 //! ## Event Handling
-//! XWin events are handled primarily using message passing through synchronous
-//! channels. These channels are not created until you subscribe to them, at
-//! which time you may specify their bound and a [Receiver] will be returned
-//! which will receive the relevant events. The bound you specify is used for
-//! the internal buffer of the channel. When this channel's buffer is full, any
-//! subsequent event will cause the event handling thread to block until space
-//! becomes available.
+//! XWin events are handled using message channels. To subscribe to events, you
+//! will need to create a channel for messages to pass through, then provide the
+//! sender to the appropriate subscription function. XWin will accept any type
+//! that implements the [Sender] trait from the **xela_channels** crate. This
+//! trait is already implemented for the standard library's mpsc channel.
+//!
+//! Note that using a synchronous channel does come with the potential for
+//! blocking calls. If a [send](Sender::send) call blocks, the event handling
+//! thread will be blocked.
 //!
 //! This blocking may or may not also block handling of other types of events
 //! (XWin makes no guarantees about which thread any events are sent from).
@@ -152,7 +154,7 @@
 //! and are pulling events from the receivers frequently enough to prevent such
 //! blocking from occuring.
 //!
-//! Disconnecting the receiver (such as by dropping), or calling the related
+//! Disconnecting the receiver (such as by dropping it), or calling the related
 //! unsubscribe function, will prevent XWin from attempting to send more events
 //! on a given channel. This can be used to prevent blocking if you know you
 //! won't be handling those events.
@@ -160,8 +162,6 @@
 //! Note also that only one subscription per event type may exist at a time. If
 //! an event's subcribe function is called while a subscription already exists,
 //! the existing channel will be quietly disconnected and a new one created.
-//! This may be changed in the future, but for now XWin will only allow one
-//! channel to exist for a given event type at a time.
 //!
 //! ## Event Order
 //! The order of arrival of related events is not guaranteed to be consistent
@@ -175,30 +175,24 @@ use std::{
 	os::raw::c_int,
 	panic,
 	panic::{
-		resume_unwind,
 		UnwindSafe,
+		resume_unwind,
 	},
 	sync::{
-		mpsc::{
-			channel,
-			Sender,
-			SyncSender,
-		},
 		OnceLock,
 		RwLock,
+		mpsc,
+		mpsc::channel,
 	},
 	thread,
 };
+
+use xch::Sender;
 
 #[cfg(feature = "tracing")]
 use crate::err::set_error_log;
 use crate::{
 	bind::{
-		glfwGetPlatform,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -213,6 +207,11 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
+		glfwGetPlatform,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 	},
 	core::exec::XWinMessage,
 	err::XErr,
@@ -286,8 +285,8 @@ pub struct ContentScale
 
 pub(crate) struct XWin
 {
-	xwin_tx:    Sender<XWinMessage>,
-	monitor_tx: Option<SyncSender<MonitorEvent>>,
+	xwin_tx:    mpsc::Sender<XWinMessage>,
+	monitor_tx: Option<Box<dyn Sender<MonitorEvent> + Send + Sync>>,
 }
 
 // TODO - glfwInitVulkanLoader
@@ -300,14 +299,21 @@ impl XWin
 			.ok_or_else(|| XErr::NotInitialized(String::from("XWin has not been initialized")))
 	}
 
-	pub(crate) fn set_monitor_tx(&mut self, tx: Option<SyncSender<MonitorEvent>>)
+	pub(crate) fn set_monitor_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<MonitorEvent> + Send + Sync + 'static,
 	{
-		self.monitor_tx = tx;
+		self.monitor_tx = Some(Box::new(tx));
 	}
 
-	pub(crate) fn monitor_tx(&self) -> &Option<SyncSender<MonitorEvent>>
+	pub(crate) fn remove_monitor_tx(&mut self)
 	{
-		&self.monitor_tx
+		self.monitor_tx = None;
+	}
+
+	pub(crate) fn monitor_tx(&self) -> Option<&Box<dyn Sender<MonitorEvent> + Send + Sync>>
+	{
+		self.monitor_tx.as_ref()
 	}
 }
 
