@@ -1,63 +1,18 @@
-use std::{
-	ffi::{
-		CStr,
-		CString,
-	},
-	ptr::null_mut,
-	sync::mpsc::{
-		Receiver,
-		Sender,
-	},
+mod monitor;
+mod window;
+
+use std::sync::mpsc::{
+	Receiver,
+	Sender,
 };
+
+use monitor::*;
+use window::*;
 
 use crate::{
 	bind::{
-		GLFW_CLIENT_API,
-		GLFW_NO_API,
-		GLFWimage,
 		GLFWmonitor,
 		GLFWwindow,
-		glfwCreateWindow,
-		glfwDefaultWindowHints,
-		glfwDestroyWindow,
-		glfwFocusWindow,
-		glfwGetFramebufferSize,
-		glfwGetGammaRamp,
-		glfwGetMonitorContentScale,
-		glfwGetMonitorName,
-		glfwGetMonitorPhysicalSize,
-		glfwGetMonitorPos,
-		glfwGetMonitorWorkarea,
-		glfwGetMonitors,
-		glfwGetPrimaryMonitor,
-		glfwGetVideoMode,
-		glfwGetVideoModes,
-		glfwGetWindowAttrib,
-		glfwGetWindowContentScale,
-		glfwGetWindowFrameSize,
-		glfwGetWindowMonitor,
-		glfwGetWindowOpacity,
-		glfwGetWindowPos,
-		glfwGetWindowSize,
-		glfwGetWindowTitle,
-		glfwHideWindow,
-		glfwIconifyWindow,
-		glfwMaximizeWindow,
-		glfwRequestWindowAttention,
-		glfwRestoreWindow,
-		glfwSetGamma,
-		glfwSetGammaRamp,
-		glfwSetWindowAspectRatio,
-		glfwSetWindowAttrib,
-		glfwSetWindowIcon,
-		glfwSetWindowMonitor,
-		glfwSetWindowOpacity,
-		glfwSetWindowPos,
-		glfwSetWindowSize,
-		glfwSetWindowSizeLimits,
-		glfwSetWindowTitle,
-		glfwShowWindow,
-		glfwWindowHint,
 	},
 	core::{
 		ContentScale,
@@ -171,7 +126,7 @@ impl XWin
 	/// [XWin::run].
 	pub(crate) fn post(&self, msg: XWinMessage) -> Result<(), XErr>
 	{
-		self.tx.send(msg).or_else(|_| {
+		self.xwin_tx.send(msg).or_else(|_| {
 			Err(XErr::NotInitialized(String::from(
 				"XWin has not been initialized",
 			)))
@@ -186,587 +141,106 @@ impl XWin
 		rcv.recv()
 			.map_err(|_| XErr::NotInitialized(String::from("XWin has not been initialized")))
 	}
+}
 
-	/// Run the main loop of XWin. Will block until `rx.recv()` returns `Err` or
-	/// an [XWinMessage::Terminate] message is received.
-	pub(crate) fn run(rx: Receiver<XWinMessage>)
+/// Run the main loop of XWin. Will block until `rx.recv()` returns `Err` or
+/// an [XWinMessage::Terminate] message is received.
+pub(crate) fn run(rx: Receiver<XWinMessage>)
+{
+	while let Ok(msg) = rx.recv()
 	{
-		while let Ok(msg) = rx.recv()
+		match msg
 		{
-			match msg
+			// Core
+			| XWinMessage::Terminate => break,
+
+			// Monitor
+			| XWinMessage::GetMonitors(tx) => monitors(tx),
+			| XWinMessage::GetPrimaryMonitor(tx) => primary_monitor(tx),
+			| XWinMessage::GetMonitorPos(mon, tx) => monitor_pos(mon, tx),
+			| XWinMessage::GetMonitorWorkArea(mon, tx) => monitor_work_area(mon, tx),
+			| XWinMessage::GetMonitorPhysicalSize(mon, tx) => monitor_physical_size(mon, tx),
+			| XWinMessage::GetMonitorContentScale(mon, tx) => monitor_content_scale(mon, tx),
+			| XWinMessage::GetMonitorName(mon, tx) => monitor_name(mon, tx),
+			| XWinMessage::GetMonitorVideoModes(mon, tx) => monitor_video_modes(mon, tx),
+			| XWinMessage::GetMonitorVideoMode(mon, tx) => monitor_video_mode(mon, tx),
+			| XWinMessage::SetGamma(mon, gamma, tx) => set_gamma(mon, gamma, tx),
+			| XWinMessage::GammaRamp(mon, tx) => gamma_ramp(mon, tx),
+			| XWinMessage::SetGammaRamp(mon, ramp, tx) => set_gamma_ramp(mon, ramp, tx),
+
+			// Window
+			| XWinMessage::CreateWindow {
+				width,
+				height,
+				title,
+				monitor,
+				builder,
+				tx,
+			} => create_window(width, height, title, monitor, builder, tx),
+			| XWinMessage::DestroyWindow(win, tx) => destroy_window(win, tx),
+			| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
+			| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
+			| XWinMessage::SetWindowIcon(win, icons, tx) => set_window_icon(win, icons, tx),
+			| XWinMessage::GetWindowPos(win, tx) => window_pos(win, tx),
+			| XWinMessage::SetWindowPos(win, pos, tx) => set_window_pos(win, pos, tx),
+			| XWinMessage::GetWindowSize(win, tx) => window_size(win, tx),
+			| XWinMessage::SetWindowSizeLimits {
+				window,
+				min,
+				max,
+				tx,
+			} => set_window_size_limits(window, min, max, tx),
+			| XWinMessage::SetWindowAspectRatio {
+				window,
+				numerator,
+				denominator,
+				tx,
+			} => set_window_aspect_ratio(window, numerator, denominator, tx),
+			| XWinMessage::SetWindowSize(win, size, tx) => set_window_size(win, size, tx),
+			| XWinMessage::GetFrameBufferSize(win, tx) => framebuffer_size(win, tx),
+			| XWinMessage::GetWindowFrameSize(win, tx) => window_frame_size(win, tx),
+			| XWinMessage::GetWindowContentScale(win, tx) => window_content_scale(win, tx),
+			| XWinMessage::GetWindowOpacity(win, tx) => window_opacity(win, tx),
+			| XWinMessage::SetWindowOpacity(win, opacity, tx) =>
 			{
-				// Core
-				| XWinMessage::Terminate => break,
-
-				// Monitor
-				| XWinMessage::GetMonitors(tx) => monitors(tx),
-				| XWinMessage::GetPrimaryMonitor(tx) => primary_monitor(tx),
-				| XWinMessage::GetMonitorPos(mon, tx) => monitor_pos(mon, tx),
-				| XWinMessage::GetMonitorWorkArea(mon, tx) => monitor_work_area(mon, tx),
-				| XWinMessage::GetMonitorPhysicalSize(mon, tx) => monitor_physical_size(mon, tx),
-				| XWinMessage::GetMonitorContentScale(mon, tx) => monitor_content_scale(mon, tx),
-				| XWinMessage::GetMonitorName(mon, tx) => monitor_name(mon, tx),
-				| XWinMessage::GetMonitorVideoModes(mon, tx) => monitor_video_modes(mon, tx),
-				| XWinMessage::GetMonitorVideoMode(mon, tx) => monitor_video_mode(mon, tx),
-				| XWinMessage::SetGamma(mon, gamma, tx) => set_gamma(mon, gamma, tx),
-				| XWinMessage::GammaRamp(mon, tx) => gamma_ramp(mon, tx),
-				| XWinMessage::SetGammaRamp(mon, ramp, tx) => set_gamma_ramp(mon, ramp, tx),
-
-				// Window
-				| XWinMessage::CreateWindow {
-					width,
-					height,
-					title,
-					monitor,
-					builder,
-					tx,
-				} => create_window(width, height, title, monitor, builder, tx),
-				| XWinMessage::DestroyWindow(win, tx) => destroy_window(win, tx),
-				| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
-				| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
-				| XWinMessage::SetWindowIcon(win, icons, tx) => set_window_icon(win, icons, tx),
-				| XWinMessage::GetWindowPos(win, tx) => window_pos(win, tx),
-				| XWinMessage::SetWindowPos(win, pos, tx) => set_window_pos(win, pos, tx),
-				| XWinMessage::GetWindowSize(win, tx) => window_size(win, tx),
-				| XWinMessage::SetWindowSizeLimits {
+				set_window_opacity(win, opacity, tx)
+			},
+			| XWinMessage::IconifyWindow(win, tx) => iconify_window(win, tx),
+			| XWinMessage::RestoreWindow(win, tx) => restore_window(win, tx),
+			| XWinMessage::MaximizeWindow(win, tx) => maximize_window(win, tx),
+			| XWinMessage::ShowWindow(win, tx) => show_window(win, tx),
+			| XWinMessage::HideWindow(win, tx) => hide_window(win, tx),
+			| XWinMessage::FocusWindow(win, tx) => focus_window(win, tx),
+			| XWinMessage::RequestWindowAttention(win, tx) => request_window_attention(win, tx),
+			| XWinMessage::GetWindowMonitor(win, tx) => window_monitor(win, tx),
+			| XWinMessage::SetWindowFullscreen {
+				window,
+				monitor,
+				size,
+				refresh_rate,
+				tx,
+			} =>
+			{
+				set_window_monitor(
 					window,
-					min,
-					max,
-					tx,
-				} => set_window_size_limits(window, min, max, tx),
-				| XWinMessage::SetWindowAspectRatio {
-					window,
-					numerator,
-					denominator,
-					tx,
-				} => set_window_aspect_ratio(window, numerator, denominator, tx),
-				| XWinMessage::SetWindowSize(win, size, tx) => set_window_size(win, size, tx),
-				| XWinMessage::GetFrameBufferSize(win, tx) => framebuffer_size(win, tx),
-				| XWinMessage::GetWindowFrameSize(win, tx) => window_frame_size(win, tx),
-				| XWinMessage::GetWindowContentScale(win, tx) => window_content_scale(win, tx),
-				| XWinMessage::GetWindowOpacity(win, tx) => window_opacity(win, tx),
-				| XWinMessage::SetWindowOpacity(win, opacity, tx) =>
-				{
-					set_window_opacity(win, opacity, tx)
-				},
-				| XWinMessage::IconifyWindow(win, tx) => iconify_window(win, tx),
-				| XWinMessage::RestoreWindow(win, tx) => restore_window(win, tx),
-				| XWinMessage::MaximizeWindow(win, tx) => maximize_window(win, tx),
-				| XWinMessage::ShowWindow(win, tx) => show_window(win, tx),
-				| XWinMessage::HideWindow(win, tx) => hide_window(win, tx),
-				| XWinMessage::FocusWindow(win, tx) => focus_window(win, tx),
-				| XWinMessage::RequestWindowAttention(win, tx) => request_window_attention(win, tx),
-				| XWinMessage::GetWindowMonitor(win, tx) => window_monitor(win, tx),
-				| XWinMessage::SetWindowFullscreen {
-					window,
-					monitor,
+					Some(monitor),
+					ScreenCoordinates::default(),
 					size,
 					refresh_rate,
 					tx,
-				} =>
-				{
-					set_window_monitor(
-						window,
-						Some(monitor),
-						ScreenCoordinates::default(),
-						size,
-						refresh_rate,
-						tx,
-					)
-				},
-				| XWinMessage::SetWindowWindowed {
-					window,
-					position,
-					size,
-					tx,
-				} => set_window_monitor(window, None, position, size, 0, tx),
-				| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
-				| XWinMessage::SetWindowAttribute(win, attr, value, tx) =>
-				{
-					set_window_attribute(win, attr, value, tx)
-				},
-			};
-		}
-	}
-}
-
-fn set_window_attribute(win: *mut GLFWwindow, attr: i32, value: i32, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwSetWindowAttrib(win, attr, value) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn window_attribute(win: *mut GLFWwindow, attr: i32, tx: Sender<Result<i32, XErr>>)
-{
-	let value = unsafe { glfwGetWindowAttrib(win, attr) };
-	let _ = tx.send(XErr::result(|| value));
-}
-
-fn set_window_monitor(
-	win: *mut GLFWwindow,
-	mon: Option<Monitor>,
-	pos: ScreenCoordinates,
-	size: ScreenCoordinates,
-	refresh_rate: i32,
-	tx: Sender<Result<(), XErr>>,
-)
-{
-	unsafe {
-		glfwSetWindowMonitor(
-			win,
-			match mon
-			{
-				| Some(m) => m.as_glfw(),
-				| None => null_mut(),
+				)
 			},
-			pos.x,
-			pos.y,
-			size.x,
-			size.y,
-			refresh_rate,
-		)
-	}
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn window_monitor(win: *mut GLFWwindow, tx: Sender<Result<Option<Monitor>, XErr>>)
-{
-	let monitor = unsafe { glfwGetWindowMonitor(win) };
-	let _ = tx.send(XErr::result(|| {
-		if monitor.is_null()
-		{
-			None
-		}
-		else
-		{
-			Some(Monitor::from_glfw(monitor))
-		}
-	}));
-}
-
-fn request_window_attention(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwRequestWindowAttention(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn focus_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwFocusWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn hide_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwHideWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn show_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwShowWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn maximize_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwMaximizeWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn restore_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwRestoreWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn iconify_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwIconifyWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn set_window_opacity(win: *mut GLFWwindow, opacity: f32, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwSetWindowOpacity(win, opacity) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn window_opacity(win: *mut GLFWwindow, tx: Sender<Result<f32, XErr>>)
-{
-	let opacity = unsafe { glfwGetWindowOpacity(win) };
-	let _ = tx.send(XErr::result(|| opacity));
-}
-
-fn window_content_scale(win: *mut GLFWwindow, tx: Sender<Result<ContentScale, XErr>>)
-{
-	let mut xscale = 0.0f32;
-	let mut yscale = 0.0f32;
-	unsafe { glfwGetWindowContentScale(win, &mut xscale, &mut yscale) };
-	let _ = tx.send(XErr::result(|| {
-		ContentScale {
-			x: xscale,
-			y: yscale,
-		}
-	}));
-}
-
-fn window_frame_size(win: *mut GLFWwindow, tx: Sender<Result<(u32, u32, u32, u32), XErr>>)
-{
-	let mut left = 0i32;
-	let mut top = 0i32;
-	let mut right = 0i32;
-	let mut bottom = 0i32;
-	unsafe { glfwGetWindowFrameSize(win, &mut left, &mut top, &mut right, &mut bottom) };
-	let _ = tx.send(XErr::result(|| {
-		(left as u32, top as u32, right as u32, bottom as u32)
-	}));
-}
-
-fn framebuffer_size(win: *mut GLFWwindow, tx: Sender<Result<Pixels, XErr>>)
-{
-	let mut width = 0i32;
-	let mut height = 0i32;
-	unsafe { glfwGetFramebufferSize(win, &mut width, &mut height) };
-	let _ = tx.send(XErr::result(|| {
-		Pixels {
-			x: width,
-			y: height,
-		}
-	}));
-}
-
-fn set_window_size(win: *mut GLFWwindow, size: ScreenCoordinates, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwSetWindowSize(win, size.x, size.y) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn set_window_aspect_ratio(
-	win: *mut GLFWwindow,
-	numer: i32,
-	denom: i32,
-	tx: Sender<Result<(), XErr>>,
-)
-{
-	unsafe { glfwSetWindowAspectRatio(win, numer, denom) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn set_window_size_limits(
-	win: *mut GLFWwindow,
-	min: ScreenCoordinates,
-	max: ScreenCoordinates,
-	tx: Sender<Result<(), XErr>>,
-)
-{
-	unsafe { glfwSetWindowSizeLimits(win, min.x, min.y, max.x, max.y) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn window_size(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates, XErr>>)
-{
-	let mut size = ScreenCoordinates::default();
-	unsafe { glfwGetWindowSize(win, &mut size.x, &mut size.y) };
-	let _ = tx.send(XErr::result(|| size));
-}
-
-fn set_window_pos(win: *mut GLFWwindow, pos: ScreenCoordinates, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwSetWindowPos(win, pos.x, pos.y) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn window_pos(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates, XErr>>)
-{
-	let mut pos = ScreenCoordinates::default();
-	unsafe { glfwGetWindowPos(win, &mut pos.x, &mut pos.y) };
-	let _ = tx.send(XErr::result(|| pos));
-}
-
-fn set_window_icon(win: *mut GLFWwindow, icons: Vec<Image>, tx: Sender<Result<(), XErr>>)
-{
-	let glfw_icons: Vec<GLFWimage> = icons.iter().map(Image::as_glfw).collect();
-
-	unsafe {
-		glfwSetWindowIcon(
-			win,
-			glfw_icons.len() as i32,
-			if glfw_icons.is_empty()
+			| XWinMessage::SetWindowWindowed {
+				window,
+				position,
+				size,
+				tx,
+			} => set_window_monitor(window, None, position, size, 0, tx),
+			| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
+			| XWinMessage::SetWindowAttribute(win, attr, value, tx) =>
 			{
-				null_mut()
-			}
-			else
-			{
-				glfw_icons.as_ptr()
+				set_window_attribute(win, attr, value, tx)
 			},
-		)
-	};
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn set_window_title(win: *mut GLFWwindow, title: String, tx: Sender<Result<(), XErr>>)
-{
-	let str = CString::new(title)
-		.map_err(|_| XErr::InvalidValue(String::from("Window title may not contain null bytes")));
-	if let Err(err) = str
-	{
-		let _ = tx.send(Err(err));
-		return;
+		};
 	}
-	let str = str.unwrap();
-
-	unsafe { glfwSetWindowTitle(win, str.as_ptr()) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn window_title(win: *mut GLFWwindow, tx: Sender<Result<String, XErr>>)
-{
-	let title = unsafe { glfwGetWindowTitle(win) };
-	let _ = tx.send(XErr::result(|| {
-		unsafe { CStr::from_ptr(title) }
-			.to_str()
-			.unwrap_or_else(|_| "")
-			.to_owned()
-	}));
-}
-
-fn destroy_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwDestroyWindow(win) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn check_err<T>(tx: &Sender<Result<T, XErr>>) -> bool
-{
-	if let Err(err) = XErr::result(|| ())
-	{
-		let _ = tx.send(Err(err));
-		true
-	}
-	else
-	{
-		false
-	}
-}
-
-fn create_window(
-	width: i32,
-	height: i32,
-	title: String,
-	monitor: Option<Monitor>,
-	builder: Option<WindowBuilder>,
-	tx: Sender<Result<*mut GLFWwindow, XErr>>,
-)
-{
-	unsafe { glfwDefaultWindowHints() };
-	if check_err(&tx)
-	{
-		return;
-	}
-
-	if let Some(bld) = builder
-	{
-		if let Err(err) = bld.apply()
-		{
-			let _ = tx.send(Err(err));
-			return;
-		}
-	}
-
-	unsafe { glfwWindowHint(GLFW_CLIENT_API as i32, GLFW_NO_API as i32) };
-	if check_err(&tx)
-	{
-		return;
-	}
-
-	let str = CString::new(title)
-		.map_err(|_| XErr::InvalidValue(String::from("Title contains a null byte")));
-	if let Err(err) = str
-	{
-		let _ = tx.send(Err(err));
-		return;
-	}
-
-	let str = str.unwrap();
-
-	let win = unsafe {
-		glfwCreateWindow(
-			width,
-			height,
-			str.as_ptr(),
-			match monitor
-			{
-				| Some(mon) => mon.as_glfw(),
-				| None => null_mut(),
-			},
-			null_mut(),
-		)
-	};
-
-	let _ = if win.is_null()
-	{
-		tx.send(Err(XErr::get()))
-	}
-	else
-	{
-		tx.send(Ok(win))
-	};
-}
-
-fn set_gamma_ramp(mon: *mut GLFWmonitor, ramp: GammaRamp, tx: Sender<Result<(), XErr>>)
-{
-	let mut ramp = ramp;
-	ramp.with_glfw(|ramp| unsafe { glfwSetGammaRamp(mon, ramp) });
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn gamma_ramp(mon: *mut GLFWmonitor, tx: Sender<Result<GammaRamp, XErr>>)
-{
-	let ramp = unsafe { glfwGetGammaRamp(mon) };
-	let _ = tx.send(match unsafe { ramp.as_ref() }
-	{
-		| None => Err(XErr::get()),
-		| Some(gr) => Ok(GammaRamp::from_glfw(gr)),
-	});
-}
-
-fn set_gamma(mon: *mut GLFWmonitor, gamma: f32, tx: Sender<Result<(), XErr>>)
-{
-	unsafe { glfwSetGamma(mon, gamma) };
-	let _ = tx.send(XErr::result(|| ()));
-}
-
-fn monitor_video_mode(mon: *mut GLFWmonitor, tx: Sender<Result<VideoMode, XErr>>)
-{
-	let vm_ptr = unsafe { glfwGetVideoMode(mon) };
-	let _ = tx.send(match unsafe { vm_ptr.as_ref() }
-	{
-		| None => Err(XErr::get()),
-		| Some(vm) => Ok(VideoMode::from_glfw(vm)),
-	});
-}
-
-fn monitor_video_modes(mon: *mut GLFWmonitor, tx: Sender<Result<Vec<VideoMode>, XErr>>)
-{
-	let mut count = 0i32;
-	let vms = unsafe { glfwGetVideoModes(mon, &mut count) };
-	let _ = tx.send(
-		if vms.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			let mut vec = Vec::<VideoMode>::with_capacity(count as usize);
-			for idx in 0..count as usize
-			{
-				vec.push(VideoMode::from_glfw(unsafe { &*vms.add(idx) }));
-			}
-			Ok(vec)
-		},
-	);
-}
-
-fn monitor_name(mon: *mut GLFWmonitor, tx: Sender<Result<String, XErr>>)
-{
-	let title = unsafe { glfwGetMonitorName(mon) };
-	let _ = tx.send(
-		if title.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			Ok(unsafe { CStr::from_ptr(title) }
-				.to_str()
-				.unwrap_or_else(|_| "")
-				.to_owned())
-		},
-	);
-}
-
-fn monitor_content_scale(mon: *mut GLFWmonitor, tx: Sender<Result<ContentScale, XErr>>)
-{
-	let mut xscale = 0.0f32;
-	let mut yscale = 0.0f32;
-	unsafe { glfwGetMonitorContentScale(mon, &mut xscale, &mut yscale) };
-	let _ = tx.send(XErr::result(|| {
-		ContentScale {
-			x: xscale,
-			y: yscale,
-		}
-	}));
-}
-
-fn monitor_physical_size(mon: *mut GLFWmonitor, tx: Sender<Result<Millimeters, XErr>>)
-{
-	let mut width = 0i32;
-	let mut height = 0i32;
-	unsafe { glfwGetMonitorPhysicalSize(mon, &mut width, &mut height) };
-	let _ = tx.send(XErr::result(|| {
-		Millimeters {
-			x: width,
-			y: height,
-		}
-	}));
-}
-
-fn monitor_work_area(mon: *mut GLFWmonitor, tx: Sender<Result<WorkArea, XErr>>)
-{
-	let mut area = WorkArea::default();
-	unsafe {
-		glfwGetMonitorWorkarea(
-			mon,
-			&mut area.pos.x,
-			&mut area.pos.y,
-			&mut area.size.x,
-			&mut area.size.y,
-		)
-	};
-	let _ = tx.send(XErr::result(|| area));
-}
-
-fn monitor_pos(mon: *mut GLFWmonitor, tx: Sender<Result<ScreenCoordinates, XErr>>)
-{
-	let mut pos = ScreenCoordinates::default();
-	unsafe { glfwGetMonitorPos(mon, &mut pos.x, &mut pos.y) };
-	let _ = tx.send(XErr::result(|| pos));
-}
-
-fn primary_monitor(tx: Sender<Result<*mut GLFWmonitor, XErr>>)
-{
-	let monitor = unsafe { glfwGetPrimaryMonitor() };
-	let _ = tx.send(
-		if monitor.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			Ok(monitor)
-		},
-	);
-}
-
-fn monitors(tx: Sender<Result<Vec<*mut GLFWmonitor>, XErr>>)
-{
-	let mut count = 0i32;
-	let monitors = unsafe { glfwGetMonitors(&mut count) };
-
-	let _ = tx.send(
-		if monitors.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			let mut vec = Vec::with_capacity(count as usize);
-			for idx in 0..count as usize
-			{
-				vec.push(unsafe { *monitors.add(idx) });
-			}
-			Ok(vec)
-		},
-	);
 }

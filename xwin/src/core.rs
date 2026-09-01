@@ -10,26 +10,25 @@
 //! Only the following functions may be called before the library has been
 //! successfully initialized, and only from the main thread.
 //!
-//! - [XWin::glfw_version]
-//! - [XWin::platform_supported]
-//! - [XWin::platform]
-//! - [XWin::cocoa_dir_resources]
-//! - [XWin::cocoa_menubar]
-//! - [XWin::wayland_libdecor]
+//! - [glfw_version]
+//! - [platform_supported]
+//! - [platform]
+//! - [cocoa_dir_resources]
+//! - [cocoa_menubar]
+//! - [wayland_libdecor]
 //!
 //! Calling any other function before successful initialization will produce
-//! [XErr::NotInitialized].
+//! [NotInitialized].
 //!
 //! ## Initializing XWin
-//! The library can be initialized with [XWin::init], which returns an [XErr] if
+//! The library can be initialized with [init], which returns an [XErr] if
 //! any errors occurred. If successful, this function will block until XWin is
 //! terminated.
 //!
 //! ```
-//! # use xwin::core::XWin;
-//! let xwin = XWin::init(|| {});
+//! let xwin = xwin::init(|| {});
 //! ```
-//! The closure passed to [XWin::init] will be called on a new thread before the
+//! The closure passed to [init] will be called on a new thread before the
 //! function blocks. It is intended that all code dealing with XWin aside from
 //! initial configuration will occur on other threads, while XWin will control
 //! the main thread. Some functions within XWin require some of their code to be
@@ -37,26 +36,24 @@
 //! moving data to the main thread, and may block the calling thread until the
 //! function is completed.
 //!
-//! TODO - is blocking necessary?
-//!
 //! If any part of initialization fails, any parts that succeeded are terminated
-//! as if [XWin::terminate] had been called.
+//! as if [terminate] had been called.
 //!
 //! **MacOS:** When the library is initialized the main menu and dock icon are
 //! created. These are not desirable for a command-line only program. The
 //! creation of the main menu and dock icon can be disabled with the
-//! [XWin::cocoa_menubar] function.
+//! [cocoa_menubar] function.
 //!
 //! # Configuring XWin Initialization
 //!
 //! Use the functions in this struct to configure XWin before initialization,
-//! concluding with [XWin::init]. These functions will affect how the library
+//! concluding with [init]. These functions will affect how the library
 //! behaves until termination.
 //!
 //! ```
-//! # use xwin::core::{Platform, XWin};
-//! XWin::set_platform(Platform::Any);
-//! XWin::init(|| {});
+//! # use xwin::Platform;
+//! xwin::set_platform(Platform::Any);
+//! xwin::init(|| {});
 //! ```
 //! The configuration you set is never reset by XWin, but it only takes
 //! effect during initialization. Once XWin has been initialized, any
@@ -69,23 +66,23 @@
 //! functions.
 //!
 //! See the following functions for more specific information on what they do:
-//! - [XWin::platform]
-//! - [XWin::cocoa_dir_resources]
-//! - [XWin::cocoa_menubar]
-//! - [XWin::wayland_libdecor]
+//! - [platform]
+//! - [cocoa_dir_resources]
+//! - [cocoa_menubar]
+//! - [wayland_libdecor]
 //!
 //! ## Runtime Platform Selection
-//! You can control platform selection via the [XWin::platform] function. By
+//! You can control platform selection via the [platform] function. By
 //! default, this is set to [Platform::Any], which will look for supported
 //! window systems in order of priority and select the first one it finds. It
 //! can also be set to any specific platform to have XWin only look for that
 //! one.
 //!
 //! ```
-//! # use xwin::core::{Platform, XWin};
+//! # use xwin::core::Platform;
 //! # #[cfg(windows)]
-//! XWin::set_platform(Platform::Windows);
-//! XWin::init(|| {});
+//! xwin::set_platform(Platform::Windows);
+//! xwin::init(|| {});
 //! ```
 //!
 //! This mechanism also provides the [Null](Platform::Null) platform, which is
@@ -94,28 +91,27 @@
 //! will not interact with any actual window system.
 //!
 //! ```
-//! # use xwin::core::{Platform, XWin};
-//! XWin::set_platform(Platform::Null);
-//! XWin::init(|| {});
+//! # use xwin::core::Platform;
+//! xwin::set_platform(Platform::Null);
+//! xwin::init(|| {});
 //! ```
 //!
 //! You can test whether a library binary was compiled with support for a
 //! specific platform with [XWin::platform_supported].
 //! ```
-//! # use xwin::core::{Platform, XWin};
-//! if XWin::platform_supported(Platform::X11)
+//! # use xwin::core::Platform;
+//! if xwin::platform_supported(Platform::X11)
 //! {
-//! 	XWin::set_platform(Platform::X11);
-//! 	XWin::init(|| {});
+//! 	xwin::set_platform(Platform::X11);
+//! 	xwin::init(|| {});
 //! }
 //! ```
 //!
 //! Once XWin has been initialized, you can query which platform was selected
 //! with [XWin::platform].
 //! ```
-//! # use xwin::core::XWin;
-//! # let xwin = XWin::init(|| {
-//! let platform = XWin::platform();
+//! # xwin::init(|| {
+//! let platform = xwin::platform();
 //! # });
 //! ```
 //!
@@ -132,23 +128,40 @@
 //! some of the time, or on some versions of XWin, but may break at any time
 //! and will not be considered a bug.
 //!
-//! ## Reentrancy
-//! XWin event processing and object destruction are not reentrant. This means
-//! that the following functions must not be called from any window function:
-//!
-//! - TODO link functions here (destroy window, destroy cursor, poll events,
-//!   wait events, wait events timeout, terminate)
-//!
-//! These functions may be made reentrant in future minor or patch releases, but
-//! functions not on this list will not be made non-reentrant.
-//!
 //! ## Thread Safety
 //! Most XWin functions require some amount of code to be called on the main
 //! thread. XWin will mostly handle moving execution between threads as
-//! necessary for you. The only exceptions being XWin configuration functions,
-//! which all exist under the [XWin] struct. Such functions explicitly state in
-//! their documentation that they must be called from the main thread under
-//! 'Thread Safety'
+//! necessary for you. The only exceptions being XWin configuration functions
+//! under this module; [set_platform], [cocoa_dir_resources], [cocoa_menubar],
+//! [wayland_libdecor], [platform], and [platform_supported]. Such functions
+//! explicitly state in their documentation that they must be called from the
+//! main thread under 'Thread Safety'
+//!
+//! ## Event Handling
+//! XWin events are handled primarily using message passing through synchronous
+//! channels. These channels are not created until you subscribe to them, at
+//! which time you may specify their bound and a [Receiver] will be returned
+//! which will receive the relevant events. The bound you specify is used for
+//! the internal buffer of the channel. When this channel's buffer is full, any
+//! subsequent event will cause the event handling thread to block until space
+//! becomes available.
+//!
+//! This blocking may or may not also block handling of other types of events
+//! (XWin makes no guarantees about which thread any events are sent from).
+//! Therefore, it is highly recommended to ensure you have a large enough bound
+//! and are pulling events from the receivers frequently enough to prevent such
+//! blocking from occuring.
+//!
+//! Disconnecting the receiver (such as by dropping), or calling the related
+//! unsubscribe function, will prevent XWin from attempting to send more events
+//! on a given channel. This can be used to prevent blocking if you know you
+//! won't be handling those events.
+//!
+//! Note also that only one subscription per event type may exist at a time. If
+//! an event's subcribe function is called while a subscription already exists,
+//! the existing channel will be quietly disconnected and a new one created.
+//! This may be changed in the future, but for now XWin will only allow one
+//! channel to exist for a given event type at a time.
 //!
 //! ## Event Order
 //! The order of arrival of related events is not guaranteed to be consistent
@@ -162,15 +175,17 @@ use std::{
 	os::raw::c_int,
 	panic,
 	panic::{
-		UnwindSafe,
 		resume_unwind,
+		UnwindSafe,
 	},
 	sync::{
-		OnceLock,
 		mpsc::{
-			Sender,
 			channel,
+			Sender,
+			SyncSender,
 		},
+		OnceLock,
+		RwLock,
 	},
 	thread,
 };
@@ -179,6 +194,11 @@ use std::{
 use crate::err::set_error_log;
 use crate::{
 	bind::{
+		glfwGetPlatform,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -193,20 +213,14 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
-		glfwGetPlatform,
-		glfwGetVersion,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 	},
 	core::exec::XWinMessage,
 	err::XErr,
-	monitor::set_monitor_callback,
+	monitor::MonitorEvent,
 };
 
 /// Used internally by XWin for managing global state
-pub(crate) static XWIN: OnceLock<XWin> = OnceLock::new();
+pub(crate) static XWIN: OnceLock<RwLock<XWin>> = OnceLock::new();
 
 /// Used to configure [XWin]. Specifies the platform to use for windowing and
 /// input.
@@ -270,307 +284,171 @@ pub struct ContentScale
 	pub y: f32,
 }
 
-/// A structure for handling the initialization and termination of the XWin
-/// library. For a more complete guide, see [the core module
-/// documentation](crate::core)
-pub struct XWin
+pub(crate) struct XWin
 {
-	tx: Sender<XWinMessage>,
+	xwin_tx:    Sender<XWinMessage>,
+	monitor_tx: Option<SyncSender<MonitorEvent>>,
 }
 
 // TODO - glfwInitVulkanLoader
 
 impl XWin
 {
-	/// This function initializes the XWin library. Before most XWin functions
-	/// can be used, XWin must be initialized. If this function fails, it
-	/// terminates XWin before returning an error.
-	///
-	/// The [XWin::platform] function can be used to control which platforms are
-	/// considered during initialization. This also depends on which platforms
-	/// the library was compiled to support.
-	///
-	/// The closure passed to this function will be run on a new thread, while
-	/// this function enters a loop to process events generated by other parts
-	/// of the XWin library. This function will not return until XWin is
-	/// terminated, which happens automatically after the closure passed to
-	/// this function terminates. XWin may also be terminated early by calling
-	/// [XWin::terminate], which will immediately close all windows and cause
-	/// this function to return.
-	///
-	/// # Returns
-	/// An error if one occurs during initialization. If initialization
-	/// succeeds, returns `()` once XWin is terminated.
-	///
-	/// # Panics
-	/// If the closure passed to this function panics, XWin is immediately
-	/// terminated, and this function will panic.
-	///
-	/// # Errors
-	/// Possible errors include
-	/// [XErr::PlatformUnavailable], [XErr::Platform] and [XErr::Reinitialized].
-	///
-	/// # Remarks
-	/// - **macOS:** This function will change the current directory of the
-	///   application to the Contents/Resources subdirectory of the
-	///   application's bundle, if present. This can be disabled with the
-	///   [cocoa_dir_resources](XWin::cocoa_dir_resources) function.
-	///
-	/// - **macOS:** This function will create the main menu and dock icon for
-	///   the application. If XWin finds a `MainMenu.nib` it is loaded and
-	///   assumed to contain a menu bar. Otherwise a minimal menu bar is created
-	///   manually with common commands like `Hide`, `Quit` and `About`. The
-	///   `About` entry opens a minimal about dialog with information from the
-	///   application's bundle. The menu bar and dock icon can be disabled
-	///   entirely with the [cocoa_menubar](XWin::cocoa_menubar) function.
-	///
-	/// - **Wayland, X11:** If the library was compiled with support for both
-	///   `Wayland` and `X11`, and the [platform](XWin::platform) config is set
-	///   to [Platform::Any], the `XDG_SESSION_TYPE` environment variable
-	///   affects which platform is picked. If the environment variable is not
-	///   set, or is set to something other than `wayland` or `x11`, the regular
-	///   detection mechanism will be used instead.
-	///
-	/// - **X11:** This function will set the `LC_CTYPE` category of the
-	///   application locale according to the current environment if that
-	///   category is still "C". This is because the "C" locale breaks Unicode
-	///   text input.
-	///
-	/// # Thread Safety
-	/// This function must be called from the main thread.
-	pub fn init<F>(f: F) -> Result<(), XErr>
-	where
-		F: 'static + Send + FnOnce() + UnwindSafe,
+	pub(crate) fn get() -> Result<&'static RwLock<XWin>, XErr>
 	{
-		let (tx, rx) = channel();
-		if let Err(_) = XWIN.set(XWin { tx })
-		{
-			return Err(XErr::Reinitialized);
-		}
+		XWIN.get()
+			.ok_or_else(|| XErr::NotInitialized(String::from("XWin has not been initialized")))
+	}
 
-		#[cfg(feature = "tracing")]
-		set_error_log();
+	pub(crate) fn set_monitor_tx(&mut self, tx: Option<SyncSender<MonitorEvent>>)
+	{
+		self.monitor_tx = tx;
+	}
 
-		if unsafe { glfwInit() } != GLFW_TRUE as i32
-		{
-			return Err(XErr::get());
-		}
+	pub(crate) fn monitor_tx(&self) -> &Option<SyncSender<MonitorEvent>>
+	{
+		&self.monitor_tx
+	}
+}
 
-		set_monitor_callback();
+/// Initializes the XWin library. Before most XWin functions can be used,
+/// XWin must be initialized. If this function fails, it terminates XWin
+/// before returning an error.
+///
+/// The [platform] function can be used to control which platforms are
+/// considered during initialization. This also depends on which platforms
+/// the library was compiled to support.
+///
+/// The closure passed to this function will be run on a new thread, while
+/// this function enters a loop to process events generated by other parts
+/// of the XWin library that must be processed on the main thread. This function
+/// will not return until XWin is terminated, which happens automatically after
+/// the closure passed to this function terminates. XWin may also be terminated
+/// early by calling [terminate], which will immediately close all windows and
+/// cause this function to return.
+///
+/// # Returns
+/// An error if one occurs during initialization. If initialization
+/// succeeds, returns `()` once XWin is terminated.
+///
+/// # Panics
+/// If the closure passed to this function panics, XWin is immediately
+/// terminated, and this function will panic.
+///
+/// # Errors
+/// Possible errors include
+/// [XErr::PlatformUnavailable], [XErr::Platform] and [XErr::Reinitialized].
+///
+/// # Remarks
+/// - **macOS:** This function will change the current directory of the
+///   application to the Contents/Resources subdirectory of the application's
+///   bundle, if present. This can be disabled with the
+///   [cocoa_dir_resources](cocoa_dir_resources) function.
+///
+/// - **macOS:** This function will create the main menu and dock icon for the
+///   application. If XWin finds a `MainMenu.nib` it is loaded and assumed to
+///   contain a menu bar. Otherwise a minimal menu bar is created manually with
+///   common commands like `Hide`, `Quit` and `About`. The `About` entry opens a
+///   minimal about dialog with information from the application's bundle. The
+///   menu bar and dock icon can be disabled entirely with the
+///   [cocoa_menubar](cocoa_menubar) function.
+///
+/// - **Wayland, X11:** If the library was compiled with support for both
+///   `Wayland` and `X11`, and the [platform](platform) config is set to
+///   [Platform::Any], the `XDG_SESSION_TYPE` environment variable affects which
+///   platform is picked. If the environment variable is not set, or is set to
+///   something other than `wayland` or `x11`, the regular detection mechanism
+///   will be used instead.
+///
+/// - **X11:** This function will set the `LC_CTYPE` category of the application
+///   locale according to the current environment if that category is still "C".
+///   This is because the "C" locale breaks Unicode text input.
+///
+/// # Thread Safety
+/// This function must be called from the main thread.
+pub fn init<F>(f: F) -> Result<(), XErr>
+where
+	F: 'static + Send + FnOnce() + UnwindSafe,
+{
+	let (tx, rx) = channel();
+	if let Err(_) = XWIN.set(RwLock::new(XWin {
+		xwin_tx:    tx,
+		monitor_tx: None,
+	}))
+	{
+		return Err(XErr::Reinitialized);
+	}
 
-		let handle = thread::Builder::new()
-			.name("XWin Thread".to_string())
-			.spawn(move || {
-				let result = panic::catch_unwind(move || {
-					f();
-				});
-				Self::terminate();
-				if let Err(err) = result
-				{
-					resume_unwind(err);
-				}
-			})
-			.map_err(|err| XErr::Platform(err.to_string()))?;
+	#[cfg(feature = "tracing")]
+	set_error_log();
 
-		Self::run(rx);
-		unsafe { glfwTerminate() };
+	if unsafe { glfwInit() } != GLFW_TRUE as i32
+	{
+		return Err(XErr::get());
+	}
 
-		if handle.is_finished()
-		{
-			if let Err(err) = handle.join()
+	let handle = thread::Builder::new()
+		.name("XWin Thread".to_string())
+		.spawn(move || {
+			let result = panic::catch_unwind(move || {
+				f();
+			});
+			terminate();
+			if let Err(err) = result
 			{
 				resume_unwind(err);
 			}
-		}
+		})
+		.map_err(|err| XErr::Platform(err.to_string()))?;
 
-		Ok(())
-	}
+	exec::run(rx);
+	unsafe { glfwTerminate() };
 
-	/// Destroys all remaining windows and cursors, restores any modified gamma
-	/// ramps and frees any other allocated resources. Once this function is
-	/// called, most XWin functions will no longer be useful. This should only
-	/// be called once it is known XWin will no longer be needed for the
-	/// remainder of the program's runtime (such as at the end of `main()`).
-	///
-	/// This function will not stop you from continuing to attempt to use other
-	/// XWin objects (windows, monitors, etc), but most will begin returning
-	/// errors after this is called.
-	///
-	/// This function has no effect if XWin is not initialized.
-	///
-	/// Unlike most functions which send a command to the main thread, this
-	/// function will not wait for a response from the main thread before
-	/// returning. This function may, as a result, return before XWin has
-	/// actually been terminated.
-	pub fn terminate()
+	if handle.is_finished()
 	{
-		if let Some(xwin) = XWIN.get()
+		if let Err(err) = handle.join()
 		{
-			let _ = xwin.post(XWinMessage::Terminate);
+			resume_unwind(err);
 		}
 	}
 
-	/// Set the platform to use for windowing and input.
-	///
-	/// **Default:** [`Platform::Any`]
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	pub fn set_platform(platform: Platform)
+	Ok(())
+}
+
+/// Destroys all remaining windows and cursors, restores any modified gamma
+/// ramps and frees any other allocated resources. Once this function is
+/// called, most XWin functions will no longer be useful.
+///
+/// This function will not stop you from continuing to attempt to use other
+/// XWin objects (windows, monitors, etc), but most will begin returning
+/// errors after this is called.
+///
+/// This function has no effect if XWin is not initialized.
+///
+/// Unlike most functions which send a command to the main thread, this
+/// function will not wait for a response from the main thread before
+/// returning. This function may, as a result, return before XWin has
+/// actually been terminated.
+pub fn terminate()
+{
+	if let Some(xwin) = XWIN.get()
 	{
-		unsafe {
-			glfwInitHint(
-				GLFW_PLATFORM as c_int,
-				match platform
-				{
-					| Platform::Any => GLFW_ANY_PLATFORM as c_int,
-					| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
-					| Platform::Cocoa => GLFW_PLATFORM_COCOA as c_int,
-					| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
-					| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
-					| Platform::Null => GLFW_PLATFORM_NULL as c_int,
-				},
-			);
-		}
+		let _ = xwin.read().unwrap().post(XWinMessage::Terminate);
 	}
+}
 
-	/// **MacOS Specific**
-	///
-	/// Specifies whether to set the current directory to the application to the
-	/// `Contents/Resources` subdirectory of the application's bundle, if
-	/// present. This is ignored on other platforms.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	pub fn cocoa_dir_resources(value: bool)
-	{
-		unsafe {
-			glfwInitHint(
-				GLFW_COCOA_CHDIR_RESOURCES as c_int,
-				if value
-				{
-					GLFW_TRUE as c_int
-				}
-				else
-				{
-					GLFW_FALSE as c_int
-				},
-			)
-		};
-	}
-
-	/// **MacOS Specific**
-	///
-	/// Specifies whether to create the menu bar and dock icon when XWin is
-	/// initialized. This applies whether the menu bar is created from a nib or
-	/// manually by XWin. This is ignored on other platforms.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	pub fn cocoa_menubar(value: bool)
-	{
-		unsafe {
-			glfwInitHint(
-				GLFW_COCOA_MENUBAR as c_int,
-				if value
-				{
-					GLFW_TRUE as c_int
-				}
-				else
-				{
-					GLFW_FALSE as c_int
-				},
-			)
-		};
-	}
-
-	/// **Wayland Specific**
-	///
-	/// specifies whether to use [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor)
-	/// for window decorations where available. This is ignored on other
-	/// platforms.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	pub fn wayland_libdecor(value: bool)
-	{
-		unsafe {
-			glfwInitHint(
-				GLFW_WAYLAND_LIBDECOR as c_int,
-				if value
-				{
-					GLFW_WAYLAND_PREFER_LIBDECOR as c_int
-				}
-				else
-				{
-					GLFW_WAYLAND_DISABLE_LIBDECOR as c_int
-				},
-			)
-		};
-	}
-
-	/// This function retrieves the major, minor and revision numbers of the
-	/// GLFW library. It is intended for when you are using GLFW as a shared
-	/// library and want to ensure that you are using the minimum required
-	/// version.
-	///
-	/// # Remarks
-	/// This function may be called before initializing XWin
-	pub fn glfw_version() -> (u32, u32, u32)
-	{
-		let mut major: c_int = 0;
-		let mut minor: c_int = 0;
-		let mut patch: c_int = 0;
-		unsafe { glfwGetVersion(&mut major, &mut minor, &mut patch) };
-
-		(major as u32, minor as u32, patch as u32)
-	}
-
-	/// This function returns the platform that was selected during
-	/// initialization.
-	///
-	/// # Returns
-	/// The currently selected platform, or an error if one occurred.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # See Also
-	/// [platform_supported]
-	pub fn platform() -> Result<Platform, XErr>
-	{
-		let plat = unsafe { glfwGetPlatform() as u32 };
-
-		match plat
-		{
-			| 0 => Err(XErr::get()),
-			| GLFW_PLATFORM_WIN32 => Ok(Platform::Windows),
-			| GLFW_PLATFORM_COCOA => Ok(Platform::Cocoa),
-			| GLFW_PLATFORM_WAYLAND => Ok(Platform::Wayland),
-			| GLFW_PLATFORM_X11 => Ok(Platform::X11),
-			| GLFW_PLATFORM_NULL => Ok(Platform::Null),
-			| _ => Err(XErr::Unknown),
-		}
-	}
-
-	/// This function returns whether the library was compiled with support for
-	/// the specified platform.
-	///
-	/// # Parameters
-	/// `platform`: The platform to query
-	///
-	/// # Returns
-	/// `true` if the platform is supported, `false` otherwise.
-	///
-	/// # Remarks
-	/// This function may be called before initializing XWin
-	///
-	/// # See Also
-	/// [platform]
-	pub fn platform_supported(platform: Platform) -> bool
-	{
-		unsafe {
-			match glfwPlatformSupported(match platform
+/// Set the platform to use for windowing and input.
+///
+/// **Default:** [`Platform::Any`]
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub fn set_platform(platform: Platform)
+{
+	unsafe {
+		glfwInitHint(
+			GLFW_PLATFORM as c_int,
+			match platform
 			{
 				| Platform::Any => GLFW_ANY_PLATFORM as c_int,
 				| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
@@ -578,20 +456,143 @@ impl XWin
 				| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
 				| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
 				| Platform::Null => GLFW_PLATFORM_NULL as c_int,
-			}) as u32
-			{
-				| GLFW_TRUE => true,
-				| GLFW_FALSE => false,
-				| _ => false,
-			}
-		}
+			},
+		);
 	}
+}
 
-	/// Returns `Ok(&`[`XWin`]`)` if XWin has been initialized, or
-	/// [XErr::NotInitialized] otherwise.
-	pub(crate) fn get() -> Result<&'static XWin, XErr>
+/// **MacOS Specific**
+///
+/// Specifies whether to set the current directory to the application to the
+/// `Contents/Resources` subdirectory of the application's bundle, if
+/// present. This is ignored on other platforms.
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub fn cocoa_dir_resources(value: bool)
+{
+	unsafe {
+		glfwInitHint(
+			GLFW_COCOA_CHDIR_RESOURCES as c_int,
+			if value
+			{
+				GLFW_TRUE as c_int
+			}
+			else
+			{
+				GLFW_FALSE as c_int
+			},
+		)
+	};
+}
+
+/// **MacOS Specific**
+///
+/// Specifies whether to create the menu bar and dock icon when XWin is
+/// initialized. This applies whether the menu bar is created from a nib or
+/// manually by XWin. This is ignored on other platforms.
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub fn cocoa_menubar(value: bool)
+{
+	unsafe {
+		glfwInitHint(
+			GLFW_COCOA_MENUBAR as c_int,
+			if value
+			{
+				GLFW_TRUE as c_int
+			}
+			else
+			{
+				GLFW_FALSE as c_int
+			},
+		)
+	};
+}
+
+/// **Wayland Specific**
+///
+/// specifies whether to use [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor)
+/// for window decorations where available. This is ignored on other
+/// platforms.
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub fn wayland_libdecor(value: bool)
+{
+	unsafe {
+		glfwInitHint(
+			GLFW_WAYLAND_LIBDECOR as c_int,
+			if value
+			{
+				GLFW_WAYLAND_PREFER_LIBDECOR as c_int
+			}
+			else
+			{
+				GLFW_WAYLAND_DISABLE_LIBDECOR as c_int
+			},
+		)
+	};
+}
+
+/// This function returns the platform that was selected during
+/// initialization.
+///
+/// # Returns
+/// The currently selected platform, or an error if one occurred.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+///
+/// # See Also
+/// [platform_supported]
+pub fn platform() -> Result<Platform, XErr>
+{
+	let plat = unsafe { glfwGetPlatform() as u32 };
+
+	match plat
 	{
-		XWIN.get()
-			.ok_or_else(|| XErr::NotInitialized(String::from("XWin has not been initialized")))
+		| 0 => Err(XErr::get()),
+		| GLFW_PLATFORM_WIN32 => Ok(Platform::Windows),
+		| GLFW_PLATFORM_COCOA => Ok(Platform::Cocoa),
+		| GLFW_PLATFORM_WAYLAND => Ok(Platform::Wayland),
+		| GLFW_PLATFORM_X11 => Ok(Platform::X11),
+		| GLFW_PLATFORM_NULL => Ok(Platform::Null),
+		| _ => Err(XErr::Unknown),
+	}
+}
+
+/// This function returns whether the library was compiled with support for
+/// the specified platform.
+///
+/// # Parameters
+/// `platform`: The platform to query
+///
+/// # Returns
+/// `true` if the platform is supported, `false` otherwise.
+///
+/// # Remarks
+/// This function may be called before initializing XWin
+///
+/// # See Also
+/// [platform]
+pub fn platform_supported(platform: Platform) -> bool
+{
+	unsafe {
+		match glfwPlatformSupported(match platform
+		{
+			| Platform::Any => GLFW_ANY_PLATFORM as c_int,
+			| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
+			| Platform::Cocoa => GLFW_PLATFORM_COCOA as c_int,
+			| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
+			| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
+			| Platform::Null => GLFW_PLATFORM_NULL as c_int,
+		}) as u32
+		{
+			| GLFW_TRUE => true,
+			| GLFW_FALSE => false,
+			| _ => false,
+		}
 	}
 }

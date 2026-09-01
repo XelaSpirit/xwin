@@ -238,14 +238,14 @@
 //! # });
 //! ```
 
-mod callback;
+mod events;
 mod gamma_ramp;
 mod video_mode;
 mod work_area;
 
 use std::sync::mpsc::channel;
 
-pub use callback::*;
+pub use events::*;
 pub use gamma_ramp::*;
 pub use video_mode::*;
 pub use work_area::*;
@@ -307,6 +307,8 @@ impl Monitor
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
+			.read()
+			.unwrap()
 			.post_rcv(XWinMessage::GetMonitors(tx), rx)?
 			.map(|vec| {
 				vec.iter()
@@ -335,6 +337,8 @@ impl Monitor
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
+			.read()
+			.unwrap()
 			.post_rcv(XWinMessage::GetPrimaryMonitor(tx), rx)?
 			.map(|monitor| Self::from_glfw(monitor))
 	}
@@ -347,7 +351,10 @@ impl Monitor
 	pub fn try_position(&self) -> Result<ScreenCoordinates, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorPos(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorPos(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_position].
@@ -371,7 +378,10 @@ impl Monitor
 	pub fn try_work_area(&self) -> Result<WorkArea, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorWorkArea(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorWorkArea(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_work_area].
@@ -397,7 +407,10 @@ impl Monitor
 	pub fn try_physical_size(&self) -> Result<Millimeters, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorPhysicalSize(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorPhysicalSize(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::physical_size].
@@ -427,7 +440,10 @@ impl Monitor
 	pub fn try_content_scale(&self) -> Result<ContentScale, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorContentScale(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorContentScale(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_content_scale].
@@ -445,7 +461,10 @@ impl Monitor
 	pub fn try_name(&self) -> Result<String, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorName(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorName(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_name].
@@ -468,7 +487,10 @@ impl Monitor
 	pub fn try_video_modes(&self) -> Result<Vec<VideoMode>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoModes(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorVideoModes(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_video_modes].
@@ -489,7 +511,10 @@ impl Monitor
 	pub fn try_video_mode(&self) -> Result<VideoMode, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoMode(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetMonitorVideoMode(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_video_mode].
@@ -517,7 +542,10 @@ impl Monitor
 	pub fn try_set_gamma(&mut self, gamma: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetGamma(self.0, gamma, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetGamma(self.0, gamma, tx), rx)?
 	}
 
 	/// See [Monitor::try_set_gamma].
@@ -538,7 +566,10 @@ impl Monitor
 	pub fn try_gamma_ramp(&self) -> Result<GammaRamp, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GammaRamp(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GammaRamp(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::GammaRamp]
@@ -571,7 +602,10 @@ impl Monitor
 	pub fn try_set_gamma_ramp(&mut self, ramp: GammaRamp) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetGammaRamp(self.0, ramp, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetGammaRamp(self.0, ramp, tx), rx)?
 	}
 
 	/// See [Monitor::try_set_gamma_ramp].

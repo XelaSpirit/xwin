@@ -47,6 +47,7 @@ use crate::{
 		glfwWindowHintString,
 	},
 	core::{
+		XWIN,
 		XWin,
 		exec::XWinMessage,
 	},
@@ -131,6 +132,8 @@ impl WindowBuilder
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
+			.read()
+			.unwrap()
 			.post_rcv(
 				XWinMessage::CreateWindow {
 					width,

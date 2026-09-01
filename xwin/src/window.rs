@@ -5,25 +5,30 @@
 //! ## Context Related Hints
 
 mod builder;
-mod callback;
+pub(crate) mod context;
+mod events;
 
-use std::{
-	cell::RefCell,
-	sync::mpsc::channel,
+use std::sync::mpsc::{
+	channel,
+	sync_channel,
+	Receiver,
 };
 
 pub use builder::*;
-pub use callback::*;
+pub use events::*;
 
 use crate::{
 	bind::{
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
+		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUS_ON_SHOW,
 		GLFW_FOCUSED,
+		GLFW_FOCUS_ON_SHOW,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
 		GLFW_MAXIMIZED,
@@ -32,24 +37,18 @@ use crate::{
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
-		GLFWwindow,
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
 	},
 	core::{
+		exec::XWinMessage,
+		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::XWinMessage,
-		image::Image,
 	},
 	err::XErr,
 	monitor::Monitor,
+	window::context::WindowContext,
 };
-
-thread_local! {
-	static WINDOW: RefCell<Option<Window>> = RefCell::new(None);
-}
 
 pub struct Window(*mut GLFWwindow);
 
@@ -156,6 +155,8 @@ impl Window
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
+			.read()
+			.unwrap()
 			.post_rcv(
 				XWinMessage::CreateWindow {
 					width,
@@ -231,7 +232,10 @@ impl Window
 	pub fn try_title(&self) -> Result<String, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowTitle(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowTitle(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_title].
@@ -252,7 +256,7 @@ impl Window
 	pub fn try_set_title(&mut self, title: &str) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
+		XWin::get()?.read().unwrap().post_rcv(
 			XWinMessage::SetWindowTitle(self.0, String::from(title), tx),
 			rx,
 		)?
@@ -293,7 +297,10 @@ impl Window
 	pub fn try_set_icon(&mut self, icons: Vec<Image>) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetWindowIcon(self.0, icons, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetWindowIcon(self.0, icons, tx), rx)?
 	}
 
 	/// See [Window::try_set_icon].
@@ -316,7 +323,10 @@ impl Window
 	pub fn try_position(&self) -> Result<ScreenCoordinates, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowPos(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowPos(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_position]
@@ -347,7 +357,10 @@ impl Window
 	pub fn try_set_position(&mut self, position: ScreenCoordinates) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetWindowPos(self.0, position, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetWindowPos(self.0, position, tx), rx)?
 	}
 
 	/// See [Window::try_set_position].
@@ -365,7 +378,10 @@ impl Window
 	pub fn try_size(&self) -> Result<ScreenCoordinates, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowSize(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowSize(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_size].
@@ -400,7 +416,7 @@ impl Window
 	) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
+		XWin::get()?.read().unwrap().post_rcv(
 			XWinMessage::SetWindowSizeLimits {
 				window: self.0,
 				min,
@@ -444,7 +460,7 @@ impl Window
 	{
 		let (tx, rx) = channel();
 		let value = ratio.or(Some((GLFW_DONT_CARE, GLFW_DONT_CARE))).unwrap();
-		XWin::get()?.post_rcv(
+		XWin::get()?.read().unwrap().post_rcv(
 			XWinMessage::SetWindowAspectRatio {
 				window: self.0,
 				numerator: value.0,
@@ -478,7 +494,10 @@ impl Window
 	pub fn try_set_size(&mut self, size: ScreenCoordinates) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetWindowSize(self.0, size, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetWindowSize(self.0, size, tx), rx)?
 	}
 
 	/// See [Window::try_set_size].
@@ -496,7 +515,10 @@ impl Window
 	pub fn try_framebuffer_size(&self) -> Result<Pixels, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetFrameBufferSize(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetFrameBufferSize(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_framebuffer_size].
@@ -521,7 +543,10 @@ impl Window
 	pub fn try_frame_size(&self) -> Result<(u32, u32, u32, u32), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowFrameSize(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowFrameSize(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_frame_size].
@@ -547,7 +572,10 @@ impl Window
 	pub fn try_content_scale(&self) -> Result<ContentScale, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowContentScale(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowContentScale(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_content_scale].
@@ -570,7 +598,10 @@ impl Window
 	pub fn try_opacity(&self) -> Result<f32, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowOpacity(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowOpacity(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_opacity].
@@ -599,7 +630,10 @@ impl Window
 	pub fn try_set_opacity(&mut self, opacity: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetWindowOpacity(self.0, opacity, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetWindowOpacity(self.0, opacity, tx), rx)?
 	}
 
 	/// See [Window::try_set_opacity].
@@ -625,7 +659,10 @@ impl Window
 	pub fn try_iconify(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::IconifyWindow(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::IconifyWindow(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_iconify].
@@ -646,7 +683,10 @@ impl Window
 	pub fn try_restore(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::RestoreWindow(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::RestoreWindow(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_restore].
@@ -666,7 +706,10 @@ impl Window
 	pub fn try_maximize(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::MaximizeWindow(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::MaximizeWindow(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_maximize].
@@ -695,7 +738,10 @@ impl Window
 	pub fn try_show(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::ShowWindow(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::ShowWindow(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_show].
@@ -712,7 +758,10 @@ impl Window
 	pub fn try_hide(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::HideWindow(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::HideWindow(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_hide].
@@ -749,7 +798,10 @@ impl Window
 	pub fn try_focus(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::FocusWindow(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::FocusWindow(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_focus].
@@ -773,7 +825,10 @@ impl Window
 	pub fn try_request_attention(&self) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::RequestWindowAttention(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::RequestWindowAttention(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_request_attention].
@@ -790,7 +845,10 @@ impl Window
 	pub fn try_monitor(&self) -> Result<Option<Monitor>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetWindowMonitor(self.0, tx), rx)?
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowMonitor(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_monitor].
@@ -823,7 +881,7 @@ impl Window
 	) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
+		XWin::get()?.read().unwrap().post_rcv(
 			XWinMessage::SetWindowFullscreen {
 				window: self.0,
 				monitor,
@@ -876,7 +934,7 @@ impl Window
 	) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
+		XWin::get()?.read().unwrap().post_rcv(
 			XWinMessage::SetWindowWindowed {
 				window: self.0,
 				position,
@@ -899,13 +957,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_focused(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_FOCUSED as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_FOCUSED)
 	}
 
 	/// See [Window::try_is_focused].
@@ -924,13 +976,7 @@ impl Window
 	///   window is iconified, so this function always returns `false`.
 	pub fn try_is_iconified(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_ICONIFIED as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_ICONIFIED)
 	}
 
 	/// See [Window::try_is_iconified]
@@ -945,13 +991,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_maximized(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_MAXIMIZED as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_MAXIMIZED)
 	}
 
 	/// See [Window::try_is_maximized].
@@ -967,13 +1007,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_hovered(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_HOVERED as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_HOVERED)
 	}
 
 	/// See [Window::try_is_hovered].
@@ -988,13 +1022,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_visible(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_VISIBLE as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_VISIBLE)
 	}
 
 	/// See [Window::try_is_visible].
@@ -1009,13 +1037,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_resizable(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_RESIZABLE as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_RESIZABLE)
 	}
 
 	/// See [Window::try_is_resizable].
@@ -1031,13 +1053,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_decorated(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_DECORATED as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_DECORATED)
 	}
 
 	/// See [Window::try_is_decorated].
@@ -1053,13 +1069,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_will_iconify(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_AUTO_ICONIFY as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_AUTO_ICONIFY)
 	}
 
 	/// See [Window::try_will_iconify].
@@ -1075,13 +1085,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_is_floating(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_FLOATING as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_FLOATING)
 	}
 
 	/// See [Window::try_is_floating].
@@ -1098,13 +1102,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_has_transparent_framebuffer(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_TRANSPARENT_FRAMEBUFFER as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_TRANSPARENT_FRAMEBUFFER)
 	}
 
 	/// See [Window::try_has_transparent_framebuffer].
@@ -1120,13 +1118,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_will_focus(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_FOCUS_ON_SHOW as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_FOCUS_ON_SHOW)
 	}
 
 	/// See [Window::try_will_focus].
@@ -1142,13 +1134,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_will_mouse_passthrough(&self) -> Result<bool, XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?
-			.post_rcv(
-				XWinMessage::GetWindowAttribute(self.0, GLFW_MOUSE_PASSTHROUGH as i32, tx),
-				rx,
-			)?
-			.map(|v| v == GLFW_TRUE as i32)
+		self.get_attr(GLFW_MOUSE_PASSTHROUGH)
 	}
 
 	/// See [Window::try_will_mouse_passthrough].
@@ -1164,23 +1150,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_decorated(&mut self, value: bool) -> Result<(), XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetWindowAttribute(
-				self.0,
-				GLFW_DECORATED as i32,
-				if value
-				{
-					GLFW_TRUE as i32
-				}
-				else
-				{
-					GLFW_FALSE as i32
-				},
-				tx,
-			),
-			rx,
-		)?
+		self.set_attr(GLFW_DECORATED, value)
 	}
 
 	/// See [Window::try_set_decorated].
@@ -1195,23 +1165,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_resizable(&mut self, value: bool) -> Result<(), XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetWindowAttribute(
-				self.0,
-				GLFW_RESIZABLE as i32,
-				if value
-				{
-					GLFW_TRUE as i32
-				}
-				else
-				{
-					GLFW_FALSE as i32
-				},
-				tx,
-			),
-			rx,
-		)?
+		self.set_attr(GLFW_RESIZABLE, value)
 	}
 
 	/// See [Window::try_set_resizable].
@@ -1232,23 +1186,7 @@ impl Window
 	///   this will return [XErr::FeatureUnavailable].
 	pub fn try_set_floating(&mut self, value: bool) -> Result<(), XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetWindowAttribute(
-				self.0,
-				GLFW_FLOATING as i32,
-				if value
-				{
-					GLFW_TRUE as i32
-				}
-				else
-				{
-					GLFW_FALSE as i32
-				},
-				tx,
-			),
-			rx,
-		)?
+		self.set_attr(GLFW_FLOATING, value)
 	}
 
 	/// See [Window::try_set_floating].
@@ -1264,23 +1202,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_will_iconify(&mut self, value: bool) -> Result<(), XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetWindowAttribute(
-				self.0,
-				GLFW_AUTO_ICONIFY as i32,
-				if value
-				{
-					GLFW_TRUE as i32
-				}
-				else
-				{
-					GLFW_FALSE as i32
-				},
-				tx,
-			),
-			rx,
-		)?
+		self.set_attr(GLFW_AUTO_ICONIFY, value)
 	}
 
 	/// See [Window::try_set_will_iconify].
@@ -1296,23 +1218,7 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_will_focus(&mut self, value: bool) -> Result<(), XErr>
 	{
-		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
-			XWinMessage::SetWindowAttribute(
-				self.0,
-				GLFW_FOCUS_ON_SHOW as i32,
-				if value
-				{
-					GLFW_TRUE as i32
-				}
-				else
-				{
-					GLFW_FALSE as i32
-				},
-				tx,
-			),
-			rx,
-		)?
+		self.set_attr(GLFW_FOCUS_ON_SHOW, value)
 	}
 
 	/// See [Window::try_set_will_focus].
@@ -1329,11 +1235,62 @@ impl Window
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_mouse_passthrough(&mut self, value: bool) -> Result<(), XErr>
 	{
+		self.set_attr(GLFW_MOUSE_PASSTHROUGH, value)
+	}
+
+	/// See [Window::try_set_mouse_passthrough].
+	pub fn set_mouse_passthrough(&mut self, value: bool)
+	{
+		self.try_set_mouse_passthrough(value).unwrap_or_default()
+	}
+
+	/// Returns a [Receiver] which will be sent window events whenever a general
+	/// window event occurs. See [WindowEvent] for the specific conditions
+	/// under which each event is sent.
+	///
+	/// See [crate::core#event-handling]
+	pub fn subscribe(&self, bound: usize) -> Receiver<WindowEvent>
+	{
+		let (tx, rx) = sync_channel(bound);
+		if let Some(ctx) = WindowContext::get(&self.0)
+		{
+			ctx.set_ev_tx(Some(tx));
+		}
+		rx
+	}
+
+	/// Disconnects the channel handling general window events. See [subscribe].
+	pub fn unsubscribe(&self)
+	{
+		if let Some(ctx) = WindowContext::get(&self.0)
+		{
+			ctx.set_ev_tx(None);
+		}
+	}
+
+	/// Construct a new [Window] from a `GLFWwindow`.
+	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
+	{
+		Window(win)
+	}
+
+	fn get_attr(&self, attr: u32) -> Result<bool, XErr>
+	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetWindowAttribute(self.0, attr as i32, tx), rx)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	fn set_attr(&mut self, attr: u32, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.read().unwrap().post_rcv(
 			XWinMessage::SetWindowAttribute(
 				self.0,
-				GLFW_MOUSE_PASSTHROUGH as i32,
+				attr as i32,
 				if value
 				{
 					GLFW_TRUE as i32
@@ -1346,18 +1303,6 @@ impl Window
 			),
 			rx,
 		)?
-	}
-
-	/// See [Window::try_set_mouse_passthrough].
-	pub fn set_mouse_passthrough(&mut self, value: bool)
-	{
-		self.try_set_mouse_passthrough(value).unwrap_or_default()
-	}
-
-	/// Construct a new [Window] from a `GLFWwindow`.
-	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
-	{
-		Window(win)
 	}
 }
 
@@ -1373,7 +1318,10 @@ impl Drop for Window
 		let (tx, rx) = channel();
 		if let Ok(xwin) = XWin::get()
 		{
-			let _ = xwin.post_rcv(XWinMessage::DestroyWindow(self.0, tx), rx);
+			let _ = xwin
+				.read()
+				.unwrap()
+				.post_rcv(XWinMessage::DestroyWindow(self.0, tx), rx);
 		}
 	}
 }
