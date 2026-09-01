@@ -125,8 +125,11 @@ mod builder;
 mod callback;
 
 use std::{
-	ffi::CString,
 	ptr::null_mut,
+	sync::{
+		Mutex,
+		mpsc::channel,
+	},
 };
 
 pub use builder::*;
@@ -134,21 +137,31 @@ pub use callback::*;
 
 use crate::{
 	bind::{
+		GLFW_FALSE,
 		GLFW_TRUE,
 		GLFWwindow,
-		glfwCreateWindow,
-		glfwDefaultWindowHints,
-		glfwDestroyWindow,
 		glfwGetCurrentContext,
 		glfwMakeContextCurrent,
+		glfwSetWindowShouldClose,
 		glfwSwapInterval,
 		glfwWindowShouldClose,
+	},
+	core::{
+		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 	monitor::Monitor,
 };
 
-pub struct Window(*mut GLFWwindow);
+pub struct Window
+{
+	window: *mut GLFWwindow,
+	lock:   Mutex<()>,
+}
+
+unsafe impl Send for Window {}
+unsafe impl Sync for Window {}
 
 impl Window
 {
@@ -253,9 +266,6 @@ impl Window
 	///   will use the contents of the `RESOURCE_NAME` environment variable, if
 	///   present and not empty, or fall back to the window title. Set the
 	///   [WindowBuilder::x11_class_name] window hint to override this.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn create(
 		width: i32,
 		height: i32,
@@ -264,17 +274,33 @@ impl Window
 		share: Option<Window>,
 	) -> Result<Self, XErr>
 	{
-		unsafe { glfwDefaultWindowHints() };
-		Self::create_with_hints(width, height, title, monitor, share)
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::CreateWindow {
+				width,
+				height,
+				title: String::from(title),
+				monitor,
+				share,
+				builder: None,
+				tx,
+			},
+			rx,
+		)?
 	}
 
 	/// If this window is the current context, detaches it.
-	pub fn detach(&self)
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::NoWindowContext],
+	/// [XErr::Platform].
+	pub fn detach(&self) -> Result<(), XErr>
 	{
-		if self.is_current()
+		if self.is_current()?
 		{
 			unsafe { glfwMakeContextCurrent(null_mut()) };
 		}
+		XErr::result(|| {})
 	}
 
 	/// Sets the OpenGL or OpenGL ES context of this window as the current
@@ -284,9 +310,6 @@ impl Window
 	/// thread can have only a single current context at a time. Making a
 	/// context current detaches any previously current context on the calling
 	/// thread.
-	///
-	/// When moving a window between threads, it will be detached on the old
-	/// thread before being moved. TODO - implement above
 	///
 	/// By default, making a context non-current implicitly forces a pipeline
 	/// flush. On machines that support `GL_KHR_context_flush_control`, you can
@@ -304,19 +327,20 @@ impl Window
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::NoWindowContext],
 	/// and [XErr::Platform].
-	///
-	/// # Thread Safety
-	/// This function may be called from any thread.
 	pub fn set_current(&self) -> Result<(), XErr>
 	{
-		unsafe { glfwMakeContextCurrent(self.0) };
+		unsafe { glfwMakeContextCurrent(self.window) };
 		XErr::result(|| {})
 	}
 
 	/// Returns whether this window is the current context.
-	pub fn is_current(&self) -> bool
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn is_current(&self) -> Result<bool, XErr>
 	{
-		unsafe { glfwGetCurrentContext() == self.0 }
+		let res = unsafe { glfwGetCurrentContext() == self.window };
+		XErr::result(|| res)
 	}
 
 	/// Sets the swap interval for this window's OpenGL or OpenGL ES
@@ -334,7 +358,8 @@ impl Window
 	/// Vulkan, see the present mode of your swapchain instead.
 	///
 	/// # Errors
-	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	/// Possible errors include [XErr::NotInitialized],
+	/// [XErr::NoCurrentContext], and [XErr::Platform].
 	///
 	/// # Remarks
 	/// This function is not called during context creation, leaving the swap
@@ -345,73 +370,78 @@ impl Window
 	/// Some GPU drivers do not honor the requested swap interval, either
 	/// because of a user setting that overrides the application's request or
 	/// due to bugs in the driver.
-	///
-	/// # Thread Safety
-	/// This function may be called from any thread.
-	pub fn set_swap_interval(&self, swap_interval: i32)
+	pub fn set_swap_interval(&self, swap_interval: i32) -> Result<(), XErr>
 	{
 		let ctx = unsafe { glfwGetCurrentContext() };
-		self.set_current();
+		XErr::result(|| {})?;
+
+		self.set_current()?;
 
 		unsafe {
 			glfwSwapInterval(swap_interval);
+			XErr::result(|| {})?;
+
 			glfwMakeContextCurrent(ctx);
 		};
+		XErr::result(|| {})
 	}
 
 	/// Returns the value of the close flag of this window.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # Thread Safety
-	/// This function may be called from any thread. Access is not synchronized.
 	pub fn should_close(&self) -> Result<bool, XErr>
 	{
-		let close = unsafe { glfwWindowShouldClose(self.0) == GLFW_TRUE as i32 };
+		let lock = self.lock.lock().unwrap();
+		let close = unsafe { glfwWindowShouldClose(self.window) == GLFW_TRUE as i32 };
+		drop(lock);
+
 		XErr::result(|| close)
 	}
 
-	pub(crate) fn create_with_hints(
-		width: i32,
-		height: i32,
-		title: &str,
-		monitor: Option<Monitor>,
-		share: Option<Window>,
-	) -> Result<Self, XErr>
+	/// Sets the value of the close flag of this window. This can be used to
+	/// override the user's attempt to close the window, or to signal that it
+	/// should be closed.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	///
+	/// # Thread Safety
+	/// This function may be called from any thread. Access is not synchronized.
+	pub fn set_should_close(&self, value: bool) -> Result<(), XErr>
 	{
-		let str = CString::new(title).expect("Title contains a null byte");
-		let win = unsafe {
-			glfwCreateWindow(
-				width,
-				height,
-				str.as_ptr(),
-				match monitor
+		let lock = self.lock.lock().unwrap();
+		unsafe {
+			glfwSetWindowShouldClose(
+				self.window,
+				if value
 				{
-					| Some(mon) => mon.get(),
-					| None => null_mut(),
-				},
-				match share
+					GLFW_TRUE as i32
+				}
+				else
 				{
-					| Some(win) => win.0,
-					| None => null_mut(),
+					GLFW_FALSE as i32
 				},
 			)
 		};
+		drop(lock);
 
-		if win.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			Ok(Window::from_glfw(win))
+		XErr::result(|| {})
+	}
+
+	/// Construct a new [Window] from a `GLFWwindow`.
+	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
+	{
+		Window {
+			window: win,
+			lock:   Mutex::new(()),
 		}
 	}
 
-	pub(crate) fn from_glfw(win: *mut GLFWwindow) -> Self
+	/// Return the `GLFWwindow` held by this [Window].
+	pub(crate) fn get_glfw(&self) -> *mut GLFWwindow
 	{
-		Window(win)
+		self.window
 	}
 }
 
@@ -425,14 +455,21 @@ impl Drop for Window
 	///
 	/// # Reentrancy
 	/// This function must not be called from a callback.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	///
-	/// TODO - how to ensure this happens????
 	fn drop(&mut self)
 	{
-		self.detach();
-		unsafe { glfwDestroyWindow(self.0) };
+		let _ = self.detach();
+		let (tx, rx) = channel();
+		match XWin::get()
+		{
+			| Err(_) =>
+			{},
+			| Ok(xwin) =>
+			{
+				let _ = xwin.post_rcv(
+					XWinMessage::DestroyWindow(Window::from_glfw(self.window), tx),
+					rx,
+				);
+			},
+		};
 	}
 }

@@ -223,6 +223,14 @@ pub enum XErr
 	/// **Analysis**. A bug in XWin, report the issue to our issue tracker
 	/// TODO where to report bugs?
 	Unknown,
+	/// Attempted to reinitialize XWin after termination.
+	///
+	/// **Analysis**. Currently, XWin may only be initialized/terminated once.
+	/// Future versions may remove this limitation.
+	Reinitialized,
+	// TODO - GLFW doesn't have this limitation, this is only here because of not being able to
+	// update tx in XWIN without using an unsafe mutable static. A different solution for this
+	// could be found, I just haven't done it yet.
 }
 
 impl XErr
@@ -262,6 +270,8 @@ impl XErr
 		}
 	}
 
+	/// Returns the latest GLFW error. May be [XErr::None] if no error has
+	/// occurred.
 	pub(crate) fn get() -> XErr
 	{
 		let mut desc: *const c_char = null();
@@ -270,6 +280,8 @@ impl XErr
 		XErr::from_code(code, desc)
 	}
 
+	/// Returns `Err` if any GLFW errors have occurred. Otherwise, returns
+	/// `Ok(f())`.
 	pub(crate) fn result<T, F>(f: F) -> Result<T, XErr>
 	where
 		F: FnOnce() -> T,

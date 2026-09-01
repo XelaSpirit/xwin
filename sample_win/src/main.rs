@@ -1,6 +1,15 @@
-use xwin::core::XWin;
+use xwin::{
+	core::XWin,
+	window::Window,
+};
 
 fn main()
 {
-	let _xwin = XWin::default().expect("Failed to initialize xwin");
+	XWin::init(|| {
+		let win =
+			Window::create(1920, 1080, "Sample", None, None).expect("Failed to create window");
+		while !win.should_close().unwrap()
+		{}
+	})
+	.expect("Failed to initialize xwin");
 }

@@ -43,9 +43,6 @@ pub enum MonitorEvent
 /// An [Arc] referring to the window, which may be used to later remove the
 /// window using [remove_monitor_callback].
 ///
-/// # Thread Safety
-/// This function may be called from any thread.
-///
 /// # See Also
 /// - [MonitorFn]
 pub fn add_monitor_callback(f: MonitorFn) -> Arc<MonitorFn>
@@ -60,9 +57,6 @@ pub fn add_monitor_callback(f: MonitorFn) -> Arc<MonitorFn>
 
 /// Removed a monitor configuration window, such that it will no longer be
 /// called when a monitor is connected to or disconnected from the system.
-///
-/// # Thread Safety
-/// This function may be called from any thread.
 ///
 /// # See Also
 /// - [MonitorFn]

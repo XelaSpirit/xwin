@@ -265,8 +265,11 @@ mod video_mode;
 mod work_area;
 
 use std::{
-	ffi::CStr,
 	os::raw::c_void,
+	sync::{
+		Mutex,
+		mpsc::channel,
+	},
 };
 
 pub use callback::*;
@@ -277,24 +280,14 @@ pub use work_area::*;
 use crate::{
 	bind::{
 		GLFWmonitor,
-		glfwGetGammaRamp,
-		glfwGetMonitorContentScale,
-		glfwGetMonitorName,
-		glfwGetMonitorPhysicalSize,
-		glfwGetMonitorPos,
 		glfwGetMonitorUserPointer,
-		glfwGetMonitorWorkarea,
-		glfwGetMonitors,
-		glfwGetPrimaryMonitor,
-		glfwGetVideoMode,
-		glfwGetVideoModes,
-		glfwSetGamma,
-		glfwSetGammaRamp,
 		glfwSetMonitorUserPointer,
 	},
 	core::{
 		ContentScale,
 		ScreenCoordinates,
+		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 };
@@ -302,15 +295,30 @@ use crate::{
 /// Almost all positions and sizes in XWin are measured in
 /// [ScreenCoordinates]. However, a monitor's
 /// physical size is measured in millimeters
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Millimeters
 {
 	pub x: i32,
 	pub y: i32,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Monitor(*mut GLFWmonitor);
+#[derive(Debug)]
+pub struct Monitor
+{
+	monitor: *mut GLFWmonitor,
+	lock:    Mutex<()>,
+}
+
+unsafe impl Send for Monitor {}
+unsafe impl Sync for Monitor {}
+
+impl PartialEq for Monitor
+{
+	fn eq(&self, other: &Self) -> bool
+	{
+		self.monitor == other.monitor
+	}
+}
 
 impl Monitor
 {
@@ -320,23 +328,12 @@ impl Monitor
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	///
 	/// # See Also
 	/// - [Monitor::primary]
 	pub fn all() -> Result<Vec<Monitor>, XErr>
 	{
-		let mut count = 0i32;
-		let monitors: *mut *mut GLFWmonitor = unsafe { glfwGetMonitors(&mut count) };
-		XErr::result(|| {
-			let mut arr = Vec::<Monitor>::with_capacity(count as usize);
-			for idx in 0..count as usize
-			{
-				arr.push(Monitor(unsafe { *monitors.add(idx) }));
-			}
-			arr
-		})
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetMonitors(tx), rx)?
 	}
 
 	/// Returns the primary monitor. This is usually the monitor where elements
@@ -346,25 +343,13 @@ impl Monitor
 	/// Returns [XErr::None] if no monitors were found. Other possible errors
 	/// include [XErr::NotInitialized].
 	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	///
 	/// # Remarks
 	/// The primary monitor is always first in the [Vec] returned by
 	/// [Monitor::all]
 	pub fn primary() -> Result<Monitor, XErr>
 	{
-		let monitor = Monitor(unsafe { glfwGetPrimaryMonitor() });
-
-		// Null may mean no monitor was found, but we'll still report it as XErr::None
-		if monitor.0.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			Ok(monitor)
-		}
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetPrimaryMonitor(tx), rx)?
 	}
 
 	/// Returns the position `(x, y)`, in **screen coordinates**, of the
@@ -372,14 +357,13 @@ impl Monitor
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn position(&self) -> Result<ScreenCoordinates, XErr>
 	{
-		let mut pos = ScreenCoordinates::default();
-		unsafe { glfwGetMonitorPos(self.0, &mut pos.x, &mut pos.y) };
-		XErr::result(|| pos)
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorPos(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// Returns the position, in screen coordinates, of the upper-left corner of
@@ -392,26 +376,15 @@ impl Monitor
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	///
 	/// # See Also
 	/// - [WorkArea]
 	pub fn work_area(&self) -> Result<WorkArea, XErr>
 	{
-		let mut area = WorkArea::default();
-
-		unsafe {
-			glfwGetMonitorWorkarea(
-				self.0,
-				&mut area.pos.x,
-				&mut area.pos.y,
-				&mut area.size.x,
-				&mut area.size.y,
-			)
-		};
-
-		XErr::result(|| area)
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorWorkArea(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// Returns the size, in millimetres, of the display area
@@ -428,21 +401,13 @@ impl Monitor
 	/// **Windows**: On Windows 8 and earlier the physical size is calculated
 	/// from the current resolution and system DPI instead of querying the
 	/// monitor EDID data.
-	///
-	/// # Thread safety
-	/// This function must only be called from the main thread.
 	pub fn physical_size(&self) -> Result<Millimeters, XErr>
 	{
-		let mut width = 0i32;
-		let mut height = 0i32;
-
-		unsafe { glfwGetMonitorPhysicalSize(self.0, &mut width, &mut height) };
-		XErr::result(|| {
-			Millimeters {
-				x: width,
-				y: height,
-			}
-		})
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorPhysicalSize(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// Returns the content scale for the specified monitor.
@@ -463,21 +428,13 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Fractional scaling information is not yet available for
 	/// monitors, so this function only returns integer content scales.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn content_scale(&self) -> Result<ContentScale, XErr>
 	{
-		let mut xscale = 0.0f32;
-		let mut yscale = 0.0f32;
-
-		unsafe { glfwGetMonitorContentScale(self.0, &mut xscale, &mut yscale) };
-		XErr::result(|| {
-			ContentScale {
-				x: xscale,
-				y: yscale,
-			}
-		})
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorContentScale(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// Returns a human-readable name, encoded as UTF-8, of this monitor. The
@@ -486,24 +443,13 @@ impl Monitor
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn name(&self) -> Result<String, XErr>
 	{
-		let title = unsafe { glfwGetMonitorName(self.0) };
-
-		if title.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			Ok(unsafe { CStr::from_ptr(title) }
-				.to_str()
-				.unwrap_or_else(|_| "")
-				.to_owned())
-		}
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorName(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// Sets the user-defined pointer of this monitor. The current value is
@@ -515,16 +461,16 @@ impl Monitor
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	///
-	/// # Thread Safety
-	/// This function may be called from any thread. Access to userdata is not
-	/// synchronized.
-	///
 	/// # See Also
 	/// - [Monitor::userdata]
 	pub fn set_userdata(&self, userdata: usize) -> Result<(), XErr>
 	{
 		let data = userdata as *mut c_void;
-		unsafe { glfwSetMonitorUserPointer(self.0, data) };
+
+		let lock = self.lock.lock().unwrap();
+		unsafe { glfwSetMonitorUserPointer(self.monitor, data) };
+		drop(lock);
+
 		XErr::result(|| ())
 	}
 
@@ -537,15 +483,14 @@ impl Monitor
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	///
-	/// # Thread Safety
-	/// This function may be called from any thread. Access to userdata is not
-	/// synchronized.
-	///
 	/// # See Also
 	/// - [Monitor::set_userdata]
 	pub fn userdata(&self) -> Result<usize, XErr>
 	{
-		let data = unsafe { glfwGetMonitorUserPointer(self.0) };
+		let lock = self.lock.lock().unwrap();
+		let data = unsafe { glfwGetMonitorUserPointer(self.monitor) };
+		drop(lock);
+
 		XErr::result(|| data as usize)
 	}
 
@@ -558,29 +503,15 @@ impl Monitor
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	///
 	/// # See Also
 	/// - [Monitor::video_mode]
 	pub fn video_modes(&self) -> Result<Vec<VideoMode>, XErr>
 	{
-		let mut count = 0i32;
-		let vms = unsafe { glfwGetVideoModes(self.0, &mut count) };
-
-		if vms.is_null()
-		{
-			Err(XErr::get())
-		}
-		else
-		{
-			let mut arr = Vec::<VideoMode>::with_capacity(count as usize);
-			for idx in 0..count as usize
-			{
-				arr.push(VideoMode::from_glfw(unsafe { &*vms.add(idx) }));
-			}
-			Ok(arr)
-		}
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorVideoModes(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// This function returns the current video mode of this monitor. If you
@@ -590,20 +521,15 @@ impl Monitor
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	///
 	/// # See Also
 	/// - [Monitor::video_modes]
 	pub fn video_mode(&self) -> Result<VideoMode, XErr>
 	{
-		let vm_ptr = unsafe { glfwGetVideoMode(self.0) };
-
-		match unsafe { vm_ptr.as_ref() }
-		{
-			| None => Err(XErr::get()),
-			| Some(vm) => Ok(VideoMode::from_glfw(vm)),
-		}
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GetMonitorVideoMode(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// This function generates an appropriately sized gamma ramp from the
@@ -622,13 +548,13 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn set_gamma(&self, gamma: f32) -> Result<(), XErr>
 	{
-		unsafe { glfwSetGamma(self.0, gamma) };
-		XErr::result(|| ())
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetGamma(Monitor::from_glfw(self.monitor), gamma, tx),
+			rx,
+		)?
 	}
 
 	/// Returns the current gamma ramp of this monitor.
@@ -640,18 +566,13 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn gamma_ramp(&self) -> Result<GammaRamp, XErr>
 	{
-		let ramp = unsafe { glfwGetGammaRamp(self.0) };
-
-		match unsafe { ramp.as_ref() }
-		{
-			| None => Err(XErr::get()),
-			| Some(gr) => Ok(GammaRamp::from_glfw(gr)),
-		}
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::GammaRamp(Monitor::from_glfw(self.monitor), tx),
+			rx,
+		)?
 	}
 
 	/// Sets the current gamma ramp for this monitor. The original gamma ramp
@@ -675,22 +596,27 @@ impl Monitor
 	///
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
-	pub fn set_gamma_ramp(&self, ramp: &mut GammaRamp) -> Result<(), XErr>
+	pub fn set_gamma_ramp(&self, ramp: GammaRamp) -> Result<(), XErr>
 	{
-		ramp.with_glfw(|ramp| unsafe { glfwSetGammaRamp(self.0, ramp) });
-		XErr::result(|| ())
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetGammaRamp(Monitor::from_glfw(self.monitor), ramp, tx),
+			rx,
+		)?
 	}
 
-	pub(crate) fn get(&self) -> *mut GLFWmonitor
+	/// Construct a new [Monitor] from a `GLFWmonitor`.
+	pub(crate) fn from_glfw(monitor: *mut GLFWmonitor) -> Self
 	{
-		self.0
+		Monitor {
+			monitor,
+			lock: Mutex::new(()),
+		}
 	}
 
-	fn from_glfw(monitor: *mut GLFWmonitor) -> Self
+	/// Return the `GLFWmonitor` held by this [Monitor].
+	pub(crate) fn get_glfw(&self) -> *mut GLFWmonitor
 	{
-		Monitor(monitor)
+		self.monitor
 	}
 }

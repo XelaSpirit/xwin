@@ -1,6 +1,6 @@
 use std::{
 	ffi::CString,
-	ptr::null_mut,
+	sync::mpsc::channel,
 };
 
 use crate::{
@@ -67,10 +67,13 @@ use crate::{
 		GLFW_WIN32_SHOWDEFAULT,
 		GLFW_X11_CLASS_NAME,
 		GLFW_X11_INSTANCE_NAME,
-		glfwCreateWindow,
 		glfwDefaultWindowHints,
 		glfwWindowHint,
 		glfwWindowHintString,
+	},
+	core::{
+		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 	monitor::Monitor,
@@ -147,13 +150,16 @@ pub enum ContextReleaseBehavior
 /// The following hints are always hard constraints:
 /// - [WindowBuilder::stereo]
 /// - [WindowBuilder::double_buffer]
+#[derive(Clone, Debug)]
 pub struct WindowBuilder
 {
 	hints:    Vec<IntegerHint>,
 	strings:  Vec<StringHint>,
 	position: Pixels,
 }
+#[derive(Clone, Debug)]
 struct IntegerHint(u32, i32);
+#[derive(Clone, Debug)]
 struct StringHint(u32, String);
 
 impl WindowBuilder
@@ -175,8 +181,14 @@ impl WindowBuilder
 	/// set in this [WindowBuilder]. See [Window::create] for a more complete
 	/// description.
 	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
+	/// # Panics
+	/// Will panic if `title` contains any null bytes (`\0`).
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidEnum],
+	/// [XErr::InvalidValue], [XErr::ApiUnavailable],
+	/// [XErr::VersionUnavailable], [XErr::FormatUnavailable],
+	/// [XErr::NoWindowContext], [XErr::Platform].
 	pub fn create(
 		&self,
 		width: i32,
@@ -186,24 +198,19 @@ impl WindowBuilder
 		share: Option<Window>,
 	) -> Result<Window, XErr>
 	{
-		unsafe {
-			glfwDefaultWindowHints();
-			glfwWindowHint(GLFW_POSITION_X as i32, self.position.x);
-			glfwWindowHint(GLFW_POSITION_Y as i32, self.position.y);
-		};
-
-		for hint in &self.hints
-		{
-			unsafe { glfwWindowHint(hint.0 as i32, hint.1) };
-		}
-
-		for hint in &self.strings
-		{
-			let str = CString::new(hint.1.as_str()).expect("String hint contains a null byte");
-			unsafe { glfwWindowHintString(hint.0 as i32, str.as_ptr()) };
-		}
-
-		Window::create_with_hints(width, height, title, monitor, share)
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::CreateWindow {
+				width,
+				height,
+				title: String::from(title),
+				monitor,
+				share,
+				builder: Some(self.clone()),
+				tx,
+			},
+			rx,
+		)?
 	}
 
 	/// Specifies whether the windowed mode window will be resizable by the
@@ -775,6 +782,38 @@ impl WindowBuilder
 	{
 		self.string(GLFW_X11_CLASS_NAME, class);
 		self.string(GLFW_X11_INSTANCE_NAME, instance)
+	}
+
+	/// Applies the hints stored in this `WindowBuilder`.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::InvalidEnum]
+	///
+	/// # Thread Safety
+	/// This function must be called on the main thread.
+	pub(crate) fn apply(&self) -> Result<(), XErr>
+	{
+		unsafe { glfwDefaultWindowHints() };
+		XErr::result(|| ())?;
+		unsafe { glfwWindowHint(GLFW_POSITION_X as i32, self.position.x) };
+		XErr::result(|| ())?;
+		unsafe { glfwWindowHint(GLFW_POSITION_Y as i32, self.position.y) };
+		XErr::result(|| ())?;
+
+		for hint in &self.hints
+		{
+			unsafe { glfwWindowHint(hint.0 as i32, hint.1) };
+			XErr::result(|| ())?;
+		}
+
+		for hint in &self.strings
+		{
+			let str = CString::new(hint.1.as_str()).expect("String hint contains a null byte");
+			unsafe { glfwWindowHintString(hint.0 as i32, str.as_ptr()) };
+			XErr::result(|| ())?;
+		}
+
+		Ok(())
 	}
 
 	fn hint(&mut self, hint: u32, value: bool) -> &mut Self
