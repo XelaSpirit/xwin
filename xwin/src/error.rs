@@ -17,11 +17,10 @@
 //! Do not rely on a currently invalid call to generate a specific error, as in
 //! the future that same call may generate a different error or become valid.
 
+#[cfg(feature = "glfw")]
+use std::ffi::CString;
 use std::{
-	ffi::{
-		CStr,
-		CString,
-	},
+	ffi::CStr,
 	os::raw::{
 		c_char,
 		c_int,
