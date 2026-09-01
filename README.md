@@ -155,4 +155,4 @@ Press Escape or use the window's close control to exit.
 ## License
 
 This project is licensed under the terms in [LICENSE](LICENSE). GLFW is distributed under its own license in
-[`xwin/lib/glfw/LICENSE.md`](xwin/lib/glfw/LICENSE.md).
+[`glfw/LICENSE.md`](https://github.com/glfw/glfw/blob/master/LICENSE.md).
