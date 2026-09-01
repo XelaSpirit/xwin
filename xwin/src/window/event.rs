@@ -112,6 +112,33 @@ pub struct KeyEvent
 	mods:     Modifiers,
 }
 
+impl KeyEvent
+{
+	/// Returns the key that triggered this event
+	pub fn key(&self) -> Key
+	{
+		self.key
+	}
+
+	/// Returns the scancode for the key that triggered this event
+	pub fn scancode(&self) -> i32
+	{
+		self.scancode
+	}
+
+	/// Returns the action that triggered this event
+	pub fn action(&self) -> ButtonEvent
+	{
+		self.action
+	}
+
+	/// Returns modifiers that were active when this event was triggered
+	pub fn mods(&self) -> Modifiers
+	{
+		self.mods
+	}
+}
+
 /// Struct type for mouse button events
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MouseButtonEvent
@@ -119,6 +146,27 @@ pub struct MouseButtonEvent
 	button: MouseButton,
 	action: ButtonState,
 	mods:   Modifiers,
+}
+
+impl MouseButtonEvent
+{
+	/// Returns the mouse button that triggered this event
+	pub fn button(&self) -> MouseButton
+	{
+		self.button
+	}
+
+	/// Returns the action that triggered this event
+	pub fn action(&self) -> ButtonState
+	{
+		self.action
+	}
+
+	/// Returns modifiers that were active when this event was triggered
+	pub fn mods(&self) -> Modifiers
+	{
+		self.mods
+	}
 }
 
 /// Enum type for mouse events

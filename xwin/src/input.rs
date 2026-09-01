@@ -1,3 +1,7 @@
+//! XWin input types
+
+// TODO documentation
+
 use crate::{
 	bind::{
 		GLFW_PRESS,

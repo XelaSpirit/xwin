@@ -1,3 +1,7 @@
+//! XWin event types
+
+// TODO documentation
+
 pub use crate::{
 	input::event::*,
 	monitor::event::*,
@@ -8,6 +12,7 @@ pub use crate::{
 ///
 /// This is intended to be used with [xch::funnel::channel], to allow handling
 /// multiple different events on a single channel.
+#[derive(Debug, Clone)]
 pub enum XWinEvent
 {
 	JoystickConfig(JoystickConfigEvent),

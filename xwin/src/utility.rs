@@ -1,3 +1,5 @@
+//! Utility functions
+
 use std::sync::mpsc::channel;
 
 use crate::{
@@ -95,7 +97,7 @@ pub fn try_set_clipboard_string(value: String) -> Result<(), XErr>
 /// number less than or equal to `18446744073.0`, which is approximately 584.5
 /// yearsa.
 ///
-/// This function and [try_get_time] are helper functions on top of
+/// This function and [try_time] are helper functions on top of
 /// [try_timer_frequency] and [try_timer_value].
 ///
 /// # Thread Safety

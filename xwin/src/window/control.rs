@@ -285,12 +285,14 @@ impl Window
 	/// already be visible and not iconified.
 	///
 	/// By default, both windowed and full screen mode windows are focused when
-	/// initially created. Set the [WindowBuilder::focused] window hint to
-	/// `false` to disable this behavior.
+	/// initially created. Set the
+	/// [WindowBuilder::focused](crate::window::WindowBuilder::focused) window
+	/// hint to `false` to disable this behavior.
 	///
 	/// Also by default, windowed mode windows are focused when shown with
-	/// [Window::show]. Set the [WindowBuilder::focus_on_show] window hint
-	/// to `false` to disable this behavior.
+	/// [Window::show]. Set the
+	/// [WindowBuilder::focus_on_show](crate::window::WindowBuilder::focus_on_show)
+	/// window hint to `false` to disable this behavior.
 	///
 	/// **Do not use this function** to steal focus from other applications
 	/// unless you are certain that is what the user wants. Focus stealing can
@@ -565,9 +567,10 @@ impl Window
 	/// nothing.
 	///
 	/// By default, windowed mode windows are focused when shown. Set the
-	/// [WindowBuilder::focus_on_show] window hint to `true` to change this
-	/// behavior a newly created window, or change the behavior for an
-	/// existing window with [Window::set_will_focus].
+	/// [WindowBuilder::focus_on_show](crate::window::WindowBuilder::focus_on_show)
+	/// window hint to `true` to change this behavior a newly created window, or
+	/// change the behavior for an existing window with
+	/// [Window::set_will_focus].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].

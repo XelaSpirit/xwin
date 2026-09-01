@@ -322,8 +322,7 @@ impl Window
 
 	/// Returns the last state reported for the specified key to the
 	/// window. The returned state is one of [ButtonState::Press] or
-	/// [ButtonState::Release]. The action [ButtonState::Repeat] is only
-	/// reported during a key event.
+	/// [ButtonState::Release].
 	///
 	/// If [sticky keys](Window::set_sticky_keys) are enabled, this
 	/// function returns [ButtonState::Press] the first time you call it for a

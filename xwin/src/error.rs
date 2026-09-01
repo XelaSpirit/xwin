@@ -208,14 +208,6 @@ pub enum XErr
 	///
 	/// **Analysis**. A bug in XWin.
 	Unknown(String),
-	/// Attempted to reinitialize XWin after termination.
-	///
-	/// **Analysis**. Currently, XWin may only be initialized/terminated once.
-	/// Future versions may remove this limitation.
-	Reinitialized(String),
-	// TODO - GLFW doesn't have this limitation, this is only here because of not being able to
-	//        update tx in XWIN without using an unsafe mutable static. A different solution for
-	//        this could be found, I just haven't done it yet.
 }
 
 impl XErr
@@ -363,15 +355,6 @@ impl XErr
 				)
 			},
 			| XErr::Unknown(str) =>
-			{
-				(
-					0,
-					CString::new(str)
-						.expect("Unable to convert to CString")
-						.into_raw(),
-				)
-			},
-			| XErr::Reinitialized(str) =>
 			{
 				(
 					0,

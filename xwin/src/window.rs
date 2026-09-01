@@ -1,6 +1,6 @@
 //! Window related functions of XWin
-//!
-//! TODO documentation
+
+// TODO documentation
 
 mod builder;
 pub mod config;
@@ -40,8 +40,8 @@ unsafe impl Sync for Window {}
 
 impl Window
 {
-	/// This function creates a window. Options controlling how the window and
-	/// its context should be created are specified using other functions in
+	/// This function creates a window. Options controlling how the window
+	/// should be created are specified using other functions in
 	/// [WindowBuilder].
 	///
 	/// The created window and framebuffer may differ from what you
@@ -55,21 +55,16 @@ impl Window
 	/// windowed mode. Unless you have a way for the user to choose a specified
 	/// monitor, it is recommended that you pick the [primary
 	/// monitor](Monitor::try_primary). For more information on how to query
-	/// connected monitors, see [retrieving
-	/// monitors](crate::monitor#retrieving-monitors).
+	/// connected monitors, see the documentation for [monitors](crate::monitor)
 	///
 	/// For full screen windows, the specified size becomes the resolution of
 	/// the window's *desired video mode*. As long as a full screen window is
 	/// not iconified, the supported video mode most closely matching the
-	/// desired video mode is set for the specified monitor. For more
-	/// information about full screen windows, including the creation of so
-	/// called *windows full screen* or *borderless full screen* windows, see
-	/// [Windowed Full Screen
-	/// Windows](crate::window#windowed-full-screen-windows).
+	/// desired video mode is set for the specified monitor.
 	///
 	/// By default, newly created windows use the placement recommended by the
 	/// window system. To create the window at a specific position, use the
-	/// [WindowBuilder::position] function before creation.
+	/// [WindowBuilder::position] function.
 	///
 	/// As long as at least one full screen window is not iconified, the
 	/// screensaver is prohibited from starting.

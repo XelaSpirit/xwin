@@ -4,23 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["vulkan"]
-
+default = []
 glfw = []
 bindings = ["glfw"]
-
 vulkan = ["glfw"]
-
-cocoa = ["bindings"]
-wayland = ["bindings"]
-win32 = ["bindings"]
-x11 = ["bindings"]
-
-egl = ["bindings"]
-glx = ["bindings"]
-nsgl = ["bindings"]
-osmesa = ["bindings"]
-wgl = ["bindings"]
 
 [dependencies]
 xela_channels = { path = "../../xela_channels" }

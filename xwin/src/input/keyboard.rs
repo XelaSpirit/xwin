@@ -477,7 +477,7 @@ impl BitXorAssign<Modifiers> for Modifiers
 	}
 }
 
-/// See [try_key_name].
+/// See [Key::try_name].
 pub fn try_scancode_name(scancode: i32) -> Result<Option<String>, XErr>
 {
 	let (tx, rx) = channel();
@@ -487,7 +487,7 @@ pub fn try_scancode_name(scancode: i32) -> Result<Option<String>, XErr>
 		.post_rcv(XWinMessage::GetKeyName(-1, scancode, tx), rx)?
 }
 
-/// See [try_key_name].
+/// See [Key::try_name].
 pub fn scancode_name(scancode: i32) -> Option<String>
 {
 	try_scancode_name(scancode).unwrap_or_default()

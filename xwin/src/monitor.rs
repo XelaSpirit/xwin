@@ -1,6 +1,6 @@
 //! Monitor related functionality of XWin
-//!
-//! TODO documentation
+
+// TODO documentation
 
 pub(crate) mod event;
 mod gamma_ramp;

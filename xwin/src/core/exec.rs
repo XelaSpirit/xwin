@@ -212,7 +212,9 @@ impl XWin
 			Err(XErr::NotInitialized(String::from(
 				"XWin has not been initialized",
 			)))
-		})
+		})?;
+		unsafe { glfwPostEmptyEvent() };
+		Ok(())
 	}
 
 	/// Send an [XWinMessage] to the main thread, and wait for a response.
@@ -220,7 +222,6 @@ impl XWin
 	pub(crate) fn post_rcv<T>(&self, msg: XWinMessage, rcv: Receiver<T>) -> Result<T, XErr>
 	{
 		self.post(msg)?;
-		unsafe { glfwPostEmptyEvent() };
 		rcv.recv()
 			.map_err(|_| XErr::NotInitialized(String::from("XWin has not been initialized")))
 	}
@@ -230,21 +231,31 @@ impl XWin
 /// an [XWinMessage::Terminate] message is received.
 pub(crate) fn run(rx: Receiver<XWinMessage>)
 {
-	unsafe { glfwWaitEvents() };
-
-	let rcv = rx.try_recv();
-	match rcv
+	loop
 	{
-		| Ok(msg) => handle_msg(msg),
-		| Err(err) =>
+		unsafe { glfwWaitEvents() };
+
+		let rcv = rx.try_recv();
+		match rcv
 		{
-			match err
+			| Ok(msg) =>
 			{
-				| TryRecvError::Disconnected => return,
-				| TryRecvError::Empty => (),
-			}
-		},
-	};
+				if let XWinMessage::Terminate = msg
+				{
+					return;
+				}
+				handle_msg(msg)
+			},
+			| Err(err) =>
+			{
+				match err
+				{
+					| TryRecvError::Disconnected => return,
+					| TryRecvError::Empty => (),
+				}
+			},
+		};
+	}
 }
 
 fn handle_msg(msg: XWinMessage)

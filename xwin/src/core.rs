@@ -1,6 +1,6 @@
 //! XWin core functionality.
-//!
-//! TODO documentation
+
+// TODO documentation
 
 pub(crate) mod exec;
 pub mod image;
@@ -186,6 +186,12 @@ impl XWin
 	{
 		self.monitor_tx.as_ref()
 	}
+
+	fn terminate(&mut self)
+	{
+		self.monitor_tx = None;
+		self.joystick_tx = None;
+	}
 }
 
 /// Initializes the XWin library. Before most XWin functions can be used,
@@ -204,17 +210,13 @@ impl XWin
 /// early by calling [terminate], which will immediately close all windows and
 /// cause this function to return.
 ///
-/// # Returns
-/// An error if one occurs during initialization. If initialization
-/// succeeds, returns `()` once XWin is terminated.
-///
 /// # Panics
 /// If the closure passed to this function panics, XWin is immediately
 /// terminated, and this function will panic.
 ///
 /// # Errors
 /// Possible errors include
-/// [XErr::PlatformUnavailable], [XErr::Platform] and [XErr::Reinitialized].
+/// [XErr::PlatformUnavailable], [XErr::Platform].
 ///
 /// # Remarks
 /// - **macOS:** This function will change the current directory of the
@@ -248,15 +250,13 @@ where
 	F: 'static + Send + FnOnce() + UnwindSafe,
 {
 	let (tx, rx) = channel();
-	if let Err(_) = XWIN.set(RwLock::new(XWin {
+	if let Err(lock) = XWIN.set(RwLock::new(XWin {
 		joystick_tx: None,
 		monitor_tx:  None,
-		xwin_tx:     tx,
+		xwin_tx:     tx.clone(),
 	}))
 	{
-		return Err(XErr::Reinitialized(String::from(
-			"XWin may not be initialized more than once",
-		)));
+		lock.write().unwrap().xwin_tx = tx;
 	}
 
 	#[cfg(feature = "tracing")]
@@ -287,6 +287,7 @@ where
 		.map_err(|err| XErr::Platform(err.to_string()))?;
 
 	exec::run(rx);
+	XWIN.get().unwrap().write().unwrap().terminate();
 	unsafe { glfwTerminate() };
 
 	if handle.is_finished()
