@@ -1,5 +1,4 @@
 fn main()
 {
-    println!("{}", xwin::add(1, 2));
-	println!("Hello, world!");
+	xwin::core::init().expect("Failed to init xwin");
 }

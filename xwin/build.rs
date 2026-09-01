@@ -1,9 +1,12 @@
-use std::{
-	env,
-	path::PathBuf,
-};
+use std::path::PathBuf;
 
 use cmake::Config;
+use xb::{
+	out_dir,
+	CargoCmd,
+	SearchKind,
+};
+use xb::dep::deploy;
 
 fn main()
 {
@@ -16,9 +19,14 @@ fn main()
 		.build();
 	let glfw = dst.display();
 
-	// Link GLFW
-	println!("cargo:rustc-link-search=native={}/lib", glfw);
-	println!("cargo:rustc-link-lib=dylib=glfw3dll");
+	// Link glfw
+	CargoCmd()
+		.link_search(format!("{}/lib", glfw), SearchKind::Native)
+		.link_lib("dylib=glfw3dll");
+
+	// Put glfw dll in the output directory
+	let dll = PathBuf::from(format!("{}/bin/glfw3.dll", glfw));
+	deploy(dll).expect("Unable to copy glfw3.dll");
 
 	// Generate rust bindings
 	let bindings = bindgen::Builder::default()
@@ -29,7 +37,7 @@ fn main()
 		.expect("Unable to generate bindings");
 
 	// Write bindings
-	let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+	let out_path = PathBuf::from(out_dir().unwrap());
 	bindings
 		.write_to_file(out_path.join("bindings.rs"))
 		.expect("Couldn't write bindings!");

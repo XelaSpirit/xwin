@@ -6,5 +6,6 @@ edition = "2024"
 [build-dependencies]
 cmake = "0.1"
 bindgen = "0.72"
+xela_build = { path = "../../xbuild" }
 
 [dependencies]
