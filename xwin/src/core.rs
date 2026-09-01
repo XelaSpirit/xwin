@@ -1,7 +1,216 @@
-//! # Core Functionality
+//! # Initialization and Termination
 //!
-//! This covers the core functionality of XWin, primarily initialization and
-//! termination of the XWin library.
+//! Before most XWin functions may be called, the library must be initialized.
+//! This initialization checks what features are available on the machine,
+//! enumerates monitors, initializes the timer and performs any required
+//! platform-specific initialization.
+//!
+//! Only the following functions may be called before the library has been
+//! successfully initialized, and only from the main thread.
+//!
+//! - [glfw_version]
+//! - [platform_supported]
+//! - [XWin::platform]
+//! - [XWin::cocoa_dir_resources]
+//! - [XWin::cocoa_menubar]
+//! - [XWin::wayland_libdecor]
+//!
+//! Calling any other function before successful initialization will produce
+//! [XErr::NotInitialized].
+//!
+//! ## Initializing XWin
+//! The library can be initialized with [XWin::default], which returns an `XWin`
+//! instance on success, or an [XErr] if any errors occurred.
+//!
+//! ```
+//! # use xwin::core::XWin;
+//! let xwin = XWin::default().unwrap();
+//! ```
+//! If any part of initialization fails, any parts that succeeded are terminated
+//! as if [XWin::drop] had been called. The library only needs to be
+//! initialized once and additional calls to an already initialized library will
+//! return `Some(xwin)` immediately.
+//!
+//! Once the library has been successfully initialized, it should be terminated
+//! before the application exits. Modern systems are very good at freeing
+//! resources allocated by programs that exit, but XWin sometimes has to change
+//! global system settings and these might not be restored without termination.
+//!
+//! **MacOS:** When the library is initialized the main menu and dock icon are
+//! created. These are not desirable for a command-line only program. The
+//! creation of the main menu and dock icon can be disabled with the
+//! [XWin::cocoa_menubar] function.
+//!
+//! # Configuring XWin Initialization
+//!
+//! Use [XWin::new] followed by some number of the functions in this struct to
+//! configure XWin before initialization, concluding with [XWin::init]. These
+//! functions will affect how the library behaves until termination.
+//!
+//! ```
+//! # use xwin::core::{Platform, XWin};
+//! let xwin = XWin::new()
+//! 	// ...
+//! 	.init();
+//! ```
+//! The configuration you set is never reset by XWin, but it only takes
+//! effect during initialization. Once XWin has been initialized, any
+//! configuration you set here will be ignored until the library is terminated
+//! and initialized again.
+//!
+//! Some settings are platform specific. These may be set on any platform, but
+//! they will only affect their specific platform. Other platforms will ignore
+//! them. Setting these values requires no platform specific headers or
+//! functions.
+//!
+//! See the following functions for more specific information on what they do:
+//! - [XWin::platform]
+//! - [XWin::cocoa_dir_resources]
+//! - [XWin::cocoa_menubar]
+//! - [XWin::wayland_libdecor]
+//!
+//! ## Runtime Platform Selection
+//! You can control platform selection via the [XWin::platform] function. By
+//! default, this is set to [Platform::Any], which will look for supported
+//! window systems in order of priority and select the first one it finds. It
+//! can also be set to any specific platform to have XWin only look for that
+//! one.
+//!
+//! ```
+//! # use xwin::core::{Platform, XWin};
+//! let xwin = XWin::new().platform(Platform::Any).init();
+//! ```
+//!
+//! This mechanism also provides the [Null](Platform::Null) platform, which is
+//! always supported but needs to be explicitly requested. This platform is
+//! effectively a stub, emulating a window system on a single 1080p monitor, but
+//! will not interact with any actual window system.
+//!
+//! ```
+//! # use xwin::core::{Platform, XWin};
+//! let xwin = XWin::new().platform(Platform::Null).init();
+//! ```
+//!
+//! You can test whether a library binary was compiled with support for a
+//! specific platform with [platform_supported].
+//! ```
+//! # use xwin::core::{platform_supported, Platform, XWin};
+//! if platform_supported(Platform::X11)
+//! {
+//! 	let xwin = XWin::new().platform(Platform::X11).init();
+//! }
+//! ```
+//!
+//! Once XWin has been initialized, you can query which platform was selected
+//! with [platform].
+//! ```
+//! # use xwin::core::{platform, XWin};
+//! # let xwin = XWin::default();
+//! let platform = platform();
+//! ```
+//!
+//! ## Terminating XWin
+//! XWin will be automatically terminated when [XWin::drop] is called. For this
+//! reason, it is necessary to keep your [XWin] instance alive for as long as
+//! you intend to use this library. The easiest way to do this is to initialize
+//! XWin at the top of your main function, and save the result to a variable.
+//! This way, XWin won't be dropped until the program is terminating.
+//!
+//! # Error Handling
+//! Some XWin functions return a [Result] which may contain an [XErr]. The enum
+//! value indicates the general category of the error, while the [String] it
+//! contains is set to a more human-readable description of the error.
+//!
+//! If XWin was built with the `tracing` feature (enabled by default), XWin will
+//! also report errors as they occur using the [Tracing](https://crates.io/crates/tracing)
+//! crate as warnings.
+//!
+//! **Reported errors are never fatal.** As long as XWin was successfully
+//! initialized, it will remain initialized and in a safe state until terminated
+//! regardless of how many errors occur. If an error occurs during
+//! initialization that causes initialization to fail, any part of the library
+//! that was initialized will be safely terminated.
+//!
+//! Do not rely on a currently invalid call to generate a specific error, as in
+//! the future that same call may generate a different error or become valid.
+//!
+//! # Coordinate systems
+//! XWin has two primary coordinate systems: the `virtual screen` and the window
+//! `content area` or `content area`. Both use the same unit: `virtual screen
+//! coordinates`, or just `screen coordinates`, which don't necessarily
+//! correspond to pixels.
+//!
+//! Both the virtual screen and the content area coordinate systems have the
+//! X-axis pointing to the right and the Y-axis pointing down.
+//!
+//! Window and monitor positions are specified as the position of the upper-left
+//! corners of their content areas relative to the virtual screen, while cursor
+//! positions are specified relative to a window's content area.
+//!
+//! Because the origin of the window's content area coordinate system is also
+//! the point from which the window position is specified, you can translate
+//! content area coordinates to the virtual screen by adding the window
+//! position. The window frame, when present, extends out from the content area
+//! but does not affect the window position.
+//!
+//! Almost all positions and sizes in XWin are measured in screen coordinates
+//! relative to one of the two origins above. This includes cursor positions,
+//! window positions and sizes, window frame sizes, monitor positions and video
+//! mode resolutions.
+//!
+//! Two exceptions are the **monitor physical size**, which is measured in
+//! **millimetres**, and **framebuffer size**, which is measured in **pixels**.
+//!
+//! Pixels and screen coordinates may map 1:1 on your machine, but they won't on
+//! every other machine, for example on a Mac with a Retina display. The ratio
+//! between screen coordinates and pixels may also change at run-time depending
+//! on which monitor the window is currently considered to be on.
+//!
+//! # Guarantees and Limitations
+//! This section describes the conditions under which XWin can be expected to
+//! function, barring bugs in the operating system or drivers. Use of XWin
+//! outside these limits may work on some platforms, or on some machines, or
+//! some of the time, or on some versions of XWin, but may break at any time
+//! and will not be considered a bug.
+//!
+//! ## Reentrancy
+//! XWin event processing and object destruction are not reentrant. This means
+//! that the following functions must not be called from any callback function:
+//!
+//! - TODO link functions here (destroy window, destroy cursor, poll events,
+//!   wait events, wait events timeout, terminate)
+//!
+//! These functions may be made reentrant in future minor or patch releases, but
+//! functions not on this list will not be made non-reentrant.
+//!
+//! ## Thread Safety
+//! Most XWin functions must only be called from the main thread (the thread
+//! that calls main), but some may be called from any thread once the library
+//! has been initialized. Before initialization the whole library is
+//! thread-unsafe.
+//!
+//! The reference documentation for every XWin function states if it is
+//! limited to the main thread.
+//!
+//! Initialization, termination, event processing and the creation and
+//! destruction of windows, and cursors are all restricted to the main thread
+//! due to limitations of one or several platforms.
+//!
+//! Because event processing must be performed on the main thread, all callbacks
+//! will only be called on that thread.
+//!
+//! XWin uses synchronization objects internally only to manage the per-thread
+//! context and error states. Additional synchronization is left to the
+//! application.
+//!
+//! Functions that may currently be called from any thread will always remain
+//! so, but functions that are currently limited to the main thread may be
+//! updated to allow calls from any thread in future releases.
+//!
+//! ## Event Order
+//! The order of arrival of related events is not guaranteed to be consistent
+//! across platforms. The exception is synthetic key and mouse button release
+//! events, which are always delivered after the window defocus event.
 
 use std::os::raw::c_int;
 
@@ -9,6 +218,12 @@ use std::os::raw::c_int;
 use crate::err::set_error_log;
 use crate::{
 	bind::{
+		glfwGetPlatform,
+		glfwGetVersion,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -23,12 +238,6 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
-		glfwGetPlatform,
-		glfwGetVersion,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 	},
 	err::XErr,
 };
@@ -45,12 +254,15 @@ pub enum Platform
 	Null,
 }
 
+/// A structure for handling the initialization and termination of the XWin
+/// library. For a more complete guide, see [the core module
+/// documentation](crate::core)
 pub struct XWin(());
 
 impl XWin
 {
-	/// Initialize the XWin library with default configuration. See [XWin::init]
-	/// for a full description.
+	/// Initialize the XWin library with default configuration. See
+	/// [XWin::init].
 	pub fn default() -> Result<Self, XErr>
 	{
 		XWin::new().init()
@@ -72,14 +284,12 @@ impl XWin
 	/// main function and keep it alive for the duration of the program's
 	/// runtime.
 	///
-	/// The GLFW_PLATFORM init hint controls which platforms are considered
-	/// during initialization. This also depends on which platforms the library
-	/// was compiled to support.
-	///
-	/// TODO add link to platform init hint
+	/// [XWin::platform] function can be used to control which platforms are
+	/// considered during initialization. This also depends on which platforms
+	/// the library was compiled to support.
 	///
 	/// # Returns
-	/// A new XWin instance if successful, or an error if one occurred
+	/// A new [XWin] instance if successful, or an error if one occurred
 	///
 	/// # Errors
 	/// Possible errors include [PlatformUnavailable](XErr::PlatformUnavailable)
@@ -89,30 +299,27 @@ impl XWin
 	/// - **macOS:** This function will change the current directory of the
 	///   application to the Contents/Resources subdirectory of the
 	///   application's bundle, if present. This can be disabled with the
-	///   GLFW_COCOA_CHDIR_RESOURCES init hint. TODO link init hint
+	///   [cocoa_dir_resources](XWin::cocoa_dir_resources) function.
 	///
 	/// - **macOS:** This function will create the main menu and dock icon for
-	///   the application. If XWin finds a MainMenu.nib it is loaded and assumed
-	///   to contain a menu bar. Otherwise a minimal menu bar is created
-	///   manually with common commands like Hide, Quit and About. The About
-	///   entry opens a minimal about dialog with information from the
+	///   the application. If XWin finds a `MainMenu.nib` it is loaded and
+	///   assumed to contain a menu bar. Otherwise a minimal menu bar is created
+	///   manually with common commands like `Hide`, `Quit` and `About`. The
+	///   `About` entry opens a minimal about dialog with information from the
 	///   application's bundle. The menu bar and dock icon can be disabled
-	///   entirely with the GLFW_COCOA_MENUBAR init hint. TODO link init hint
+	///   entirely with the [cocoa_menubar](XWin::cocoa_menubar) function.
 	///
 	/// - **Wayland, X11:** If the library was compiled with support for both
-	///   Wayland and X11, and the GLFW_PLATFORM init hint is set to
-	///   GLFW_ANY_PLATFORM, the XDG_SESSION_TYPE environment variable affects
-	///   which platform is picked. If the environment variable is not set, or
-	///   is set to something other than wayland or x11, the regular detection
-	///   mechanism will be used instead. TODO link hints
+	///   `Wayland` and `X11`, and the [platform](XWin::platform) config is set
+	///   to [Platform::Any], the `XDG_SESSION_TYPE` environment variable
+	///   affects which platform is picked. If the environment variable is not
+	///   set, or is set to something other than `wayland` or `x11`, the regular
+	///   detection mechanism will be used instead.
 	///
-	/// - **X11:** This function will set the LC_CTYPE category of the
+	/// - **X11:** This function will set the `LC_CTYPE` category of the
 	///   application locale according to the current environment if that
 	///   category is still "C". This is because the "C" locale breaks Unicode
 	///   text input.
-	///
-	/// # Thread Safety
-	/// This function must only be called from the main thread.
 	pub fn init(&self) -> Result<Self, XErr>
 	{
 		#[cfg(feature = "tracing")]

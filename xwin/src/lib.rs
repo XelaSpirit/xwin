@@ -19,9 +19,23 @@
 //! directly from the [GLFW documentation](https://www.glfw.org/docs/latest/index.html),
 //! with some alteration where necessary to better match the XWin API.
 //!
+//! # Introduction
+//! For an introduction to the basic concepts of XWin, including initialization
+//! and error handling, see the documentation for the [core module](core).
+//!
+//! For a broad but shallow tutorial, see [#Getting Started] below.
+//!
+//! There are also guides for the other areas of XWin:
+//! 	 - TODO window, context, monitor, input, (Vulkan?)
+//!
+//! # Getting Started
+//! TODO give `Cargo.lock` entry
+//! TODO getting started glfw doc
+//!
 //! ### Dependencies
 //! - CMake
 
 mod bind;
 pub mod core;
 pub mod err;
+pub mod monitor;

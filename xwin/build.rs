@@ -22,6 +22,7 @@ fn main()
 	// Link glfw
 	CargoCmd()
 		.link_search(format!("{}/lib", glfw), SearchKind::Native)
+		.link_search(format!("{}/bin", glfw), SearchKind::Native)
 		.link_lib("dylib=glfw3dll");
 
 	// Put glfw dll in the output directory
