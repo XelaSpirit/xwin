@@ -253,10 +253,10 @@ pub use work_area::*;
 use crate::{
 	bind::GLFWmonitor,
 	core::{
-		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
 	},
 	error::XErr,
 };

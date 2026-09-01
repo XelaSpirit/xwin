@@ -175,14 +175,14 @@ use std::{
 	os::raw::c_int,
 	panic,
 	panic::{
-		resume_unwind,
 		UnwindSafe,
+		resume_unwind,
 	},
 	sync::{
-		mpsc,
-		mpsc::channel,
 		OnceLock,
 		RwLock,
+		mpsc,
+		mpsc::channel,
 	},
 	thread,
 };
@@ -193,11 +193,6 @@ use xch::Sender;
 use crate::error::set_error_log;
 use crate::{
 	bind::{
-		glfwGetPlatform,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -212,6 +207,11 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
+		glfwGetPlatform,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 	},
 	core::exec::XWinMessage,
 	error::XErr,

@@ -5,9 +5,17 @@ use std::os::raw::{
 
 use crate::{
 	bind::{
-		glfwSetWindowPosCallback,
-		GLFWwindow,
 		GLFW_TRUE,
+		GLFWwindow,
+		glfwSetFramebufferSizeCallback,
+		glfwSetWindowCloseCallback,
+		glfwSetWindowContentScaleCallback,
+		glfwSetWindowFocusCallback,
+		glfwSetWindowIconifyCallback,
+		glfwSetWindowMaximizeCallback,
+		glfwSetWindowPosCallback,
+		glfwSetWindowRefreshCallback,
+		glfwSetWindowSizeCallback,
 	},
 	core::{
 		ContentScale,
@@ -15,7 +23,6 @@ use crate::{
 	},
 	window::context::WindowContext,
 };
-use crate::bind::{glfwSetFramebufferSizeCallback, glfwSetWindowCloseCallback, glfwSetWindowContentScaleCallback, glfwSetWindowFocusCallback, glfwSetWindowIconifyCallback, glfwSetWindowMaximizeCallback, glfwSetWindowRefreshCallback, glfwSetWindowSizeCallback};
 
 /// Almost all positions and sizes in XWin are measured in
 /// [ScreenCoordinates](ScreenCoordinates). However, framebuffer sizes

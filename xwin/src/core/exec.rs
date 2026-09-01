@@ -1,3 +1,4 @@
+mod cursor;
 mod monitor;
 mod window;
 
@@ -12,18 +13,27 @@ use window::*;
 
 use crate::{
 	bind::{
-		glfwPostEmptyEvent,
-		glfwWaitEvents,
+		GLFWcursor,
 		GLFWmonitor,
 		GLFWwindow,
+		glfwPostEmptyEvent,
+		glfwWaitEvents,
 	},
 	core::{
-		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::cursor::{
+			create_cursor,
+			destroy_cursor,
+		},
+		image::Image,
 	},
 	error::XErr,
+	input::mouse::{
+		Cursor,
+		CursorShape,
+	},
 	monitor::{
 		GammaRamp,
 		Millimeters,
@@ -120,6 +130,10 @@ pub(crate) enum XWinMessage
 	},
 	GetWindowAttribute(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
 	SetWindowAttribute(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
+
+	// Cursor
+	CreateCursor(CursorShape, Sender<Result<*mut GLFWcursor, XErr>>),
+	DestroyCursor(*mut GLFWcursor, Sender<Result<(), XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -259,5 +273,9 @@ fn handle_msg(msg: XWinMessage)
 		{
 			set_window_attribute(win, attr, value, tx)
 		},
+
+		// Cursor
+		| XWinMessage::CreateCursor(shape, tx) => create_cursor(shape, tx),
+		| XWinMessage::DestroyCursor(cursor, tx) => destroy_cursor(cursor, tx),
 	};
 }

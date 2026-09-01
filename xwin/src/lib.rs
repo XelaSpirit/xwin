@@ -44,5 +44,7 @@
 mod bind;
 pub mod core;
 pub mod error;
+pub mod input;
 pub mod monitor;
+pub(crate) mod util;
 pub mod window;

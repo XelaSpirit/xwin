@@ -16,16 +16,13 @@ use xch::Sender;
 
 use crate::{
 	bind::{
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
-		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUSED,
 		GLFW_FOCUS_ON_SHOW,
+		GLFW_FOCUSED,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
 		GLFW_MAXIMIZED,
@@ -34,13 +31,16 @@ use crate::{
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
+		GLFWwindow,
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
 	},
 	core::{
-		exec::XWinMessage,
-		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
+		image::Image,
 	},
 	error::XErr,
 	monitor::Monitor,
@@ -143,7 +143,7 @@ impl Window
 	///   will use the contents of the `RESOURCE_NAME` environment variable, if
 	///   present and not empty, or fall back to the window title. Set the
 	///   [WindowBuilder::x11_class_name] window hint to override this.
-	pub fn try_create(
+	pub fn try_new(
 		width: i32,
 		height: i32,
 		title: &str,
@@ -216,14 +216,14 @@ impl Window
 	}
 
 	/// This function returns the title of the window. This is the title set
-	/// previously by [Window::try_create] or [Window::set_title].
+	/// previously by [Window::try_new] or [Window::set_title].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	///
 	/// # Remarks
 	/// The returned title is currently a copy of the title last set by
-	/// [Window::try_create] or [Window::set_title]. It does not include any
+	/// [Window::try_new] or [Window::set_title]. It does not include any
 	/// additional text which may be appended by the platform or another
 	/// program.
 	pub fn try_title(&self) -> Result<String, XErr>
