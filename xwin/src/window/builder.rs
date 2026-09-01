@@ -5,52 +5,28 @@ use std::{
 
 use crate::{
 	bind::{
-		glfwDefaultWindowHints,
-		glfwWindowHint,
-		glfwWindowHintString,
 		GLFW_ALPHA_BITS,
 		GLFW_ANY_POSITION,
-		GLFW_ANY_RELEASE_BEHAVIOR,
 		GLFW_AUTO_ICONIFY,
 		GLFW_BLUE_BITS,
 		GLFW_CENTER_CURSOR,
 		GLFW_COCOA_FRAME_NAME,
 		GLFW_COCOA_GRAPHICS_SWITCHING,
-		GLFW_CONTEXT_CREATION_API,
-		GLFW_CONTEXT_DEBUG,
-		GLFW_CONTEXT_NO_ERROR,
-		GLFW_CONTEXT_RELEASE_BEHAVIOR,
-		GLFW_CONTEXT_ROBUSTNESS,
-		GLFW_CONTEXT_VERSION_MAJOR,
-		GLFW_CONTEXT_VERSION_MINOR,
 		GLFW_DECORATED,
 		GLFW_DEPTH_BITS,
 		GLFW_DONT_CARE,
 		GLFW_DOUBLEBUFFER,
-		GLFW_EGL_CONTEXT_API,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUSED,
 		GLFW_FOCUS_ON_SHOW,
+		GLFW_FOCUSED,
 		GLFW_GREEN_BITS,
-		GLFW_LOSE_CONTEXT_ON_RESET,
 		GLFW_MAXIMIZED,
 		GLFW_MOUSE_PASSTHROUGH,
-		GLFW_NATIVE_CONTEXT_API,
-		GLFW_NO_RESET_NOTIFICATION,
-		GLFW_NO_ROBUSTNESS,
-		GLFW_OPENGL_ANY_PROFILE,
-		GLFW_OPENGL_COMPAT_PROFILE,
-		GLFW_OPENGL_CORE_PROFILE,
-		GLFW_OPENGL_FORWARD_COMPAT,
-		GLFW_OPENGL_PROFILE,
-		GLFW_OSMESA_CONTEXT_API,
 		GLFW_POSITION_X,
 		GLFW_POSITION_Y,
 		GLFW_RED_BITS,
 		GLFW_REFRESH_RATE,
-		GLFW_RELEASE_BEHAVIOR_FLUSH,
-		GLFW_RELEASE_BEHAVIOR_NONE,
 		GLFW_RESIZABLE,
 		GLFW_SAMPLES,
 		GLFW_SCALE_FRAMEBUFFER,
@@ -66,10 +42,13 @@ use crate::{
 		GLFW_WIN32_SHOWDEFAULT,
 		GLFW_X11_CLASS_NAME,
 		GLFW_X11_INSTANCE_NAME,
+		glfwDefaultWindowHints,
+		glfwWindowHint,
+		glfwWindowHintString,
 	},
 	core::{
-		exec::XWinMessage,
 		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 	monitor::Monitor,
@@ -78,38 +57,6 @@ use crate::{
 		Window,
 	},
 };
-
-/// Context creation APIs for window creation.
-pub enum ContextCreationApi
-{
-	Native,
-	Egl,
-	Osmesa,
-}
-
-/// OpenGL profile for window context.
-pub enum GlProfile
-{
-	Core,
-	Compat,
-	Any,
-}
-
-/// Robustness strategy for window context.
-pub enum Robustness
-{
-	NoResetNotification,
-	LoseContextOnReset,
-	None,
-}
-
-/// Release behavior used by window context.
-pub enum ContextReleaseBehavior
-{
-	Any,
-	Flush,
-	None,
-}
 
 /// Used to construct a window with some number of window creation hints.
 ///
@@ -166,8 +113,8 @@ impl WindowBuilder
 	}
 
 	/// This function creates a window and its associated context with the hints
-	/// set in this [WindowBuilder]. See [Window::create] for a more complete
-	/// description.
+	/// set in this [WindowBuilder]. See [Window::try_create] for a more
+	/// complete description.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidEnum],
@@ -199,7 +146,7 @@ impl WindowBuilder
 	}
 
 	/// Specifies whether the windowed mode window will be resizable by the
-	/// user. The window will still be resizable using the [Window::resize]
+	/// user. The window will still be resizable using the [Window::try_resize]
 	/// function. This hint is ignored for full screen and undecorated windows.
 	///
 	/// **Default:** `true`
@@ -520,163 +467,6 @@ impl WindowBuilder
 			},
 		));
 		self
-	}
-
-	/// Specifies which context creation API to use to create the context. This
-	/// is a hard constraint. If no client API is requested, this hint is
-	/// ignored.
-	///
-	/// An extension loader library that assumes it knows which API was used to
-	/// create the current context may fail if you change this hint.
-	///
-	/// **Wayland**.
-	/// - The EGL API *is* the native context creation API, so this hint will
-	///   have no effect.
-	///
-	/// **X11**.
-	/// - On some linux systems, creating contexts via both the native and EGL
-	///   APIs in a single process will cause the application to segfault. Stick
-	///   to one API or the other on Linux for now.
-	///
-	/// **OSMesa**.
-	/// - As its name implies, and OpenGL context created with OSMesa does not
-	///   update the window contents when its buffers are swapped. Use OpenGL
-	///   functions to retrieve the framebuffer contents.
-	///
-	/// **Default:** [ContextCreationApi::Native]
-	pub fn context_creation_api(&mut self, value: ContextCreationApi) -> &mut Self
-	{
-		self.hints.push(IntegerHint(
-			GLFW_CONTEXT_CREATION_API,
-			match value
-			{
-				| ContextCreationApi::Native => GLFW_NATIVE_CONTEXT_API as i32,
-				| ContextCreationApi::Egl => GLFW_EGL_CONTEXT_API as i32,
-				| ContextCreationApi::Osmesa => GLFW_OSMESA_CONTEXT_API as i32,
-			},
-		));
-		self
-	}
-
-	/// Specify the client API version that the created context must be
-	/// compatible with. The exact behavior of this hint depends on the
-	/// requested client API.
-	///
-	/// While there is no way to ask the driver for a context of the highest
-	/// supported version, XWin will attempt to provide this when you ask for a
-	/// version 1.0 context, which is the default for this hint.
-	///
-	/// **Default:** `1`, `0`
-	pub fn context_version(&mut self, major: i32, minor: i32) -> &mut Self
-	{
-		self.hints
-			.push(IntegerHint(GLFW_CONTEXT_VERSION_MAJOR, major));
-		self.hints
-			.push(IntegerHint(GLFW_CONTEXT_VERSION_MINOR, minor));
-		self
-	}
-
-	/// Specifies whether the OpenGL context should be forward-compatible, i.e.
-	/// one where all functionality deprecated in the requested version of
-	/// OpenGL is removed. This must only be used if the requested OpenGL
-	/// version is 3.0 or above. If OpenGL ES is requested, this hint is
-	/// ignored.
-	///
-	/// Forward-compatibility is described in detail in the OpenGL Reference
-	/// Manual.
-	///
-	/// **Default:** `false`
-	pub fn opengl_forward_compatible(&mut self, value: bool) -> &mut Self
-	{
-		self.hint(GLFW_OPENGL_FORWARD_COMPAT, value)
-	}
-
-	/// Specifies whether the context should be created in debug mode, which may
-	/// provide additional error and diagnostic reporting functionality from the
-	/// underlying native library used by XWin.
-	///
-	/// **Default:** `false`
-	pub fn context_debug(&mut self, value: bool) -> &mut Self
-	{
-		self.hint(GLFW_CONTEXT_DEBUG, value)
-	}
-
-	/// Specifies which OpenGL profile to create the context for. If requesting
-	/// OpenGL version below 3.2, [GlProfile::Any] must be used. If OpenGL ES is
-	/// requested, this hint is ignored.
-	///
-	/// OpenGL profiles are described in detail in the OpenGL Reference Manual.
-	///
-	/// **Default:** [GlProfile::Any]
-	pub fn opengl_profile(&mut self, value: GlProfile) -> &mut Self
-	{
-		self.hints.push(IntegerHint(
-			GLFW_OPENGL_PROFILE,
-			match value
-			{
-				| GlProfile::Core => GLFW_OPENGL_CORE_PROFILE as i32,
-				| GlProfile::Compat => GLFW_OPENGL_COMPAT_PROFILE as i32,
-				| GlProfile::Any => GLFW_OPENGL_ANY_PROFILE as i32,
-			},
-		));
-		self
-	}
-
-	/// Specifies the robustness strategy to be used by the context.
-	///
-	/// **Default:** [Robustness::None]
-	pub fn context_robustness(&mut self, value: Robustness) -> &mut Self
-	{
-		self.hints.push(IntegerHint(
-			GLFW_CONTEXT_ROBUSTNESS,
-			match value
-			{
-				| Robustness::NoResetNotification => GLFW_NO_RESET_NOTIFICATION as i32,
-				| Robustness::LoseContextOnReset => GLFW_LOSE_CONTEXT_ON_RESET as i32,
-				| Robustness::None => GLFW_NO_ROBUSTNESS as i32,
-			},
-		));
-		self
-	}
-
-	/// Specifies the release behavior to be used by the context.
-	///
-	/// If the behavior is [ContextReleaseBehavior::Any], the default behavior
-	/// of the context creation API will be used. If the behavior is
-	/// [ContextReleaseBehavior::Flush], the pipeline will be flushed whenever
-	/// the context is released from being the current one. If the behavior is
-	/// [ContextReleaseBehavior::None], the pipeline will not be flushed on
-	/// release.
-	///
-	/// Context release behaviors are described in detail by the
-	/// GL_KHR_context_flush_control extension.
-	///
-	/// **Default:** [ContextReleaseBehavior::Any]
-	pub fn context_release_behavior(&mut self, value: ContextReleaseBehavior) -> &mut Self
-	{
-		self.hints.push(IntegerHint(
-			GLFW_CONTEXT_RELEASE_BEHAVIOR,
-			match value
-			{
-				| ContextReleaseBehavior::Any => GLFW_ANY_RELEASE_BEHAVIOR as i32,
-				| ContextReleaseBehavior::Flush => GLFW_RELEASE_BEHAVIOR_FLUSH as i32,
-				| ContextReleaseBehavior::None => GLFW_RELEASE_BEHAVIOR_NONE as i32,
-			},
-		));
-		self
-	}
-
-	/// Specifies whether errors should be generated by the context. If enabled,
-	/// situations that would have generated errors instead cause underfined
-	/// behavior.
-	///
-	/// The no error mode for OpenGL and OpenGL ES is described in detail by the
-	/// GL_KHR_no_error extension.
-	///
-	/// **Default:** `false`
-	pub fn context_no_error(&mut self, value: bool) -> &mut Self
-	{
-		self.hint(GLFW_CONTEXT_NO_ERROR, value)
 	}
 
 	/// Specifies whether to allow access to the window menu via the Alt+Space

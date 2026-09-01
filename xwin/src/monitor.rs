@@ -247,8 +247,8 @@ mod work_area;
 use std::{
 	os::raw::c_void,
 	sync::{
-		mpsc::channel,
 		Mutex,
+		mpsc::channel,
 	},
 };
 
@@ -259,15 +259,15 @@ pub use work_area::*;
 
 use crate::{
 	bind::{
+		GLFWmonitor,
 		glfwGetMonitorUserPointer,
 		glfwSetMonitorUserPointer,
-		GLFWmonitor,
 	},
 	core::{
-		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 };

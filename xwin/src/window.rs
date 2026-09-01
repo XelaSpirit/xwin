@@ -1,96 +1,5 @@
 //! Window related functions of XWin
 //!
-//! # Context Guide
-//!
-//! ## Context Objects
-//! A [Window] object encapsulates both a top-level window and an OpenGL or
-//! OpenGL ES context. It is created with [Window::create] or
-//! [WindowBuilder::create] and destroyed when either the [Window] object drops
-//! or XWin is terminated.
-//!
-//! As the window and context are inseparably linked, the [Window] object also
-//! serves as the context handle.
-//!
-//! ### Note
-//! Vulkan does not have a context and the Vulkan instance is created via the
-//! Vulkan API itself. If you will be using Vulkan to render a window, disable
-//! context creation by setting the [WindowBuilder::client_api] hint
-//! to [ClientApi::None].
-//!
-//! ## Context Creation Hints
-//! There are a number of hints, specified using [WindowBuilder], related to
-//! what kind of context is created. See [context related
-//! hints](#context-related-hints) in the Window Guide below.
-//!
-//! ## Offscreen Contexts
-//! XWin doesn't support creating contexts without an associated window.
-//! However, contexts with hidden windows can be created with the
-//! [WindowBuilder::visible] window hint.
-//!
-//! ```
-//! # use xwin::core::{Platform, XWin};
-//! # use xwin::window::WindowBuilder;
-//! # XWin::init(|| {
-//! let win = WindowBuilder::new()
-//! 	.visible(false)
-//! 	.create(1920, 1080, "title", None);
-//! # });
-//! ```
-//!
-//! The window never needs to be shown and its context can be used as a plain
-//! offscreen context. Depending on the window manager, the size of a hidden
-//! window's framebuffer may not be usable or modifiable, so framebuffer objects
-//! are recommended for rendering with such contexts.
-//!
-//! You should still process events as long as you have at least one window,
-//! even if none of them are visible.
-//!
-//! ## Windows Without Contexts
-//! You can disable context creation by setting the [WindowBuilder::client_api]
-//! hint to [ClientApi::None].
-//!
-//! Windows without contexts should not call [Window::set_current] or
-//! [Window::swap_buffers]. Doing this generates [XErr::NoWindowContext].
-//!
-//! ## Current Context
-//! Before you can make OpenGL or OpenGL ES calls, you need to have a current
-//! context of the correct type. A context can only be current for a single
-//! thread at a time, and a thread can only have a single context current at a
-//! time.
-//!
-//! The context of a window is made current with [Window::set_current]. Whether
-//! a window's context is current can be queried with [Window::is_current].
-//!
-//! The following XWin function requires a context to be present. Calling this
-//! function without a current context will generate [XErr::NoCurrentContext].
-//! - [Window::set_swap_interval]
-//!
-//! ## OpenGL and OpenGL ES Extensions
-//! One of the benefits of OpenGL and OpenGL ES is their extensibility. Hardware
-//! vendors may include extensions in their implementations that extend the API
-//! before that functionality is included in a new version of the OpenGL or
-//! OpenGL ES specification, and some extensions are never included and remain
-//! as extensions until they become obsolete.
-//!
-//! An extension is defined by:
-//! - An extension name (e.g. `GL_ARB_gl_spirv`)
-//! - New OpenGL tokens (e.g. `GL_SPIR_V_BINARY_ARB`)
-//! - New OpenGL functions (e.g. `glSpecializeShaderARB`)
-//!
-//! Note the `ARB` affix, which stands for Architecture Review Board and is used
-//! for official extensions. The extension above was created by the ARB, but
-//! there are many different affixes, like NV for Nvidia and AMD for, well, AMD.
-//! Any group may also use the generic `EXT` affix. Lists of extensions,
-//! together with their specifications, can be found at the **OpenGL Registry**
-//! and **OpenGL ES Registry**.
-//!
-//! ## Loading Extensions With A Loader Library
-//! An extension loader library is the easiest and best way to access both
-//! OpenGL and OpenGL ES extensions and modern versions of the core OpenGL or
-//! OpenGL ES APIs. XWin does not provide any extension loading functionality,
-//! and expects the user to either implement it themselves or find another crate
-//! that provides access to the OpenGL API.
-//!
 //! # Window Guide
 //! TODO -
 //! ## Context Related Hints
@@ -111,10 +20,21 @@ use crate::{
 		glfwSetWindowShouldClose,
 		glfwWindowShouldClose,
 		GLFWwindow,
+		GLFW_AUTO_ICONIFY,
+		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
+		GLFW_FLOATING,
 		GLFW_FOCUSED,
+		GLFW_FOCUS_ON_SHOW,
+		GLFW_HOVERED,
+		GLFW_ICONIFIED,
+		GLFW_MAXIMIZED,
+		GLFW_MOUSE_PASSTHROUGH,
+		GLFW_RESIZABLE,
+		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
+		GLFW_VISIBLE,
 	},
 	core::{
 		exec::XWinMessage,
@@ -149,7 +69,7 @@ impl Window
 	/// [Window] will cover. If no monitor is specified, the window will be
 	/// windowed mode. Unless you have a way for the user to choose a specified
 	/// monitor, it is recommended that you pick the [primary
-	/// monitor](Monitor::primary). For more information on how to query
+	/// monitor](Monitor::try_primary). For more information on how to query
 	/// connected monitors, see [retrieving
 	/// monitors](crate::monitor#retrieving-monitors).
 	///
@@ -298,14 +218,14 @@ impl Window
 	}
 
 	/// This function returns the title of the window. This is the title set
-	/// previously by [Window::create] or [Window::set_title].
+	/// previously by [Window::try_create] or [Window::set_title].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
 	///
 	/// # Remarks
 	/// The returned title is currently a copy of the title last set by
-	/// [Window::create] or [Window::set_title]. It does not include any
+	/// [Window::try_create] or [Window::set_title]. It does not include any
 	/// additional text which may be appended by the platform or another
 	/// program.
 	pub fn try_title(&self) -> Result<String, XErr>
@@ -323,7 +243,7 @@ impl Window
 	/// This function sets the title of the window.
 	///
 	/// # Errors
-	/// Possible errors include [XErr::NotInitialized], [XErr::PlatformError],
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform],
 	/// and [XErr::InvalidValue].
 	///
 	/// # Remarks
@@ -548,7 +468,7 @@ impl Window
 	/// desired video mode and switches to the video mode closest to it.
 	///
 	/// If you wish to update the refresh rate of the desired video mode in
-	/// addition to its resolution, see [Window::set_monitor].
+	/// addition to its resolution, see [Window::try_set_fullscreen].
 	///
 	/// The window manager may put limits on what sizes are allowed. XWin cannot
 	/// and should not override these limits.
@@ -567,20 +487,20 @@ impl Window
 		self.try_set_size(size).unwrap_or_default()
 	}
 
-	/// Returns the size, in pixels (`width, height`), of the framebuffer of
+	/// Returns the size, in [Pixels], of the framebuffer of
 	/// the window. If you wish to retrieve the size of the window in
 	/// screen coordinates, see [Window::size].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::Platform].
-	pub fn try_framebuffer_size(&self) -> Result<(i32, i32), XErr>
+	pub fn try_framebuffer_size(&self) -> Result<Pixels, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetFrameBufferSize(self.0, tx), rx)?
 	}
 
 	/// See [Window::try_framebuffer_size].
-	pub fn framebuffer_size(&self) -> (i32, i32)
+	pub fn framebuffer_size(&self) -> Pixels
 	{
 		self.try_framebuffer_size().unwrap_or_default()
 	}
@@ -762,7 +682,7 @@ impl Window
 	/// By default, windowed mode windows are focused when shown. Set the
 	/// [WindowBuilder::focus_on_show] window hint to `true` to change this
 	/// behavior a newly created window, or change the behavior for an
-	/// existing window with [Window::set_attribute].
+	/// existing window with [Window::set_focus_on_show].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
@@ -795,7 +715,7 @@ impl Window
 		XWin::get()?.post_rcv(XWinMessage::HideWindow(self.0, tx), rx)?
 	}
 
-	/// See [try_hide].
+	/// See [Window::try_hide].
 	pub fn hide(&self)
 	{
 		self.try_hide().unwrap_or_default()
@@ -922,7 +842,8 @@ impl Window
 	/// See [Window::try_set_fullscreen].
 	pub fn set_fullscreen(&self, monitor: Monitor, size: ScreenCoordinates, refresh_hz: Option<i32>)
 	{
-		self.try_set_fullscreen(monitor, size, refresh_hz).unwrap_or_default()
+		self.try_set_fullscreen(monitor, size, refresh_hz)
+			.unwrap_or_default()
 	}
 
 	/// Sets the window to windowed mode.
@@ -986,6 +907,249 @@ impl Window
 	pub fn is_focused(&self) -> bool
 	{
 		self.try_is_focused().unwrap_or_default()
+	}
+
+	/// Indicates whether the window is iconified.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - **Wayland**: The Wayland protocol provides no way to check whether a
+	///   window is iconified, so this function always returns `false`.
+	pub fn try_is_iconified(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_ICONIFIED as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_iconified]
+	pub fn is_iconified(&self) -> bool
+	{
+		self.try_is_iconified().unwrap_or_default()
+	}
+
+	/// Indicates whether the window is maximized.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_maximized(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_MAXIMIZED as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_maximized].
+	pub fn is_maximized(&self) -> bool
+	{
+		self.try_is_maximized().unwrap_or_default()
+	}
+
+	/// Indicates whether the cursor is currently directly over the content area
+	/// of the window, with no other windows between.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_hovered(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_HOVERED as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_hovered].
+	pub fn is_hovered(&self) -> bool
+	{
+		self.try_is_hovered().unwrap_or_default()
+	}
+
+	/// Indicates whether the window is visible.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_visible(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_VISIBLE as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_visible].
+	pub fn is_visible(&self) -> bool
+	{
+		self.try_is_visible().unwrap_or_default()
+	}
+
+	/// Indicates whether the window is resizable *by the user*.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_resizable(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_RESIZABLE as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_resizable].
+	pub fn is_resizable(&self) -> bool
+	{
+		self.try_is_resizable().unwrap_or_default()
+	}
+
+	/// Indicates whether the window has decorations such as a border, a close
+	/// widget, etc.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_decorated(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_DECORATED as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_decorated].
+	pub fn is_decorated(&self) -> bool
+	{
+		self.try_is_decorated().unwrap_or_default()
+	}
+
+	/// Indicates whether the fullscreen window is iconified on focus loss, a
+	/// close widget, etc.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_will_iconify(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_AUTO_ICONIFY as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_will_iconify].
+	pub fn will_iconify(&self) -> bool
+	{
+		self.try_will_iconify().unwrap_or_default()
+	}
+
+	/// Indicates whether the window is floating, also called topmost or
+	/// always-on-top.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_is_floating(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_FLOATING as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_is_floating].
+	pub fn is_floating(&self) -> bool
+	{
+		self.try_is_floating().unwrap_or_default()
+	}
+
+	/// Indicates whether the window has a transparent framebuffer, i.e. the
+	/// window contents is composited with the background using the window
+	/// framebuffer alpha channel.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_has_transparent_framebuffer(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_TRANSPARENT_FRAMEBUFFER as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_has_transparent_framebuffer].
+	pub fn has_transparent_framebuffer(&self) -> bool
+	{
+		self.try_has_transparent_framebuffer().unwrap_or_default()
+	}
+
+	/// Indicates whether the window will be given input focus when
+	/// [Window::show] is called.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_will_focus(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_FOCUS_ON_SHOW as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_will_focus].
+	pub fn will_focus(&self) -> bool
+	{
+		self.try_will_focus().unwrap_or_default()
+	}
+
+	/// Indicates whether the window is transparent to mouse input, letting any
+	/// mouse events pass through to whatever window is behind it.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_will_mouse_passthrough(&self) -> Result<bool, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.post_rcv(
+				XWinMessage::GetWindowAttribute(self.0, GLFW_MOUSE_PASSTHROUGH as i32, tx),
+				rx,
+			)?
+			.map(|v| v == GLFW_TRUE as i32)
+	}
+
+	/// See [Window::try_will_mouse_passthrough].
+	pub fn will_mouse_passthrough(&self) -> bool
+	{
+		self.try_will_mouse_passthrough().unwrap_or_default()
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.

@@ -72,7 +72,10 @@ use crate::{
 		VideoMode,
 		WorkArea,
 	},
-	window::WindowBuilder,
+	window::{
+		Pixels,
+		WindowBuilder,
+	},
 };
 
 /// Used internally by XWin for sending messages to the main thread, for GLFW
@@ -128,7 +131,7 @@ pub(crate) enum XWinMessage
 		tx:          Sender<Result<(), XErr>>,
 	},
 	SetWindowSize(*mut GLFWwindow, ScreenCoordinates, Sender<Result<(), XErr>>),
-	GetFrameBufferSize(*mut GLFWwindow, Sender<Result<(i32, i32), XErr>>),
+	GetFrameBufferSize(*mut GLFWwindow, Sender<Result<Pixels, XErr>>),
 	GetWindowFrameSize(*mut GLFWwindow, Sender<Result<(u32, u32, u32, u32), XErr>>),
 	GetWindowContentScale(*mut GLFWwindow, Sender<Result<ContentScale, XErr>>),
 	GetWindowOpacity(*mut GLFWwindow, Sender<Result<f32, XErr>>),
@@ -408,12 +411,17 @@ fn window_frame_size(win: *mut GLFWwindow, tx: Sender<Result<(u32, u32, u32, u32
 	}));
 }
 
-fn framebuffer_size(win: *mut GLFWwindow, tx: Sender<Result<(i32, i32), XErr>>)
+fn framebuffer_size(win: *mut GLFWwindow, tx: Sender<Result<Pixels, XErr>>)
 {
 	let mut width = 0i32;
 	let mut height = 0i32;
 	unsafe { glfwGetFramebufferSize(win, &mut width, &mut height) };
-	let _ = tx.send(XErr::result(|| (width, height)));
+	let _ = tx.send(XErr::result(|| {
+		Pixels {
+			x: width,
+			y: height,
+		}
+	}));
 }
 
 fn set_window_size(win: *mut GLFWwindow, size: ScreenCoordinates, tx: Sender<Result<(), XErr>>)
