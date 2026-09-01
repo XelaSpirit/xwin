@@ -145,7 +145,7 @@ pub(super) fn monitor_work_area(mon: *mut GLFWmonitor, tx: Sender<Result<WorkAre
 	let _ = tx.send(XErr::result(|| area));
 }
 
-pub(super) fn monitor_pos(mon: *mut GLFWmonitor, tx: Sender<Result<ScreenCoordinates, XErr>>)
+pub(super) fn monitor_pos(mon: *mut GLFWmonitor, tx: Sender<Result<ScreenCoordinates<i32>, XErr>>)
 {
 	let mut pos = ScreenCoordinates::default();
 	unsafe { glfwGetMonitorPos(mon, &mut pos.x, &mut pos.y) };

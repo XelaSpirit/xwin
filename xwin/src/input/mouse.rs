@@ -25,7 +25,6 @@ use crate::{
 	glfw_enum,
 	window::{
 		Pixels,
-		Window,
 	},
 };
 
@@ -116,6 +115,11 @@ impl Cursor
 			.unwrap()
 			.post_rcv(XWinMessage::CreateCursor(shape, tx), rx)?
 			.map(|win| Self::from_glfw(win))
+	}
+	
+	pub(crate) fn as_glfw(&self) -> *mut GLFWcursor
+	{
+		self.0
 	}
 
 	/// Construct a new [Cursor] from a `GLFWcursor`.

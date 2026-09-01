@@ -81,8 +81,8 @@ pub(super) fn window_attribute(win: *mut GLFWwindow, attr: i32, tx: Sender<Resul
 pub(super) fn set_window_monitor(
 	win: *mut GLFWwindow,
 	mon: Option<Monitor>,
-	pos: ScreenCoordinates,
-	size: ScreenCoordinates,
+	pos: ScreenCoordinates<i32>,
+	size: ScreenCoordinates<i32>,
 	refresh_rate: i32,
 	tx: Sender<Result<(), XErr>>,
 )
@@ -217,7 +217,7 @@ pub(super) fn framebuffer_size(win: *mut GLFWwindow, tx: Sender<Result<Pixels, X
 
 pub(super) fn set_window_size(
 	win: *mut GLFWwindow,
-	size: ScreenCoordinates,
+	size: ScreenCoordinates<i32>,
 	tx: Sender<Result<(), XErr>>,
 )
 {
@@ -238,8 +238,8 @@ pub(super) fn set_window_aspect_ratio(
 
 pub(super) fn set_window_size_limits(
 	win: *mut GLFWwindow,
-	min: ScreenCoordinates,
-	max: ScreenCoordinates,
+	min: ScreenCoordinates<i32>,
+	max: ScreenCoordinates<i32>,
 	tx: Sender<Result<(), XErr>>,
 )
 {
@@ -247,7 +247,7 @@ pub(super) fn set_window_size_limits(
 	let _ = tx.send(XErr::result(|| ()));
 }
 
-pub(super) fn window_size(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates, XErr>>)
+pub(super) fn window_size(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates<i32>, XErr>>)
 {
 	let mut size = ScreenCoordinates::default();
 	unsafe { glfwGetWindowSize(win, &mut size.x, &mut size.y) };
@@ -256,7 +256,7 @@ pub(super) fn window_size(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordina
 
 pub(super) fn set_window_pos(
 	win: *mut GLFWwindow,
-	pos: ScreenCoordinates,
+	pos: ScreenCoordinates<i32>,
 	tx: Sender<Result<(), XErr>>,
 )
 {
@@ -264,7 +264,7 @@ pub(super) fn set_window_pos(
 	let _ = tx.send(XErr::result(|| ()));
 }
 
-pub(super) fn window_pos(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates, XErr>>)
+pub(super) fn window_pos(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates<i32>, XErr>>)
 {
 	let mut pos = ScreenCoordinates::default();
 	unsafe { glfwGetWindowPos(win, &mut pos.x, &mut pos.y) };

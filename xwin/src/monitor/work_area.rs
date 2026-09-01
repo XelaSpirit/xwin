@@ -6,8 +6,8 @@ use crate::core::ScreenCoordinates;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct WorkArea
 {
-	pub pos:  ScreenCoordinates,
-	pub size: ScreenCoordinates,
+	pub pos:  ScreenCoordinates<i32>,
+	pub size: ScreenCoordinates<i32>,
 }
 
 impl Default for WorkArea

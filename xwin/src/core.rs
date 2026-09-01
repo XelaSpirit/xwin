@@ -98,10 +98,10 @@ pub enum Platform
 /// ratio between [ScreenCoordinates] and pixels may also change at run-time
 /// depending on which monitor the window is currently considered to be on.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
-pub struct ScreenCoordinates
+pub struct ScreenCoordinates<T>
 {
-	pub x: i32,
-	pub y: i32,
+	pub x: T,
+	pub y: T,
 }
 
 /// The content scale can be thought of as the ratio between the current DPI and

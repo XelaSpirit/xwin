@@ -14,14 +14,17 @@ use xch::Sender;
 
 use crate::{
 	bind::{
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
+		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
 		GLFW_CURSOR,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUS_ON_SHOW,
 		GLFW_FOCUSED,
+		GLFW_FOCUS_ON_SHOW,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
 		GLFW_LOCK_KEY_MODS,
@@ -34,19 +37,24 @@ use crate::{
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
-		GLFWwindow,
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
 	},
 	core::{
+		exec::XWinMessage,
+		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::XWinMessage,
-		image::Image,
 	},
 	error::XErr,
-	input::mouse::CursorMode,
+	input::{
+		keyboard::Key,
+		mouse::{
+			Cursor,
+			CursorMode,
+			MouseButton,
+		},
+		ButtonState,
+	},
 	monitor::Monitor,
 	window::context::WindowContext,
 };
@@ -321,7 +329,7 @@ impl Window
 	/// - **Wayland**: There is no way for an application to retrieve the global
 	///   position of its windows. This function will return
 	///   [XErr::FeatureUnavailable].
-	pub fn try_position(&self) -> Result<ScreenCoordinates, XErr>
+	pub fn try_position(&self) -> Result<ScreenCoordinates<i32>, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -331,7 +339,7 @@ impl Window
 	}
 
 	/// See [Window::try_position]
-	pub fn position(&self) -> ScreenCoordinates
+	pub fn position(&self) -> ScreenCoordinates<i32>
 	{
 		self.try_position().unwrap_or_default()
 	}
@@ -355,7 +363,7 @@ impl Window
 	/// - **Wayland**: There is no way for an application to set the global
 	///   position of its windows. This function will return
 	///   [XErr::FeatureUnavailable].
-	pub fn try_set_position(&mut self, position: ScreenCoordinates) -> Result<(), XErr>
+	pub fn try_set_position(&mut self, position: ScreenCoordinates<i32>) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -365,7 +373,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_position].
-	pub fn set_position(&mut self, position: ScreenCoordinates)
+	pub fn set_position(&mut self, position: ScreenCoordinates<i32>)
 	{
 		let _ = self.try_set_position(position);
 	}
@@ -376,7 +384,7 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
-	pub fn try_size(&self) -> Result<ScreenCoordinates, XErr>
+	pub fn try_size(&self) -> Result<ScreenCoordinates<i32>, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -386,7 +394,7 @@ impl Window
 	}
 
 	/// See [Window::try_size].
-	pub fn size(&self) -> ScreenCoordinates
+	pub fn size(&self) -> ScreenCoordinates<i32>
 	{
 		self.try_size().unwrap_or_default()
 	}
@@ -412,8 +420,8 @@ impl Window
 	///   actually resized, either by the user or by the compositor.
 	pub fn try_set_size_limits(
 		&mut self,
-		min: ScreenCoordinates,
-		max: ScreenCoordinates,
+		min: ScreenCoordinates<i32>,
+		max: ScreenCoordinates<i32>,
 	) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
@@ -429,7 +437,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_size_limits].
-	pub fn set_size_limits(&mut self, min: ScreenCoordinates, max: ScreenCoordinates)
+	pub fn set_size_limits(&mut self, min: ScreenCoordinates<i32>, max: ScreenCoordinates<i32>)
 	{
 		let _ = self.try_set_size_limits(min, max);
 	}
@@ -492,7 +500,7 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::Platform].
-	pub fn try_set_size(&mut self, size: ScreenCoordinates) -> Result<(), XErr>
+	pub fn try_set_size(&mut self, size: ScreenCoordinates<i32>) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -502,7 +510,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_size].
-	pub fn set_size(&mut self, size: ScreenCoordinates)
+	pub fn set_size(&mut self, size: ScreenCoordinates<i32>)
 	{
 		let _ = self.try_set_size(size);
 	}
@@ -877,7 +885,7 @@ impl Window
 	pub fn try_set_fullscreen(
 		&mut self,
 		monitor: Monitor,
-		size: ScreenCoordinates,
+		size: ScreenCoordinates<i32>,
 		refresh_hz: Option<i32>,
 	) -> Result<(), XErr>
 	{
@@ -902,7 +910,7 @@ impl Window
 	pub fn set_fullscreen(
 		&mut self,
 		monitor: Monitor,
-		size: ScreenCoordinates,
+		size: ScreenCoordinates<i32>,
 		refresh_hz: Option<i32>,
 	)
 	{
@@ -929,8 +937,8 @@ impl Window
 	///   way for an application to set this property.
 	pub fn try_set_windowed(
 		&mut self,
-		position: ScreenCoordinates,
-		size: ScreenCoordinates,
+		position: ScreenCoordinates<i32>,
+		size: ScreenCoordinates<i32>,
 	) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
@@ -946,7 +954,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_windowed].
-	pub fn set_windowed(&mut self, position: ScreenCoordinates, size: ScreenCoordinates)
+	pub fn set_windowed(&mut self, position: ScreenCoordinates<i32>, size: ScreenCoordinates<i32>)
 	{
 		let _ = self.try_set_windowed(position, size);
 	}
@@ -1248,31 +1256,31 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	pub fn try_cursor(&self) -> Result<CursorMode, XErr>
+	pub fn try_cursor_mode(&self) -> Result<CursorMode, XErr>
 	{
 		self.input_mode(GLFW_CURSOR)
 			.map(|v| CursorMode::from_glfw(v))
 	}
 
-	/// See [Window::try_cursor].
+	/// See [Window::try_cursor_mode].
 	pub fn cursor(&self) -> CursorMode
 	{
-		self.try_cursor().unwrap_or_default()
+		self.try_cursor_mode().unwrap_or_default()
 	}
 
 	/// Sets the cursor mode of the window. See [CursorMode].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
-	pub fn try_set_cursor(&mut self, mode: CursorMode) -> Result<(), XErr>
+	pub fn try_set_cursor_mode(&mut self, mode: CursorMode) -> Result<(), XErr>
 	{
 		self.set_input_mode(GLFW_CURSOR, mode.as_glfw())
 	}
 
-	/// See [Window::try_set_cursor].
-	pub fn set_cursor(&mut self, mode: CursorMode)
+	/// See [Window::try_set_cursor_mode].
+	pub fn set_cursor_mode(&mut self, mode: CursorMode)
 	{
-		let _ = self.try_set_cursor(mode);
+		let _ = self.try_set_cursor_mode(mode);
 	}
 
 	/// Returns whether sticky keys are enabled for the window. See
@@ -1441,10 +1449,150 @@ impl Window
 		let _ = self.try_set_raw_mouse_motion(value);
 	}
 
+	/// Returns the last state reported for the specified key to the
+	/// window. The returned state is one of [ButtonState::Press] or
+	/// [ButtonState::Release]. The action [ButtonState::Repeat] is only
+	/// reported during a key event.
+	///
+	/// If [sticky keys](Window::set_sticky_keys) are enabled, this function
+	/// returns [ButtonState::Press] the first time you call it for a key that
+	/// was pressed, even if that key has already been released.
+	///
+	/// **Do not use this function** to implement text input.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_key_state(&self, key: Key) -> Result<ButtonState, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetKey(self.0, key.as_glfw() as i32, tx), rx)?
+	}
+
+	/// See [Window::try_key_state].
+	pub fn key_state(&self, key: Key) -> ButtonState
+	{
+		self.try_key_state(key).unwrap_or_default()
+	}
+
+	/// Returns the last state reported for the specified mouse button to the
+	/// window. The returned state is one of [ButtonState::Press] or
+	/// [ButtonState::Release].
+	///
+	/// If [sticky mouse buttons](Window::set_sticky_mouse) are enabled,
+	/// this function returns [ButtonState::Press] the first time you call it
+	/// for a mouse button that was pressed, even if that mouse button has
+	/// already been released.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_mouse_state(&self, button: MouseButton) -> Result<ButtonState, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.read().unwrap().post_rcv(
+			XWinMessage::GetMouseButton(self.0, button.as_glfw() as i32, tx),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_mouse_state].
+	pub fn mouse_state(&self, button: MouseButton) -> ButtonState
+	{
+		self.try_mouse_state(button).unwrap_or_default()
+	}
+
+	/// Returns the position of the cursor, in [ScreenCoordinates], relative to
+	/// the upper-left corner of the content area of the window. If the cursor
+	/// is [disabled](Window::set_cursor_mode) then the cursor position is
+	/// unbounded and limited only by the minimum and maximum values of a
+	/// double.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_cursor_pos(&self) -> Result<ScreenCoordinates<f64>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetCursorPos(self.0, tx), rx)?
+	}
+
+	/// See [Window::try_cursor_pos].
+	pub fn cursor_pos(&self) -> ScreenCoordinates<f64>
+	{
+		self.try_cursor_pos().unwrap_or_default()
+	}
+
+	/// Sets the position, in [ScreenCoordinates], of the cursor relative to the
+	/// upper-left corner of the content area of the window. The window must
+	/// have input focus. If the window does not have input focus when this
+	/// function is called, it fails silently.
+	///
+	/// **Do not use this function** to implement things like camera controls.
+	/// XWin already provides [CursorMode::Disabled] which hides the cursor,
+	/// transparently re-centers it and provides unconstrained cursor motion.
+	/// See [Window::set_cursor_mode] for more information.
+	///
+	/// If the cursor mode is [CursorMode::Disabled], then the cursor position
+	/// is unconstrained and limited only by the maximum and minimum values of
+	/// `f64`.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform], and
+	/// [XErr::FeatureUnavailable] (See remarks).
+	///
+	/// # Remarks
+	/// - **Wayland.** This function will only work when the cursor mode is
+	///   [CursorMode::Disabled], otherwise it will return
+	///   [XErr::FeatureUnavailable].
+	pub fn try_set_cursor_pos(&mut self, pos: ScreenCoordinates<f64>) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetCursorPos(self.0, pos.x, pos.y, tx), rx)?
+	}
+
+	/// See [Window::try_set_cursor_pos].
+	pub fn set_cursor_pos(&mut self, pos: ScreenCoordinates<f64>)
+	{
+		let _ = self.try_set_cursor_pos(pos);
+	}
+
+	/// Sets the cursor image to be used when the cursor is over the content
+	/// area of the window. The set cursor will only be visible when the [cursor
+	/// mode](Window::try_cursor_mode) of the window is [CursorMode::Normal].
+	///
+	/// On some platforms, the set cursor may not be visible unless the window
+	/// also has input focus.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_cursor(&mut self, cursor: Cursor) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::SetCursor(self.0, cursor.as_glfw(), tx), rx)?
+	}
+
+	/// See [Window::try_set_cursor].
+	pub fn set_cursor(&mut self, cursor: Cursor)
+	{
+		let _ = self.try_set_cursor(cursor);
+	}
+
+	/// TODO - key events
+
 	/// Subscribes to general window events on the given channel. See
 	/// [WindowEvent] for the specific conditions under which each event is
 	/// sent.
-	pub fn subscribe<T>(&self, tx: T)
+	pub fn subscribe_window<T>(&self, tx: T)
 	where
 		T: Sender<WindowEvent> + Send + Sync + 'static,
 	{
@@ -1455,8 +1603,8 @@ impl Window
 	}
 
 	/// Disconnects the channel handling general window events. See
-	/// [subscribe](Window::subscribe).
-	pub fn unsubscribe(&self)
+	/// [subscribe](Window::subscribe_window).
+	pub fn unsubscribe_window(&self)
 	{
 		if let Some(ctx) = WindowContext::get(&self.0)
 		{

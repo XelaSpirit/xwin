@@ -1,5 +1,6 @@
 use std::{
 	ffi::CStr,
+	os::raw::c_double,
 	sync::mpsc::Sender,
 };
 
@@ -21,14 +22,23 @@ use crate::{
 		glfwCreateCursor,
 		glfwCreateStandardCursor,
 		glfwDestroyCursor,
+		glfwGetCursorPos,
 		glfwGetInputMode,
+		glfwGetKey,
 		glfwGetKeyName,
+		glfwGetMouseButton,
 		glfwRawMouseMotionSupported,
+		glfwSetCursorPos,
 		glfwSetInputMode,
 	},
+	core::ScreenCoordinates,
 	error::XErr,
-	input::mouse::CursorShape,
+	input::{
+		ButtonState,
+		mouse::CursorShape,
+	},
 };
+use crate::bind::glfwSetCursor;
 
 pub(super) fn create_cursor(shape: CursorShape, tx: Sender<Result<*mut GLFWcursor, XErr>>)
 {
@@ -112,4 +122,36 @@ pub(super) fn key_name(key: i32, scancode: i32, tx: Sender<Option<String>>)
 			Some(unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() })
 		},
 	);
+}
+
+pub(super) fn key(win: *mut GLFWwindow, key: i32, tx: Sender<Result<ButtonState, XErr>>)
+{
+	let value = unsafe { glfwGetKey(win, key) };
+	let _ = tx.send(XErr::result(|| ButtonState::from_glfw(value as u32)));
+}
+
+pub(super) fn mouse_button(win: *mut GLFWwindow, button: i32, tx: Sender<Result<ButtonState, XErr>>)
+{
+	let value = unsafe { glfwGetMouseButton(win, button) };
+	let _ = tx.send(XErr::result(|| ButtonState::from_glfw(value as u32)));
+}
+
+pub(super) fn cursor_pos(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates<f64>, XErr>>)
+{
+	let mut x = 0.0;
+	let mut y = 0.0;
+	unsafe { glfwGetCursorPos(win, &mut x, &mut y) };
+	let _ = tx.send(XErr::result(|| ScreenCoordinates { x, y }));
+}
+
+pub(super) fn set_cursor_pos(win: *mut GLFWwindow, x: f64, y: f64, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwSetCursorPos(win, x, y) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+pub(super) fn set_cursor(win: *mut GLFWwindow, cursor: *mut GLFWcursor, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwSetCursor(win, cursor) };
+	let _ = tx.send(XErr::result(|| ()));
 }

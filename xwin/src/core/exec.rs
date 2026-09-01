@@ -8,6 +8,7 @@ use std::sync::mpsc::{
 	TryRecvError,
 };
 
+use input::*;
 use monitor::*;
 use window::*;
 
@@ -24,17 +25,18 @@ use crate::{
 		ScreenCoordinates,
 		XWin,
 		exec::input::{
-			create_cursor,
-			destroy_cursor,
-			input_mode,
-			key_name,
-			raw_mouse_supported,
-			set_input_mode,
+			cursor_pos,
+			key,
+			mouse_button,
+			set_cursor_pos,
 		},
 		image::Image,
 	},
 	error::XErr,
-	input::mouse::CursorShape,
+	input::{
+		ButtonState,
+		mouse::CursorShape,
+	},
 	monitor::{
 		GammaRamp,
 		Millimeters,
@@ -58,7 +60,10 @@ pub(crate) enum XWinMessage
 	// Monitor
 	GetMonitors(Sender<Result<Vec<*mut GLFWmonitor>, XErr>>),
 	GetPrimaryMonitor(Sender<Result<*mut GLFWmonitor, XErr>>),
-	GetMonitorPos(*mut GLFWmonitor, Sender<Result<ScreenCoordinates, XErr>>),
+	GetMonitorPos(
+		*mut GLFWmonitor,
+		Sender<Result<ScreenCoordinates<i32>, XErr>>,
+	),
 	GetMonitorWorkArea(*mut GLFWmonitor, Sender<Result<WorkArea, XErr>>),
 	GetMonitorPhysicalSize(*mut GLFWmonitor, Sender<Result<Millimeters, XErr>>),
 	GetMonitorContentScale(*mut GLFWmonitor, Sender<Result<ContentScale, XErr>>),
@@ -83,14 +88,24 @@ pub(crate) enum XWinMessage
 	GetWindowTitle(*mut GLFWwindow, Sender<Result<String, XErr>>),
 	SetWindowTitle(*mut GLFWwindow, String, Sender<Result<(), XErr>>),
 	SetWindowIcon(*mut GLFWwindow, Vec<Image>, Sender<Result<(), XErr>>),
-	GetWindowPos(*mut GLFWwindow, Sender<Result<ScreenCoordinates, XErr>>),
-	SetWindowPos(*mut GLFWwindow, ScreenCoordinates, Sender<Result<(), XErr>>),
-	GetWindowSize(*mut GLFWwindow, Sender<Result<ScreenCoordinates, XErr>>),
+	GetWindowPos(
+		*mut GLFWwindow,
+		Sender<Result<ScreenCoordinates<i32>, XErr>>,
+	),
+	SetWindowPos(
+		*mut GLFWwindow,
+		ScreenCoordinates<i32>,
+		Sender<Result<(), XErr>>,
+	),
+	GetWindowSize(
+		*mut GLFWwindow,
+		Sender<Result<ScreenCoordinates<i32>, XErr>>,
+	),
 	SetWindowSizeLimits
 	{
 		window: *mut GLFWwindow,
-		min:    ScreenCoordinates,
-		max:    ScreenCoordinates,
+		min:    ScreenCoordinates<i32>,
+		max:    ScreenCoordinates<i32>,
 		tx:     Sender<Result<(), XErr>>,
 	},
 	SetWindowAspectRatio
@@ -100,7 +115,11 @@ pub(crate) enum XWinMessage
 		denominator: i32,
 		tx:          Sender<Result<(), XErr>>,
 	},
-	SetWindowSize(*mut GLFWwindow, ScreenCoordinates, Sender<Result<(), XErr>>),
+	SetWindowSize(
+		*mut GLFWwindow,
+		ScreenCoordinates<i32>,
+		Sender<Result<(), XErr>>,
+	),
 	GetFrameBufferSize(*mut GLFWwindow, Sender<Result<Pixels, XErr>>),
 	GetWindowFrameSize(*mut GLFWwindow, Sender<Result<(u32, u32, u32, u32), XErr>>),
 	GetWindowContentScale(*mut GLFWwindow, Sender<Result<ContentScale, XErr>>),
@@ -118,15 +137,15 @@ pub(crate) enum XWinMessage
 	{
 		window:       *mut GLFWwindow,
 		monitor:      Monitor,
-		size:         ScreenCoordinates,
+		size:         ScreenCoordinates<i32>,
 		refresh_rate: i32,
 		tx:           Sender<Result<(), XErr>>,
 	},
 	SetWindowWindowed
 	{
 		window:   *mut GLFWwindow,
-		position: ScreenCoordinates,
-		size:     ScreenCoordinates,
+		position: ScreenCoordinates<i32>,
+		size:     ScreenCoordinates<i32>,
 		tx:       Sender<Result<(), XErr>>,
 	},
 	GetWindowAttribute(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
@@ -139,6 +158,14 @@ pub(crate) enum XWinMessage
 	SetInputMode(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
 	RawMouseSupported(Sender<Result<bool, XErr>>),
 	GetKeyName(i32, i32, Sender<Option<String>>),
+	GetKey(*mut GLFWwindow, i32, Sender<Result<ButtonState, XErr>>),
+	GetMouseButton(*mut GLFWwindow, i32, Sender<Result<ButtonState, XErr>>),
+	GetCursorPos(
+		*mut GLFWwindow,
+		Sender<Result<ScreenCoordinates<f64>, XErr>>,
+	),
+	SetCursorPos(*mut GLFWwindow, f64, f64, Sender<Result<(), XErr>>),
+	SetCursor(*mut GLFWwindow, *mut GLFWcursor, Sender<Result<(), XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -289,5 +316,10 @@ fn handle_msg(msg: XWinMessage)
 		},
 		| XWinMessage::RawMouseSupported(tx) => raw_mouse_supported(tx),
 		| XWinMessage::GetKeyName(key, scancode, tx) => key_name(key, scancode, tx),
+		| XWinMessage::GetKey(win, k, tx) => key(win, k, tx),
+		| XWinMessage::GetMouseButton(win, button, tx) => mouse_button(win, button, tx),
+		| XWinMessage::GetCursorPos(win, tx) => cursor_pos(win, tx),
+		| XWinMessage::SetCursorPos(win, x, y, tx) => set_cursor_pos(win, x, y, tx),
+		| XWinMessage::SetCursor(win, cursor, tx) => set_cursor(win, cursor, tx),
 	};
 }

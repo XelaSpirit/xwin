@@ -112,7 +112,7 @@ impl Monitor
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
-	pub fn try_position(&self) -> Result<ScreenCoordinates, XErr>
+	pub fn try_position(&self) -> Result<ScreenCoordinates<i32>, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -122,7 +122,7 @@ impl Monitor
 	}
 
 	/// See [Monitor::try_position].
-	pub fn position(&self) -> ScreenCoordinates
+	pub fn position(&self) -> ScreenCoordinates<i32>
 	{
 		self.try_position().unwrap_or_default()
 	}

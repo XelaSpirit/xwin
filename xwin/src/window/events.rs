@@ -43,10 +43,10 @@ pub enum WindowEvent
 	/// # Remarks
 	/// - **Wayland.** This callback will never be called, as there is no way
 	///   for an application to know its global position.
-	Position(ScreenCoordinates),
+	Position(ScreenCoordinates<i32>),
 	/// Sent when the window is resized. Contains the size, in screen
 	/// coordinates, of the content area of the window.
-	Size(ScreenCoordinates),
+	Size(ScreenCoordinates<i32>),
 	/// Sent when the user attempts to close the window, for example by clicking
 	/// the close widget in the title bar.
 	///

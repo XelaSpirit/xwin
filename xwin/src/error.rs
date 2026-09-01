@@ -73,20 +73,19 @@ pub enum XErr
 	NotInitialized(String) = GLFW_NOT_INITIALIZED,
 	/// No context is current for this thread.
 	///
-	/// This occurs if an XWin function was called that needs and operates on
-	/// the current OpenGL or OpenGL ES context but no context is current on
-	/// the calling thread. One such function is glfwSwapInterval.
-	/// TODO add link to XWin function here.
+	/// XWin does not support OpenGL contexts, and therefore this should never
+	/// occur, but is here to fully cover GLFW errors.
 	///
-	/// **Analysis**. Application programmer error. Ensure a context is current
-	/// before calling functions that require a current context.
+	/// **Analysis**. A bug in XWin.
 	NoCurrentContext(String) = GLFW_NO_CURRENT_CONTEXT,
-	/// One of the arguments to the function was an invalid enum value.
+	/// One of the arguments to a native GLFW function was an invalid enum
+	/// value.
 	///
-	/// For example, requesting GLFW_RED_BITS with glfwGetWindowAttrib.
-	/// TODO Add link to XWin function here.
+	/// XWin has defined enums for its API, unlike GLFW which used `#define` for
+	/// many of their constants. This should be sufficient to prevent this error
+	/// from ever occuring.
 	///
-	/// **Analysis**. Application programmer error. Fix the offending call.
+	/// **Analysis**. A bug in XWin.
 	InvalidEnum(String)  = GLFW_INVALID_ENUM,
 	/// One of the arguments to the function was an invalid value.
 	///
@@ -95,8 +94,6 @@ pub enum XErr
 	/// A memory allocation failed.
 	///
 	/// **Analysis**. A bug in XWin, GLFW or the underlying operating system.
-	/// Report the bug to our issue tracker.
-	/// TODO where to report bugs?
 	OutOfMemory(String)  = GLFW_OUT_OF_MEMORY,
 	/// GLFW could not find support for the requested API on the system.
 	///
@@ -113,19 +110,16 @@ pub enum XErr
 	ApiUnavailable(String) = GLFW_API_UNAVAILABLE,
 	/// The requested OpenGL or OpenGL ES version is not available.
 	///
-	/// The requested OpenGL or OpenGL ES version (including any requested
-	/// context or framebuffer hints) is not available on this machine.
+	/// XWin does not support OpenGL contexts, and therefore this should never
+	/// occur, but is here to fully cover GLFW errors.
 	///
-	/// **Analysis.** Bug. XWin does not support OpenGL, and so this error
-	/// should never be generated.
+	/// **Analysis.** A bug in XWin.
 	VersionUnavailable(String) = GLFW_VERSION_UNAVAILABLE,
 	/// A platform-specific error occurred that does not match any of the more
 	/// specific categories.
 	///
 	/// **Analysis**. A bug or configuration error in XWin, GLFW, the underlying
 	/// operating system or its drivers, or a lack of required resources.
-	/// Report the issue to our issue tracker.
-	/// TODO where to report bugs?
 	Platform(String)     = GLFW_PLATFORM_ERROR,
 	/// The requested format is not supported or available.
 	///
@@ -144,11 +138,10 @@ pub enum XErr
 	FormatUnavailable(String) = GLFW_FORMAT_UNAVAILABLE,
 	/// The specified window does not have an OpenGL or OpenGL ES context.
 	///
-	/// A window that does not have an OpenGL or OpenGL ES context was passed to
-	/// a function that requires it to have one.
+	/// XWin does not support OpenGL contexts, and therefore this should never
+	/// occur, but is here to fully cover GLFW errors.
 	///
-	/// **Analysis**. Bug. XWin does not support the creation/usage of OpenGL
-	/// contexts, and so this error should never be possible.
+	/// **Analysis**. A bug in XWin.
 	NoWindowContext(String) = GLFW_NO_WINDOW_CONTEXT,
 	/// The specified cursor shape is not available.
 	///
@@ -165,7 +158,7 @@ pub enum XErr
 	/// to implement it. The documentation for each function notes if it could
 	/// emit this error.
 	///
-	/// **Application**. Platform or platform version limitation. The error can
+	/// **Analysis**. Platform or platform version limitation. The error can
 	/// be ignored unless the feature is critical to the application.
 	///
 	/// A function call that emits this error has no effect other than the error
@@ -207,8 +200,7 @@ pub enum XErr
 	PlatformUnavailable(String) = GLFW_PLATFORM_UNAVAILABLE,
 	/// An unknown error occurred that XWin did not expect
 	///
-	/// **Analysis**. A bug in XWin, report the issue to our issue tracker
-	/// TODO where to report bugs?
+	/// **Analysis**. A bug in XWin.
 	Unknown,
 	/// Attempted to reinitialize XWin after termination.
 	///
@@ -218,6 +210,9 @@ pub enum XErr
 	// TODO - GLFW doesn't have this limitation, this is only here because of not being able to
 	// update tx in XWIN without using an unsafe mutable static. A different solution for this
 	// could be found, I just haven't done it yet.
+
+	// TODO - Some errors should be impossible to get, such as OpenGL related errors or invalid
+	//        enum. Confirm this, and if so, remove those errors from this enum.
 }
 
 impl XErr
