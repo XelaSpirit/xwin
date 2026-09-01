@@ -20,6 +20,8 @@ use crate::{
 		glfwCreateWindow,
 		glfwDefaultWindowHints,
 		glfwDestroyWindow,
+		glfwFocusWindow,
+		glfwGetFramebufferSize,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -30,11 +32,27 @@ use crate::{
 		glfwGetPrimaryMonitor,
 		glfwGetVideoMode,
 		glfwGetVideoModes,
+		glfwGetWindowContentScale,
+		glfwGetWindowFrameSize,
+		glfwGetWindowOpacity,
+		glfwGetWindowPos,
+		glfwGetWindowSize,
 		glfwGetWindowTitle,
+		glfwHideWindow,
+		glfwIconifyWindow,
+		glfwMaximizeWindow,
+		glfwRequestWindowAttention,
+		glfwRestoreWindow,
 		glfwSetGamma,
 		glfwSetGammaRamp,
+		glfwSetWindowAspectRatio,
 		glfwSetWindowIcon,
+		glfwSetWindowOpacity,
+		glfwSetWindowPos,
+		glfwSetWindowSize,
+		glfwSetWindowSizeLimits,
 		glfwSetWindowTitle,
+		glfwShowWindow,
 		glfwWindowHint,
 	},
 	core::{
@@ -89,6 +107,36 @@ pub(crate) enum XWinMessage
 	GetWindowTitle(*mut GLFWwindow, Sender<Result<String, XErr>>),
 	SetWindowTitle(*mut GLFWwindow, String, Sender<Result<(), XErr>>),
 	SetWindowIcon(*mut GLFWwindow, Vec<Image>, Sender<Result<(), XErr>>),
+	GetWindowPos(*mut GLFWwindow, Sender<Result<ScreenCoordinates, XErr>>),
+	SetWindowPos(*mut GLFWwindow, ScreenCoordinates, Sender<Result<(), XErr>>),
+	GetWindowSize(*mut GLFWwindow, Sender<Result<ScreenCoordinates, XErr>>),
+	SetWindowSizeLimits
+	{
+		window: *mut GLFWwindow,
+		min:    ScreenCoordinates,
+		max:    ScreenCoordinates,
+		tx:     Sender<Result<(), XErr>>,
+	},
+	SetWindowAspectRatio
+	{
+		window:      *mut GLFWwindow,
+		numerator:   i32,
+		denominator: i32,
+		tx:          Sender<Result<(), XErr>>,
+	},
+	SetWindowSize(*mut GLFWwindow, ScreenCoordinates, Sender<Result<(), XErr>>),
+	GetFrameBufferSize(*mut GLFWwindow, Sender<Result<(i32, i32), XErr>>),
+	GetWindowFrameSize(*mut GLFWwindow, Sender<Result<(u32, u32, u32, u32), XErr>>),
+	GetWindowContentScale(*mut GLFWwindow, Sender<Result<ContentScale, XErr>>),
+	GetWindowOpacity(*mut GLFWwindow, Sender<Result<f32, XErr>>),
+	SetWindowOpacity(*mut GLFWwindow, f32, Sender<Result<(), XErr>>),
+	IconifyWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	RestoreWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	MaximizeWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	ShowWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	HideWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	FocusWindow(*mut GLFWwindow, Sender<Result<(), XErr>>),
+	RequestWindowAttention(*mut GLFWwindow, Sender<Result<(), XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -152,9 +200,175 @@ impl XWin
 				| XWinMessage::GetWindowTitle(win, tx) => window_title(win, tx),
 				| XWinMessage::SetWindowTitle(win, title, tx) => set_window_title(win, title, tx),
 				| XWinMessage::SetWindowIcon(win, icons, tx) => set_window_icon(win, icons, tx),
+				| XWinMessage::GetWindowPos(win, tx) => window_pos(win, tx),
+				| XWinMessage::SetWindowPos(win, pos, tx) => set_window_pos(win, pos, tx),
+				| XWinMessage::GetWindowSize(win, tx) => window_size(win, tx),
+				| XWinMessage::SetWindowSizeLimits {
+					window,
+					min,
+					max,
+					tx,
+				} => set_window_size_limits(window, min, max, tx),
+				| XWinMessage::SetWindowAspectRatio {
+					window,
+					numerator,
+					denominator,
+					tx,
+				} => set_window_aspect_ratio(window, numerator, denominator, tx),
+				| XWinMessage::SetWindowSize(win, size, tx) => set_window_size(win, size, tx),
+				| XWinMessage::GetFrameBufferSize(win, tx) => framebuffer_size(win, tx),
+				| XWinMessage::GetWindowFrameSize(win, tx) => window_frame_size(win, tx),
+				| XWinMessage::GetWindowContentScale(win, tx) => window_content_scale(win, tx),
+				| XWinMessage::GetWindowOpacity(win, tx) => window_opacity(win, tx),
+				| XWinMessage::SetWindowOpacity(win, opacity, tx) =>
+				{
+					set_window_opacity(win, opacity, tx)
+				},
+				| XWinMessage::IconifyWindow(win, tx) => iconify_window(win, tx),
+				| XWinMessage::RestoreWindow(win, tx) => restore_window(win, tx),
+				| XWinMessage::MaximizeWindow(win, tx) => maximize_window(win, tx),
+				| XWinMessage::ShowWindow(win, tx) => show_window(win, tx),
+				| XWinMessage::HideWindow(win, tx) => hide_window(win, tx),
+				| XWinMessage::FocusWindow(win, tx) => focus_window(win, tx),
+				| XWinMessage::RequestWindowAttention(win, tx) => request_window_attention(win, tx),
 			};
 		}
 	}
+}
+
+fn request_window_attention(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwRequestWindowAttention(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn focus_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwFocusWindow(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn hide_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwHideWindow(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn show_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwShowWindow(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn maximize_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwMaximizeWindow(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn restore_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwRestoreWindow(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn iconify_window(win: *mut GLFWwindow, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwIconifyWindow(win) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn set_window_opacity(win: *mut GLFWwindow, opacity: f32, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwSetWindowOpacity(win, opacity) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn window_opacity(win: *mut GLFWwindow, tx: Sender<Result<f32, XErr>>)
+{
+	let opacity = unsafe { glfwGetWindowOpacity(win) };
+	let _ = tx.send(XErr::result(|| opacity));
+}
+
+fn window_content_scale(win: *mut GLFWwindow, tx: Sender<Result<ContentScale, XErr>>)
+{
+	let mut xscale = 0.0f32;
+	let mut yscale = 0.0f32;
+	unsafe { glfwGetWindowContentScale(win, &mut xscale, &mut yscale) };
+	let _ = tx.send(XErr::result(|| {
+		ContentScale {
+			x: xscale,
+			y: yscale,
+		}
+	}));
+}
+
+fn window_frame_size(win: *mut GLFWwindow, tx: Sender<Result<(u32, u32, u32, u32), XErr>>)
+{
+	let mut left = 0i32;
+	let mut top = 0i32;
+	let mut right = 0i32;
+	let mut bottom = 0i32;
+	unsafe { glfwGetWindowFrameSize(win, &mut left, &mut top, &mut right, &mut bottom) };
+	let _ = tx.send(XErr::result(|| {
+		(left as u32, top as u32, right as u32, bottom as u32)
+	}));
+}
+
+fn framebuffer_size(win: *mut GLFWwindow, tx: Sender<Result<(i32, i32), XErr>>)
+{
+	let mut width = 0i32;
+	let mut height = 0i32;
+	unsafe { glfwGetFramebufferSize(win, &mut width, &mut height) };
+	let _ = tx.send(XErr::result(|| (width, height)));
+}
+
+fn set_window_size(win: *mut GLFWwindow, size: ScreenCoordinates, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwSetWindowSize(win, size.x, size.y) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn set_window_aspect_ratio(
+	win: *mut GLFWwindow,
+	numer: i32,
+	denom: i32,
+	tx: Sender<Result<(), XErr>>,
+)
+{
+	unsafe { glfwSetWindowAspectRatio(win, numer, denom) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn set_window_size_limits(
+	win: *mut GLFWwindow,
+	min: ScreenCoordinates,
+	max: ScreenCoordinates,
+	tx: Sender<Result<(), XErr>>,
+)
+{
+	unsafe { glfwSetWindowSizeLimits(win, min.x, min.y, max.x, max.y) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn window_size(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates, XErr>>)
+{
+	let mut size = ScreenCoordinates::default();
+	unsafe { glfwGetWindowSize(win, &mut size.x, &mut size.y) };
+	let _ = tx.send(XErr::result(|| size));
+}
+
+fn set_window_pos(win: *mut GLFWwindow, pos: ScreenCoordinates, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwSetWindowPos(win, pos.x, pos.y) };
+	let _ = tx.send(XErr::result(|| ()));
+}
+
+fn window_pos(win: *mut GLFWwindow, tx: Sender<Result<ScreenCoordinates, XErr>>)
+{
+	let mut pos = ScreenCoordinates::default();
+	unsafe { glfwGetWindowPos(win, &mut pos.x, &mut pos.y) };
+	let _ = tx.send(XErr::result(|| pos));
 }
 
 fn set_window_icon(win: *mut GLFWwindow, icons: Vec<Image>, tx: Sender<Result<(), XErr>>)

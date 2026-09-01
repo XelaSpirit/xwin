@@ -111,12 +111,15 @@ use crate::{
 		glfwSetWindowShouldClose,
 		glfwWindowShouldClose,
 		GLFWwindow,
+		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_TRUE,
 	},
 	core::{
 		exec::XWinMessage,
 		image::Image,
+		ContentScale,
+		ScreenCoordinates,
 		XWin,
 	},
 	err::XErr,
@@ -249,7 +252,7 @@ impl Window
 			.map(|win| Self::from_glfw(win))
 	}
 
-	/// Returns the value of the close flag of this window.
+	/// Returns the value of the close flag of the window.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
@@ -259,7 +262,7 @@ impl Window
 		XErr::result(|| close)
 	}
 
-	/// Sets the value of the close flag of this window. This can be used to
+	/// Sets the value of the close flag of the window. This can be used to
 	/// override the user's attempt to close the window, or to signal that it
 	/// should be closed.
 	///
@@ -284,7 +287,7 @@ impl Window
 		XErr::result(|| {})
 	}
 
-	/// This function returns the title of this window. This is the title set
+	/// This function returns the title of the window. This is the title set
 	/// previously by [Window::create] or [Window::set_title].
 	///
 	/// # Errors
@@ -301,7 +304,7 @@ impl Window
 		XWin::get()?.post_rcv(XWinMessage::GetWindowTitle(self.0, tx), rx)?
 	}
 
-	/// This function sets the title of this window.
+	/// This function sets the title of the window.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::PlatformError],
@@ -319,10 +322,408 @@ impl Window
 		)?
 	}
 
-	pub fn set_icon(&self, icons: Vec<Image>) -> Result<(), XErr>
+	/// This function sets the icon of the window. If passed an array
+	/// of candidate images, those of or closest to the sizes desired by the
+	/// system are selected. If no images are specified, the window reverts to
+	/// its default icon.
+	///
+	/// The pixels are 32-bit, little-endian, non-premultiplied RGBA, i.e. eight
+	/// bits per channel with the red channel first. They are arranged
+	/// canonically as packed sequential rows, starting from the top-left
+	/// corner.
+	///
+	/// The desired image sizes varies depending on platform and system
+	/// settings. The selected images will be rescaled as needed. Good sizes
+	/// include 16x16, 32x32 and 48x48.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidValue],
+	/// [XErr::Platform], and [XErr::FeatureUnavailable].
+	///
+	/// # Remarks
+	/// - **MacOS**: Regular windows do not have icons on macOS. This function
+	///   will return [XErr::FeatureUnavailable]. The dock icon will be the same
+	///   as the application bundle's icon. For more information on bundles, see
+	///   the Bundle Programming Guide in the Mac Developer Library.
+	/// - **Wayland**: There is no existing protocol to change an icon, the
+	///   window will thus inherit the one defined in the application's desktop
+	///   file. This function will return [XErr::FeatureUnavailable].
+	pub fn set_icon(&mut self, icons: Vec<Image>) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetWindowIcon(self.0, icons, tx), rx)?
+	}
+
+	/// This function retrieves the position, in [ScreenCoordinates], of the
+	/// upper-left corner of the content area of the window.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform], and
+	/// [XErr::FeatureUnavailable].
+	///
+	/// # Remarks
+	/// - **Wayland**: There is no way for an application to retrieve the global
+	///   position of its windows. This function will return
+	///   [XErr::FeatureUnavailable].
+	pub fn position(&self) -> Result<ScreenCoordinates, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowPos(self.0, tx), rx)?
+	}
+
+	/// This function sets the position, in [ScreenCoordinates], of the
+	/// upper-left corner of the content area of the window. If the window is
+	/// a full screen window, this function does nothing.
+	///
+	/// **Do not use this function** to move an already visible window unless
+	/// you have very good reasons for doing so, as it will confuse and annoy
+	/// the user.
+	///
+	/// The window manager may put limits on what positions are allowed. XWin
+	/// cannot and should not override these limits.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform],
+	/// [XErr::FeatureUnavailable].
+	///
+	/// # Remarks
+	/// - **Wayland**: There is no way for an application to set the global
+	///   position of its windows. This function will return
+	///   [XErr::FeatureUnavailable].
+	pub fn set_position(&mut self, position: ScreenCoordinates) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::SetWindowPos(self.0, position, tx), rx)?
+	}
+
+	/// Returns the size, in [ScreenCoordinates], of the content area of this
+	/// window. If you wish to get the size of the framebuffer of the window in
+	/// pixels, see [framebuffer_size](Window::framebuffer_size).
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn size(&self) -> Result<ScreenCoordinates, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowSize(self.0, tx), rx)?
+	}
+
+	/// Sets the size limits of the content area of this. If this
+	/// window is full screen, the size limits only take effect once it is made
+	/// windowed. If the window is not resizable, this function does nothing.
+	///
+	/// The size limits are applied immediately to a windowed mode window and
+	/// may cause it to be resized.
+	///
+	/// The maximum dimensions must be greater than or equal to the minimum
+	/// dimensions and must be greater than or equal to zero.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidValue],
+	/// and [XErr::Platform]
+	///
+	/// # Remarks
+	/// - If you set size limits and an aspect ratio that conflict, the results
+	///   are undefined.
+	/// - **Wayland**: The size limits will not be applied until the window is
+	///   actually resized, either by the user or by the compositor.
+	pub fn set_size_limits(
+		&mut self,
+		min: ScreenCoordinates,
+		max: ScreenCoordinates,
+	) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowSizeLimits {
+				window: self.0,
+				min,
+				max,
+				tx,
+			},
+			rx,
+		)?
+	}
+
+	/// Sets the required aspect ratio of the content area of the window. If
+	/// the window is full screen, the aspect ratio only takes effect once it
+	/// is made windowed. If the window is not resizable, this function does
+	/// nothing.
+	///
+	/// The aspect ratio is specified as `(numerator, denominator)` and both
+	/// values must be greater than zero. For example, the common 16:9 aspect
+	/// ratio is specified as `(16, 9)`.
+	///
+	/// If the given ratio is `None`, hen the aspect ratio limit is disabled.
+	///
+	/// The aspect ratio is applied immediately to a windowed mode window and
+	/// may cause it to be resized.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidValue],
+	/// and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - If you set size limits and an aspect ratio that conflict, the results
+	///   are undefined.
+	/// - **Wayland**: The aspect ratio will not be applied until the window is
+	///   actually resized, either by the user or by the compositor.
+	pub fn set_aspect_ratio(&mut self, ratio: Option<(i32, i32)>) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		let value = ratio.or(Some((GLFW_DONT_CARE, GLFW_DONT_CARE))).unwrap();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAspectRatio {
+				window: self.0,
+				numerator: value.0,
+				denominator: value.1,
+				tx,
+			},
+			rx,
+		)?
+	}
+
+	/// Sets the size, in [ScreenCoordinates], of the content area
+	/// of the window.
+	///
+	/// For full screen windows, this function updates the resolution of its
+	/// desired video mode and switches to the video mode closest to it.
+	///
+	/// If you wish to update the refresh rate of the desired video mode in
+	/// addition to its resolution, see [set_monitor](Window::set_monitor).
+	///
+	/// The window manager may put limits on what sizes are allowed. XWin cannot
+	/// and should not override these limits.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform].
+	pub fn set_size(&mut self, size: ScreenCoordinates) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::SetWindowSize(self.0, size, tx), rx)?
+	}
+
+	/// Returns the size, in pixels (`width, height`), of the framebuffer of
+	/// the window. If you wish to retrieve the size of the window in
+	/// screen coordinates, see [size](Window::size).
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform].
+	pub fn framebuffer_size(&self) -> Result<(i32, i32), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetFrameBufferSize(self.0, tx), rx)?
+	}
+
+	/// Returns the size, in Screen Coordinates, of each edge of
+	/// the frame of the specified window. This size includes the title bar, if
+	/// the window has one. The size of the frame may vary depending on the
+	/// window-related hints used to create it.
+	///
+	/// The values are returned as `(left, top, right, bottom)`.
+	///
+	/// Because this function retrieves the size of each window frame edge and
+	/// not the offset along a particular coordinate axis, the retrieved values
+	/// will always be zero or positive.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn frame_size(&self) -> Result<(u32, u32, u32, u32), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowFrameSize(self.0, tx), rx)?
+	}
+
+	/// Returns the [ContentScale] for the window. The content scale is the
+	/// ratio between the current DPI and the platform's default DPI. This is
+	/// especially important for text and any UI elements. If the pixel
+	/// dimensions of your UI scaled by this look appropriate on your machine
+	/// then it should appear at a reasonable size on other machines regardless
+	/// of their DPI and scaling settings. This relies on the system DPI and
+	/// scaling settings being somewhat correct.
+	///
+	/// On platforms where each monitors can have its own content scale, the
+	/// window content scale will depend on which monitor the system considers
+	/// the window to be on.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn content_scale(&self) -> Result<ContentScale, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowContentScale(self.0, tx), rx)?
+	}
+
+	/// Returns the opacity of the window, including any decorations.
+	///
+	/// The opacity (or alpha) value is a positive finite number between zero
+	/// and one, where zero is fully transparent and one is fully opaque. If the
+	/// system does not support whole window transparency, this function always
+	/// returns one.
+	///
+	/// The initial opacity value for newly created windows is one.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn opacity(&self) -> Result<f32, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::GetWindowOpacity(self.0, tx), rx)?
+	}
+
+	/// Sets the opacity of the window, including any decorations.
+	///
+	/// The opacity (or alpha) value is a positive finite number between zero
+	/// and one, where zero is fully transparent and one is fully opaque.
+	///
+	/// The initial opacity value for newly created windows is one.
+	///
+	/// A window created with framebuffer transparency may not use whole window
+	/// transparency. The results of doing this are undefined.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform] and
+	/// [XErr::FeatureUnavailable].
+	///
+	/// # Remarks
+	/// - **Wayland**: There is no way to set an opacity factor for a window.
+	///   This function will return [XErr::FeatureUnavailable].
+	pub fn set_opacity(&mut self, opacity: f32) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::SetWindowOpacity(self.0, opacity, tx), rx)?
+	}
+
+	/// Iconifies (minimizes) the window if it was previously restored. If the
+	/// window is already iconified, this function does nothing.
+	///
+	/// If the window is a full screen window, XWin restores the original video
+	/// mode of the monitor. the window's desired video mode is set again when
+	/// the window is restored.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - **Wayland**: Once a window is iconified, [restore](Window::restore)
+	///   won't be able to restore it. This is a design decision of the
+	///   xdg-shell protocol.
+	pub fn iconify(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::IconifyWindow(self.0, tx), rx)?
+	}
+
+	/// Restores this  window if it was previously iconified (minimized)
+	/// or maximized. If the window is already restored, this function does
+	/// nothing.
+	///
+	/// If the window is an iconified full screen window, its desired
+	/// video mode is set again for its monitor when this is restored.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn restore(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::RestoreWindow(self.0, tx), rx)?
+	}
+
+	/// Maximizes the window if it was previously not maximized. If
+	/// this is already maximized, this function does nothing.
+	///
+	/// If the window is a full screen window, this function does
+	/// nothing.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn maximize(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::MaximizeWindow(self.0, tx), rx)?
+	}
+
+	/// Makes the window visible if it was previously hidden. If this
+	/// window is already visible or is in full screen mode, this function does
+	/// nothing.
+	///
+	/// By default, windowed mode windows are focused when shown. Set the
+	/// [WindowBuilder::focus_on_show] window hint to `true` to change this
+	/// behavior a newly created window, or change the behavior for an
+	/// existing window with [set_attribute](Window::set_attribute).
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - **Wayland**: Because Wayland wants every frame of the desktop to be
+	///   complete, this function dow not immediately make the window visible.
+	///   Instead, it will become visible the next time the window framebuffer
+	///   is updated after this call.
+	pub fn show(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::ShowWindow(self.0, tx), rx)?
+	}
+
+	/// Hides the window if it was previously visible. If the window is already
+	/// hidden or is in full screen mode, this function does nothing.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn hide(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::HideWindow(self.0, tx), rx)?
+	}
+
+	/// Brings the window to front and sets input focus. The window should
+	/// already be visible and not iconified.
+	///
+	/// By default, both windowed and full screen mode windows are focused when
+	/// initially created. Set the [WindowBuilder::focused] window hint to
+	/// `false` to disable this behavior.
+	///
+	/// Also by default, windowed mode windows are focused when shown with
+	/// [show](Window::show). Set the [WindowBuilder::focus_on_show] window hint
+	/// to `false` to disable this behavior.
+	///
+	/// **Do not use this function** to steal focus from other applications
+	/// unless you are certain that is what the user wants. Focus stealing can
+	/// be extremely disruptive.
+	///
+	/// For a less disruptive way of getting the user's attention, see
+	/// [request_attention](Window::request_attention).
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - **Wayland**: The compositor will likely ignore focus requests unless
+	///   another window created by the same application already has input
+	///   focus.
+	pub fn focus(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::FocusWindow(self.0, tx), rx)?
+	}
+
+	/// Requests user attention to the window. On platforms where this is not
+	/// supported, attention is requested to the application as a whole.
+	///
+	/// Once the user has given attention, usually by focusing the window or
+	/// application, the system will end the request automatically.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	///
+	/// # Remarks
+	/// - **MacOS**: Attention is requested to the application as a whole not
+	///   the specific window.
+	pub fn request_attention(&self) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(XWinMessage::RequestWindowAttention(self.0, tx), rx)?
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.
@@ -334,11 +735,8 @@ impl Window
 
 impl Drop for Window
 {
-	/// Destroys the window and its context. On calling this function, no
-	/// further callbacks will be called for this window.
-	///
-	/// If the context of this window is set as current, it is detached before
-	/// being destroyed.
+	/// Destroys the window. Callbacks on the window may continue to be called
+	/// until the window has been fully destroyed.
 	///
 	/// # Reentrancy
 	/// This function must not be called from a callback.
