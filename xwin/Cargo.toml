@@ -10,10 +10,10 @@ bindings = ["glfw"]
 vulkan = ["glfw"]
 
 [dependencies]
-xela_channels = { path = "../../xela_channels" }
+xela_channels = { git = "https://github.com/XelaSpirit/xela_channels.git", branch = "master" }
 tracing = { version = "0.1.44", optional = true }
 
 [build-dependencies]
 cmake = "0.1"
 bindgen = "0.72"
-xela_build = { path = "../../xbuild" }
+xela_build = { git = "https://github.com/XelaSpirit/xela_build.git", branch = "master" }
