@@ -28,9 +28,11 @@
 
 mod bind;
 pub mod core;
+pub(crate) mod crate_util;
 pub mod error;
 pub mod event;
 pub mod input;
 pub mod monitor;
-pub(crate) mod utility;
+pub mod utility;
+pub mod vulkan;
 pub mod window;

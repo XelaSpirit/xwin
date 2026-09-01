@@ -53,13 +53,13 @@ use crate::{
 		image::Image,
 	},
 	error::XErr,
+	event::set_window_callbacks,
 	monitor::Monitor,
 	window::{
 		WindowBuilder,
 		context::WindowContext,
 	},
 };
-use crate::event::set_window_callbacks;
 
 pub(super) fn set_window_attribute(
 	win: *mut GLFWwindow,
