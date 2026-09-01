@@ -42,31 +42,30 @@
 //! or disconnected.
 //!
 //! # Monitor Configuration Changes
-//! If you wish to be notified when a monitor is connected or disconnected, set
-//! a monitor callback.
+//! If you wish to be notified when a monitor is connected or disconnected, use
+//! the monitor configuration event channel.
 //!
 //! ```
 //! # use xwin::core::XWin;
-//! # use xwin::monitor::{add_monitor_callback, Monitor, MonitorEvent};
+//! # use xwin::monitor::{monitor_event_rx, Monitor, MonitorEvent};
 //! # let xwin = XWin::init(|| {
-//! fn monitor_callback(monitor: &Monitor, evt: MonitorEvent)
+//! let rx = monitor_event_rx().unwrap();
+//! # return;
+//! while let Ok(ev) = rx.recv()
 //! {
-//! 	match evt
+//! 	match ev
 //! 	{
 //! 		| MonitorEvent::Connected =>
-//! 		{ /* Monitor was connected */ },
+//! 		{ /* ... */ },
 //! 		| MonitorEvent::Disconnected =>
-//! 		{ /* Monitor was disconnected */ },
+//! 		{ /* ... */ },
 //! 	}
 //! }
-//! add_monitor_callback(monitor_callback);
 //! # });
 //! ```
 //!
 //! If a monitor is disconnected, all windows that are full screen on it will be
-//! switched to windowed mode before the callback is called. Only
-//! [Monitor::name] and [Monitor::userdata] will return useful values for a
-//! disconnected monitor and only before the monitor callback returns.
+//! switched to windowed mode before the event is sent.
 //!
 //! # Monitor Properties
 //! Each monitor has a current video mode, a list of supported video modes, a
@@ -244,13 +243,7 @@ mod gamma_ramp;
 mod video_mode;
 mod work_area;
 
-use std::{
-	os::raw::c_void,
-	sync::{
-		mpsc::channel,
-		Mutex,
-	},
-};
+use std::sync::mpsc::channel;
 
 pub use callback::*;
 pub use gamma_ramp::*;
@@ -258,16 +251,12 @@ pub use video_mode::*;
 pub use work_area::*;
 
 use crate::{
-	bind::{
-		glfwGetMonitorUserPointer,
-		glfwSetMonitorUserPointer,
-		GLFWmonitor,
-	},
+	bind::GLFWmonitor,
 	core::{
-		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
 	},
 	err::XErr,
 };
@@ -292,12 +281,7 @@ impl Default for Millimeters
 }
 
 #[derive(Debug)]
-pub struct Monitor
-{
-	monitor: *mut GLFWmonitor,
-	lock:    Mutex<()>,
-}
-
+pub struct Monitor(*mut GLFWmonitor);
 unsafe impl Send for Monitor {}
 unsafe impl Sync for Monitor {}
 
@@ -305,7 +289,7 @@ impl PartialEq for Monitor
 {
 	fn eq(&self, other: &Self) -> bool
 	{
-		self.monitor == other.monitor
+		self.0 == other.0
 	}
 }
 
@@ -363,7 +347,7 @@ impl Monitor
 	pub fn try_position(&self) -> Result<ScreenCoordinates, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorPos(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorPos(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_position].
@@ -387,7 +371,7 @@ impl Monitor
 	pub fn try_work_area(&self) -> Result<WorkArea, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorWorkArea(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorWorkArea(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_work_area].
@@ -413,7 +397,7 @@ impl Monitor
 	pub fn try_physical_size(&self) -> Result<Millimeters, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorPhysicalSize(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorPhysicalSize(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::physical_size].
@@ -443,7 +427,7 @@ impl Monitor
 	pub fn try_content_scale(&self) -> Result<ContentScale, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorContentScale(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorContentScale(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_content_scale].
@@ -461,67 +445,13 @@ impl Monitor
 	pub fn try_name(&self) -> Result<String, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorName(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorName(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_name].
 	pub fn name(&self) -> String
 	{
 		self.try_name().unwrap_or_default()
-	}
-
-	/// Sets the user-defined pointer of the monitor. The current value is
-	/// retained until the monitor is disconnected. The initial value is `0`.
-	///
-	/// This function may be called from the monitor callback, even for a
-	/// monitor that is being disconnected.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # See Also
-	/// - [Monitor::userdata]
-	pub fn try_set_userdata(&mut self, userdata: usize) -> Result<(), XErr>
-	{
-		let data = userdata as *mut c_void;
-
-		let lock = self.lock.lock().unwrap();
-		unsafe { glfwSetMonitorUserPointer(self.monitor, data) };
-		drop(lock);
-
-		XErr::result(|| ())
-	}
-
-	/// See [Monitor::try_set_userdata].
-	pub fn set_userdata(&mut self, userdata: usize)
-	{
-		self.try_set_userdata(userdata).unwrap_or_default()
-	}
-
-	/// This function returns the current userdata of the monitor. The initial
-	/// value is 0.
-	///
-	/// This function may be called from the monitor callback, even for a
-	/// monitor that is being disconnected.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # See Also
-	/// - [Monitor::set_userdata]
-	pub fn try_userdata(&self) -> Result<usize, XErr>
-	{
-		let lock = self.lock.lock().unwrap();
-		let data = unsafe { glfwGetMonitorUserPointer(self.monitor) };
-		drop(lock);
-
-		XErr::result(|| data as usize)
-	}
-
-	/// See [Monitor::try_userdata].
-	pub fn userdata(&self) -> usize
-	{
-		self.try_userdata().unwrap_or_default()
 	}
 
 	/// This function returns a [Vec] of all video modes supported by this
@@ -538,7 +468,7 @@ impl Monitor
 	pub fn try_video_modes(&self) -> Result<Vec<VideoMode>, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoModes(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoModes(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_video_modes].
@@ -559,7 +489,7 @@ impl Monitor
 	pub fn try_video_mode(&self) -> Result<VideoMode, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoMode(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoMode(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::try_video_mode].
@@ -587,7 +517,7 @@ impl Monitor
 	pub fn try_set_gamma(&mut self, gamma: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetGamma(self.monitor, gamma, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::SetGamma(self.0, gamma, tx), rx)?
 	}
 
 	/// See [Monitor::try_set_gamma].
@@ -608,7 +538,7 @@ impl Monitor
 	pub fn try_gamma_ramp(&self) -> Result<GammaRamp, XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::GammaRamp(self.monitor, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::GammaRamp(self.0, tx), rx)?
 	}
 
 	/// See [Monitor::GammaRamp]
@@ -641,7 +571,7 @@ impl Monitor
 	pub fn try_set_gamma_ramp(&mut self, ramp: GammaRamp) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
-		XWin::get()?.post_rcv(XWinMessage::SetGammaRamp(self.monitor, ramp, tx), rx)?
+		XWin::get()?.post_rcv(XWinMessage::SetGammaRamp(self.0, ramp, tx), rx)?
 	}
 
 	/// See [Monitor::try_set_gamma_ramp].
@@ -653,15 +583,12 @@ impl Monitor
 	/// Construct a new [Monitor] from a `GLFWmonitor`.
 	pub(crate) fn from_glfw(monitor: *mut GLFWmonitor) -> Self
 	{
-		Monitor {
-			monitor,
-			lock: Mutex::new(()),
-		}
+		Monitor(monitor)
 	}
 
 	/// Return the `GLFWmonitor` held by this [Monitor].
 	pub(crate) fn as_glfw(&self) -> *mut GLFWmonitor
 	{
-		self.monitor
+		self.0
 	}
 }

@@ -9,7 +9,6 @@ mod callback;
 
 use std::{
 	cell::RefCell,
-	os::raw::c_void,
 	sync::mpsc::channel,
 };
 
@@ -18,18 +17,13 @@ pub use callback::*;
 
 use crate::{
 	bind::{
-		glfwGetWindowUserPointer,
-		glfwSetWindowShouldClose,
-		glfwSetWindowUserPointer,
-		glfwWindowShouldClose,
-		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
 		GLFW_DECORATED,
 		GLFW_DONT_CARE,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUSED,
 		GLFW_FOCUS_ON_SHOW,
+		GLFW_FOCUSED,
 		GLFW_HOVERED,
 		GLFW_ICONIFIED,
 		GLFW_MAXIMIZED,
@@ -38,13 +32,16 @@ use crate::{
 		GLFW_TRANSPARENT_FRAMEBUFFER,
 		GLFW_TRUE,
 		GLFW_VISIBLE,
+		GLFWwindow,
+		glfwSetWindowShouldClose,
+		glfwWindowShouldClose,
 	},
 	core::{
-		exec::XWinMessage,
-		image::Image,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
+		exec::XWinMessage,
+		image::Image,
 	},
 	err::XErr,
 	monitor::Monitor,
@@ -843,7 +840,12 @@ impl Window
 	}
 
 	/// See [Window::try_set_fullscreen].
-	pub fn set_fullscreen(&mut self, monitor: Monitor, size: ScreenCoordinates, refresh_hz: Option<i32>)
+	pub fn set_fullscreen(
+		&mut self,
+		monitor: Monitor,
+		size: ScreenCoordinates,
+		refresh_hz: Option<i32>,
+	)
 	{
 		self.try_set_fullscreen(monitor, size, refresh_hz)
 			.unwrap_or_default()
@@ -1350,47 +1352,6 @@ impl Window
 	pub fn set_mouse_passthrough(&mut self, value: bool)
 	{
 		self.try_set_mouse_passthrough(value).unwrap_or_default()
-	}
-
-	/// Sets the user-defined pointer of the window. The current value is
-	/// retained until the window is destroyed. The initial value is `0`.
-	///
-	/// Access is not synchronized.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	///
-	/// # See Also
-	/// - [Monitor::userdata]
-	pub fn try_set_userdata(&mut self, userdata: usize) -> Result<(), XErr>
-	{
-		let data = userdata as *mut c_void;
-		unsafe { glfwSetWindowUserPointer(self.0, data) };
-		XErr::result(|| ())
-	}
-
-	/// See [Window::try_set_userdata].
-	pub fn set_userdata(&mut self, userdata: usize)
-	{
-		self.try_set_userdata(userdata).unwrap_or_default()
-	}
-
-	/// Returns the current userdata of the window. The initial value is `0`.
-	///
-	/// Access is not synchronized.
-	///
-	/// # Errors
-	/// Possible errors include [XErr::NotInitialized].
-	pub fn try_userdata(&self) -> Result<usize, XErr>
-	{
-		let data = unsafe { glfwGetWindowUserPointer(self.0) };
-		XErr::result(|| data as usize)
-	}
-
-	/// See [Window::try_userdata].
-	pub fn userdata(&self) -> usize
-	{
-		self.try_userdata().unwrap_or_default()
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.

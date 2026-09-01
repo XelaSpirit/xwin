@@ -1,9 +1,13 @@
 use std::{
+	ffi::CStr,
 	os::raw::c_int,
 	sync::{
-		Arc,
-		LazyLock,
-		RwLock,
+		OnceLock,
+		mpsc::{
+			Receiver,
+			Sender,
+			channel,
+		},
 	},
 };
 
@@ -12,60 +16,84 @@ use crate::{
 		GLFW_CONNECTED,
 		GLFW_DISCONNECTED,
 		GLFWmonitor,
+		glfwGetMonitorName,
 		glfwSetMonitorCallback,
 	},
 	monitor::Monitor,
 };
 
-/// Alias for a monitor callback function.
-pub type MonitorFn = fn(&Monitor, MonitorEvent);
-
-static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorFn>>>> = LazyLock::new(RwLock::default);
+static MONITOR_CALLBACKS: OnceLock<Sender<MonitorEvent>> = OnceLock::new();
 
 /// Describes a change to a monitor's configuration
 ///
 /// If a monitor is disconnected, all windows that are full screen on it will be
 /// switched to windowed mode before the callback is called.
-///
-/// Only [Monitor::name] and [Monitor::userdata] will return useful values for a
-/// disconnected monitor and only before the monitor callback returns.
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub enum MonitorEvent
 {
-	Connected,
-	Disconnected,
+	/// Contains a [Monitor] which has been connected.
+	Connected(Monitor),
+	/// Contains the name of a [Monitor] which has been disconnected. See
+	/// [Monitor::try_name].
+	Disconnected(String),
 }
 
-/// Adds a monitor configuration callback. This is called when a monitor is
-/// connected to or disconnected from the system.
+impl Clone for MonitorEvent
+{
+	fn clone(&self) -> Self
+	{
+		match self
+		{
+			| MonitorEvent::Connected(monitor) =>
+			{
+				MonitorEvent::Connected(Monitor(monitor.as_glfw()))
+			},
+			| MonitorEvent::Disconnected(name) => MonitorEvent::Disconnected(name.clone()),
+		}
+	}
+}
+
+/// Creates a new asynchronous channel on which monitor configuration events
+/// will be sent. A new event will be pushed to the channel each time a
+/// [Monitor] is connected or disconnected.
+///
+/// Note that only one such channel may be created. If the caller disconnects
+/// the returned [Receiver], there's no way to reopen this channel. It is
+/// expected the caller will hold the [Receiver] for as long as they need to.
+///
+/// If a custom channel implementation is desired, see the [set_monitor_tx]
+/// function.
+///
+/// # Errors
+/// Will return an [Err] if a channel for monitor configuration events has
+/// already been created, either with this function or [set_monitor_tx].
 ///
 /// # Returns
-/// An [Arc] referring to the callback, which may be used to later remove the
-/// callback using [remove_monitor_callback].
-///
-/// # See Also
-/// - [MonitorFn]
-pub fn add_monitor_callback(f: MonitorFn) -> Arc<MonitorFn>
+/// A [Receiver] from which monitor configuration events can be retrieved.
+pub fn monitor_event_rx() -> Result<Receiver<MonitorEvent>, ()>
 {
-	let arc = Arc::new(f);
-	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
+	let (tx, rx) = channel();
+	match MONITOR_CALLBACKS.set(tx)
 	{
-		vec.push(arc.clone());
+		| Ok(_) => Ok(rx),
+		| Err(_) => Err(()),
 	}
-	arc
 }
 
-/// Removed a monitor configuration callback, such that it will no longer be
-/// called when a monitor is connected to or disconnected from the system.
+/// Set a sender on which monitor configuration events will be sent. A new event
+/// will be sent each time a [Monitor] is connected or disconnected.
 ///
-/// # See Also
-/// - [MonitorFn]
-pub fn remove_monitor_callback(f: Arc<MonitorFn>)
+/// Not that only one monitor configuration event channel may exist. If the
+/// caller disconnects the associated [Receiver], there's no way to set a new
+/// [Sender]. It is expected the caller will hold the [Receiver] for as long as
+/// they need to.
+///
+/// # Errors
+/// Will return an [Err] if a sender for monitor configuration events has
+/// already been set, either with this function or [monitor_event_rx].
+pub fn set_monitor_tx(tx: Sender<MonitorEvent>) -> Result<(), ()>
 {
-	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
-	{
-		(*vec).retain(|cb| !Arc::ptr_eq(&f, cb));
-	}
+	MONITOR_CALLBACKS.set(tx).map_err(|_| ())
 }
 
 extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
@@ -73,17 +101,31 @@ extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
 	let monitor = Monitor::from_glfw(mon);
 	let event = match ev as u32
 	{
-		| GLFW_CONNECTED => MonitorEvent::Connected,
-		| GLFW_DISCONNECTED => MonitorEvent::Disconnected,
+		| GLFW_CONNECTED => MonitorEvent::Connected(monitor),
+		| GLFW_DISCONNECTED =>
+		{
+			let title = unsafe { glfwGetMonitorName(monitor.as_glfw()) };
+
+			MonitorEvent::Disconnected(
+				if title.is_null()
+				{
+					String::new()
+				}
+				else
+				{
+					unsafe { CStr::from_ptr(title) }
+						.to_str()
+						.unwrap_or_else(|_| "")
+						.to_owned()
+				},
+			)
+		},
 		| _ => return,
 	};
 
-	if let Ok(vec) = MONITOR_CALLBACKS.read()
+	if let Some(tx) = MONITOR_CALLBACKS.get()
 	{
-		for cb in &*vec
-		{
-			cb(&monitor, event);
-		}
+		let _ = tx.send(event);
 	}
 }
 
