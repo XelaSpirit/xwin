@@ -43,7 +43,7 @@
 //!
 //! # Monitor Configuration Changes
 //! If you wish to be notified when a monitor is connected or disconnected, set
-//! a monitor window.
+//! a monitor callback.
 //!
 //! ```
 //! # use xwin::core::XWin;
@@ -64,9 +64,9 @@
 //! ```
 //!
 //! If a monitor is disconnected, all windows that are full screen on it will be
-//! switched to windowed mode before the window is called. Only
+//! switched to windowed mode before the callback is called. Only
 //! [Monitor::name] and [Monitor::userdata] will return useful values for a
-//! disconnected monitor and only before the monitor window returns.
+//! disconnected monitor and only before the monitor callback returns.
 //!
 //! # Monitor Properties
 //! Each monitor has a current video mode, a list of supported video modes, a
@@ -247,8 +247,8 @@ mod work_area;
 use std::{
 	os::raw::c_void,
 	sync::{
-		Mutex,
 		mpsc::channel,
+		Mutex,
 	},
 };
 
@@ -259,15 +259,15 @@ pub use work_area::*;
 
 use crate::{
 	bind::{
-		GLFWmonitor,
 		glfwGetMonitorUserPointer,
 		glfwSetMonitorUserPointer,
+		GLFWmonitor,
 	},
 	core::{
+		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::XWinMessage,
 	},
 	err::XErr,
 };
@@ -356,7 +356,7 @@ impl Monitor
 	}
 
 	/// Returns the position `(x, y)`, in **screen coordinates**, of the
-	/// upper-left corner of this monitor.
+	/// upper-left corner of the monitor.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
@@ -397,7 +397,7 @@ impl Monitor
 	}
 
 	/// Returns the size, in millimetres, of the display area
-	/// of this monitor.
+	/// of the monitor.
 	///
 	/// Some platforms do not provide accurate monitor size information, either
 	/// because the monitor EDID data is incorrect or because the driver does
@@ -452,7 +452,7 @@ impl Monitor
 		self.try_content_scale().unwrap_or_default()
 	}
 
-	/// Returns a human-readable name, encoded as UTF-8, of this monitor. The
+	/// Returns a human-readable name, encoded as UTF-8, of the monitor. The
 	/// name typically reflects the make and model of the monitor and is not
 	/// guaranteed to be unique among the connected monitors.
 	///
@@ -470,10 +470,10 @@ impl Monitor
 		self.try_name().unwrap_or_default()
 	}
 
-	/// Sets the user-defined pointer of this monitor. The current value is
+	/// Sets the user-defined pointer of the monitor. The current value is
 	/// retained until the monitor is disconnected. The initial value is `0`.
 	///
-	/// This function may be called from the monitor window, even for a
+	/// This function may be called from the monitor callback, even for a
 	/// monitor that is being disconnected.
 	///
 	/// # Errors
@@ -481,7 +481,7 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [Monitor::userdata]
-	pub fn try_set_userdata(&self, userdata: usize) -> Result<(), XErr>
+	pub fn try_set_userdata(&mut self, userdata: usize) -> Result<(), XErr>
 	{
 		let data = userdata as *mut c_void;
 
@@ -493,15 +493,15 @@ impl Monitor
 	}
 
 	/// See [Monitor::try_set_userdata].
-	pub fn set_userdata(&self, userdata: usize)
+	pub fn set_userdata(&mut self, userdata: usize)
 	{
 		self.try_set_userdata(userdata).unwrap_or_default()
 	}
 
-	/// This function returns the current userdata of this monitor. The initial
+	/// This function returns the current userdata of the monitor. The initial
 	/// value is 0.
 	///
-	/// This function may be called from the monitor window, even for a
+	/// This function may be called from the monitor callback, even for a
 	/// monitor that is being disconnected.
 	///
 	/// # Errors
@@ -547,7 +547,7 @@ impl Monitor
 		self.try_video_modes().unwrap_or_default()
 	}
 
-	/// This function returns the current video mode of this monitor. If you
+	/// This function returns the current video mode of the monitor. If you
 	/// have created a full screen window for that monitor, the return value
 	/// will depend on whether that window is iconified.
 	///
@@ -569,7 +569,7 @@ impl Monitor
 	}
 
 	/// This function generates an appropriately sized gamma ramp from the
-	/// specified exponent and then sets the gamma ramp of this monitor to it.
+	/// specified exponent and then sets the gamma ramp of the monitor to it.
 	/// The value must be a finite number greater than zero.
 	///
 	/// The software controlled gamma ramp is applied in addition to the
@@ -584,19 +584,19 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	pub fn try_set_gamma(&self, gamma: f32) -> Result<(), XErr>
+	pub fn try_set_gamma(&mut self, gamma: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetGamma(self.monitor, gamma, tx), rx)?
 	}
 
 	/// See [Monitor::try_set_gamma].
-	pub fn set_gamma(&self, gamma: f32)
+	pub fn set_gamma(&mut self, gamma: f32)
 	{
 		self.try_set_gamma(gamma).unwrap_or_default()
 	}
 
-	/// Returns the current gamma ramp of this monitor.
+	/// Returns the current gamma ramp of the monitor.
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::Platform],
@@ -617,7 +617,7 @@ impl Monitor
 		self.try_gamma_ramp().unwrap_or_default()
 	}
 
-	/// Sets the current gamma ramp for this monitor. The original gamma ramp
+	/// Sets the current gamma ramp for the monitor. The original gamma ramp
 	/// for that monitor is saved by XWin the first time this function is called
 	/// and is restored by [XWin::drop](crate::core::XWin::drop).
 	///
@@ -638,14 +638,14 @@ impl Monitor
 	///
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	pub fn try_set_gamma_ramp(&self, ramp: GammaRamp) -> Result<(), XErr>
+	pub fn try_set_gamma_ramp(&mut self, ramp: GammaRamp) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetGammaRamp(self.monitor, ramp, tx), rx)?
 	}
 
 	/// See [Monitor::try_set_gamma_ramp].
-	pub fn set_gamma_ramp(&self, ramp: GammaRamp)
+	pub fn set_gamma_ramp(&mut self, ramp: GammaRamp)
 	{
 		self.try_set_gamma_ramp(ramp).unwrap_or_default()
 	}

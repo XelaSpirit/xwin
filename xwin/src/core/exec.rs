@@ -48,6 +48,7 @@ use crate::{
 		glfwSetGamma,
 		glfwSetGammaRamp,
 		glfwSetWindowAspectRatio,
+		glfwSetWindowAttrib,
 		glfwSetWindowIcon,
 		glfwSetWindowMonitor,
 		glfwSetWindowOpacity,
@@ -160,6 +161,7 @@ pub(crate) enum XWinMessage
 		tx:       Sender<Result<(), XErr>>,
 	},
 	GetWindowAttribute(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
+	SetWindowAttribute(*mut GLFWwindow, i32, i32, Sender<Result<(), XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -279,9 +281,19 @@ impl XWin
 					tx,
 				} => set_window_monitor(window, None, position, size, 0, tx),
 				| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
+				| XWinMessage::SetWindowAttribute(win, attr, value, tx) =>
+				{
+					set_window_attribute(win, attr, value, tx)
+				},
 			};
 		}
 	}
+}
+
+fn set_window_attribute(win: *mut GLFWwindow, attr: i32, value: i32, tx: Sender<Result<(), XErr>>)
+{
+	unsafe { glfwSetWindowAttrib(win, attr, value) };
+	let _ = tx.send(XErr::result(|| ()));
 }
 
 fn window_attribute(win: *mut GLFWwindow, attr: i32, tx: Sender<Result<i32, XErr>>)

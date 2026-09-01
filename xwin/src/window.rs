@@ -9,6 +9,7 @@ mod callback;
 
 use std::{
 	cell::RefCell,
+	os::raw::c_void,
 	sync::mpsc::channel,
 };
 
@@ -17,7 +18,9 @@ pub use callback::*;
 
 use crate::{
 	bind::{
+		glfwGetWindowUserPointer,
 		glfwSetWindowShouldClose,
+		glfwSetWindowUserPointer,
 		glfwWindowShouldClose,
 		GLFWwindow,
 		GLFW_AUTO_ICONIFY,
@@ -192,7 +195,7 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	pub fn try_set_should_close(&self, value: bool) -> Result<(), XErr>
+	pub fn try_set_should_close(&mut self, value: bool) -> Result<(), XErr>
 	{
 		unsafe {
 			glfwSetWindowShouldClose(
@@ -212,7 +215,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_should_close].
-	pub fn set_should_close(&self, value: bool)
+	pub fn set_should_close(&mut self, value: bool)
 	{
 		self.try_set_should_close(value).unwrap_or_default()
 	}
@@ -249,7 +252,7 @@ impl Window
 	/// # Remarks
 	/// - **MacOS**: The window title will not be updated until the next time
 	///   you process events.
-	pub fn try_set_title(&self, title: &str) -> Result<(), XErr>
+	pub fn try_set_title(&mut self, title: &str) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(
@@ -259,7 +262,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_title].
-	pub fn set_title(&self, title: &str)
+	pub fn set_title(&mut self, title: &str)
 	{
 		self.try_set_title(title).unwrap_or_default()
 	}
@@ -290,14 +293,14 @@ impl Window
 	/// - **Wayland**: There is no existing protocol to change an icon, the
 	///   window will thus inherit the one defined in the application's desktop
 	///   file. This function will return [XErr::FeatureUnavailable].
-	pub fn try_set_icon(&self, icons: Vec<Image>) -> Result<(), XErr>
+	pub fn try_set_icon(&mut self, icons: Vec<Image>) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetWindowIcon(self.0, icons, tx), rx)?
 	}
 
 	/// See [Window::try_set_icon].
-	pub fn set_icon(&self, icons: Vec<Image>)
+	pub fn set_icon(&mut self, icons: Vec<Image>)
 	{
 		self.try_set_icon(icons).unwrap_or_default()
 	}
@@ -344,14 +347,14 @@ impl Window
 	/// - **Wayland**: There is no way for an application to set the global
 	///   position of its windows. This function will return
 	///   [XErr::FeatureUnavailable].
-	pub fn try_set_position(&self, position: ScreenCoordinates) -> Result<(), XErr>
+	pub fn try_set_position(&mut self, position: ScreenCoordinates) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetWindowPos(self.0, position, tx), rx)?
 	}
 
 	/// See [Window::try_set_position].
-	pub fn set_position(&self, position: ScreenCoordinates)
+	pub fn set_position(&mut self, position: ScreenCoordinates)
 	{
 		self.try_set_position(position).unwrap_or_default()
 	}
@@ -394,7 +397,7 @@ impl Window
 	/// - **Wayland**: The size limits will not be applied until the window is
 	///   actually resized, either by the user or by the compositor.
 	pub fn try_set_size_limits(
-		&self,
+		&mut self,
 		min: ScreenCoordinates,
 		max: ScreenCoordinates,
 	) -> Result<(), XErr>
@@ -412,7 +415,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_size_limits].
-	pub fn set_size_limits(&self, min: ScreenCoordinates, max: ScreenCoordinates)
+	pub fn set_size_limits(&mut self, min: ScreenCoordinates, max: ScreenCoordinates)
 	{
 		self.try_set_size_limits(min, max).unwrap_or_default()
 	}
@@ -440,7 +443,7 @@ impl Window
 	///   are undefined.
 	/// - **Wayland**: The aspect ratio will not be applied until the window is
 	///   actually resized, either by the user or by the compositor.
-	pub fn try_set_aspect_ratio(&self, ratio: Option<(i32, i32)>) -> Result<(), XErr>
+	pub fn try_set_aspect_ratio(&mut self, ratio: Option<(i32, i32)>) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		let value = ratio.or(Some((GLFW_DONT_CARE, GLFW_DONT_CARE))).unwrap();
@@ -456,7 +459,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_aspect_ratio].
-	pub fn set_aspect_ratio(&self, ratio: Option<(i32, i32)>)
+	pub fn set_aspect_ratio(&mut self, ratio: Option<(i32, i32)>)
 	{
 		self.try_set_aspect_ratio(ratio).unwrap_or_default()
 	}
@@ -475,14 +478,14 @@ impl Window
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::Platform].
-	pub fn try_set_size(&self, size: ScreenCoordinates) -> Result<(), XErr>
+	pub fn try_set_size(&mut self, size: ScreenCoordinates) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetWindowSize(self.0, size, tx), rx)?
 	}
 
 	/// See [Window::try_set_size].
-	pub fn set_size(&self, size: ScreenCoordinates)
+	pub fn set_size(&mut self, size: ScreenCoordinates)
 	{
 		self.try_set_size(size).unwrap_or_default()
 	}
@@ -596,14 +599,14 @@ impl Window
 	/// # Remarks
 	/// - **Wayland**: There is no way to set an opacity factor for a window.
 	///   This function will return [XErr::FeatureUnavailable].
-	pub fn try_set_opacity(&self, opacity: f32) -> Result<(), XErr>
+	pub fn try_set_opacity(&mut self, opacity: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetWindowOpacity(self.0, opacity, tx), rx)?
 	}
 
 	/// See [Window::try_set_opacity].
-	pub fn set_opacity(&self, opacity: f32)
+	pub fn set_opacity(&mut self, opacity: f32)
 	{
 		self.try_set_opacity(opacity).unwrap_or_default()
 	}
@@ -816,7 +819,7 @@ impl Window
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
 	pub fn try_set_fullscreen(
-		&self,
+		&mut self,
 		monitor: Monitor,
 		size: ScreenCoordinates,
 		refresh_hz: Option<i32>,
@@ -840,7 +843,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_fullscreen].
-	pub fn set_fullscreen(&self, monitor: Monitor, size: ScreenCoordinates, refresh_hz: Option<i32>)
+	pub fn set_fullscreen(&mut self, monitor: Monitor, size: ScreenCoordinates, refresh_hz: Option<i32>)
 	{
 		self.try_set_fullscreen(monitor, size, refresh_hz)
 			.unwrap_or_default()
@@ -865,7 +868,7 @@ impl Window
 	/// - **Wayland**: The desired window position is ignored, as there is no
 	///   way for an application to set this property.
 	pub fn try_set_windowed(
-		&self,
+		&mut self,
 		position: ScreenCoordinates,
 		size: ScreenCoordinates,
 	) -> Result<(), XErr>
@@ -883,7 +886,7 @@ impl Window
 	}
 
 	/// See [Window::try_set_windowed].
-	pub fn set_windowed(&self, position: ScreenCoordinates, size: ScreenCoordinates)
+	pub fn set_windowed(&mut self, position: ScreenCoordinates, size: ScreenCoordinates)
 	{
 		self.try_set_windowed(position, size).unwrap_or_default()
 	}
@@ -1150,6 +1153,244 @@ impl Window
 	pub fn will_mouse_passthrough(&self) -> bool
 	{
 		self.try_will_mouse_passthrough().unwrap_or_default()
+	}
+
+	/// Sets whether the window has decorations such as a border, a close
+	/// widget, etc.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_decorated(&mut self, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAttribute(
+				self.0,
+				GLFW_DECORATED as i32,
+				if value
+				{
+					GLFW_TRUE as i32
+				}
+				else
+				{
+					GLFW_FALSE as i32
+				},
+				tx,
+			),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_set_decorated].
+	pub fn set_decorated(&mut self, value: bool)
+	{
+		self.try_set_decorated(value).unwrap_or_default()
+	}
+
+	/// Sets whether the window is resizable *by the user*.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_resizable(&mut self, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAttribute(
+				self.0,
+				GLFW_RESIZABLE as i32,
+				if value
+				{
+					GLFW_TRUE as i32
+				}
+				else
+				{
+					GLFW_FALSE as i32
+				},
+				tx,
+			),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_set_resizable].
+	pub fn set_resizable(&mut self, value: bool)
+	{
+		self.try_set_resizable(value).unwrap_or_default()
+	}
+
+	/// Sets whether the window is floating, also called topmost or
+	/// always-on-top.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized], [XErr::Platform], and
+	/// [XErr::FeatureUnavailable].
+	///
+	/// # Remarks
+	/// - **Wayland**: The floating window attribute is not supported. Calling
+	///   this will return [XErr::FeatureUnavailable].
+	pub fn try_set_floating(&mut self, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAttribute(
+				self.0,
+				GLFW_FLOATING as i32,
+				if value
+				{
+					GLFW_TRUE as i32
+				}
+				else
+				{
+					GLFW_FALSE as i32
+				},
+				tx,
+			),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_set_floating].
+	pub fn set_floating(&mut self, value: bool)
+	{
+		self.try_set_floating(value).unwrap_or_default()
+	}
+
+	/// Sets whether the full screen window is iconified on focus loss, a close
+	/// widget, etc.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_will_iconify(&mut self, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAttribute(
+				self.0,
+				GLFW_AUTO_ICONIFY as i32,
+				if value
+				{
+					GLFW_TRUE as i32
+				}
+				else
+				{
+					GLFW_FALSE as i32
+				},
+				tx,
+			),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_set_will_iconify].
+	pub fn set_will_iconify(&mut self, value: bool)
+	{
+		self.try_set_will_iconify(value).unwrap_or_default()
+	}
+
+	/// Sets whether the window will be given input focus when [Window::show] is
+	/// called.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_will_focus(&mut self, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAttribute(
+				self.0,
+				GLFW_FOCUS_ON_SHOW as i32,
+				if value
+				{
+					GLFW_TRUE as i32
+				}
+				else
+				{
+					GLFW_FALSE as i32
+				},
+				tx,
+			),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_set_will_focus].
+	pub fn set_will_focus(&mut self, value: bool)
+	{
+		self.try_set_will_focus(value).unwrap_or_default()
+	}
+
+	/// Sets whether the window is transparent to mouse input, letting any mouse
+	/// events pass through to whatever window is behind it. Decorated window
+	/// with this enabled will behave differently between platforms.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
+	pub fn try_set_mouse_passthrough(&mut self, value: bool) -> Result<(), XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?.post_rcv(
+			XWinMessage::SetWindowAttribute(
+				self.0,
+				GLFW_MOUSE_PASSTHROUGH as i32,
+				if value
+				{
+					GLFW_TRUE as i32
+				}
+				else
+				{
+					GLFW_FALSE as i32
+				},
+				tx,
+			),
+			rx,
+		)?
+	}
+
+	/// See [Window::try_set_mouse_passthrough].
+	pub fn set_mouse_passthrough(&mut self, value: bool)
+	{
+		self.try_set_mouse_passthrough(value).unwrap_or_default()
+	}
+
+	/// Sets the user-defined pointer of the window. The current value is
+	/// retained until the window is destroyed. The initial value is `0`.
+	///
+	/// Access is not synchronized.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	///
+	/// # See Also
+	/// - [Monitor::userdata]
+	pub fn try_set_userdata(&mut self, userdata: usize) -> Result<(), XErr>
+	{
+		let data = userdata as *mut c_void;
+		unsafe { glfwSetWindowUserPointer(self.0, data) };
+		XErr::result(|| ())
+	}
+
+	/// See [Window::try_set_userdata].
+	pub fn set_userdata(&mut self, userdata: usize)
+	{
+		self.try_set_userdata(userdata).unwrap_or_default()
+	}
+
+	/// Returns the current userdata of the window. The initial value is `0`.
+	///
+	/// Access is not synchronized.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_userdata(&self) -> Result<usize, XErr>
+	{
+		let data = unsafe { glfwGetWindowUserPointer(self.0) };
+		XErr::result(|| data as usize)
+	}
+
+	/// See [Window::try_userdata].
+	pub fn userdata(&self) -> usize
+	{
+		self.try_userdata().unwrap_or_default()
 	}
 
 	/// Construct a new [Window] from a `GLFWwindow`.

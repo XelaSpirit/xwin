@@ -17,7 +17,7 @@ use crate::{
 	monitor::Monitor,
 };
 
-/// Alias for a monitor window function.
+/// Alias for a monitor callback function.
 pub type MonitorFn = fn(&Monitor, MonitorEvent);
 
 static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorFn>>>> = LazyLock::new(RwLock::default);
@@ -25,10 +25,10 @@ static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorFn>>>> = LazyLock::new(
 /// Describes a change to a monitor's configuration
 ///
 /// If a monitor is disconnected, all windows that are full screen on it will be
-/// switched to windowed mode before the window is called.
+/// switched to windowed mode before the callback is called.
 ///
 /// Only [Monitor::name] and [Monitor::userdata] will return useful values for a
-/// disconnected monitor and only before the monitor window returns.
+/// disconnected monitor and only before the monitor callback returns.
 #[derive(Copy, Clone, Debug)]
 pub enum MonitorEvent
 {
@@ -36,12 +36,12 @@ pub enum MonitorEvent
 	Disconnected,
 }
 
-/// Adds a monitor configuration window. This is called when a monitor is
+/// Adds a monitor configuration callback. This is called when a monitor is
 /// connected to or disconnected from the system.
 ///
 /// # Returns
-/// An [Arc] referring to the window, which may be used to later remove the
-/// window using [remove_monitor_callback].
+/// An [Arc] referring to the callback, which may be used to later remove the
+/// callback using [remove_monitor_callback].
 ///
 /// # See Also
 /// - [MonitorFn]
@@ -55,7 +55,7 @@ pub fn add_monitor_callback(f: MonitorFn) -> Arc<MonitorFn>
 	arc
 }
 
-/// Removed a monitor configuration window, such that it will no longer be
+/// Removed a monitor configuration callback, such that it will no longer be
 /// called when a monitor is connected to or disconnected from the system.
 ///
 /// # See Also
