@@ -1,6 +1,10 @@
 use std::{
-	ffi::CStr,
+	ffi::{
+		CStr,
+		CString,
+	},
 	os::raw::c_int,
+	ptr::null_mut,
 	sync::mpsc::Sender,
 };
 
@@ -22,6 +26,7 @@ use crate::{
 		glfwCreateCursor,
 		glfwCreateStandardCursor,
 		glfwDestroyCursor,
+		glfwGetClipboardString,
 		glfwGetCursorPos,
 		glfwGetInputMode,
 		glfwGetJoystickAxes,
@@ -32,6 +37,7 @@ use crate::{
 		glfwGetMouseButton,
 		glfwJoystickPresent,
 		glfwRawMouseMotionSupported,
+		glfwSetClipboardString,
 		glfwSetCursor,
 		glfwSetCursorPos,
 		glfwSetInputMode,
@@ -155,4 +161,28 @@ pub(super) fn set_cursor(
 {
 	unsafe { glfwSetCursor(win, cursor) };
 	let _ = tx.send(XErr::result(|| ()));
+}
+
+pub(super) fn set_clipboard_string(str: String, tx: Sender<Result<(), XErr>>)
+{
+	if let Ok(cstr) = CString::new(str)
+	{
+		unsafe { glfwSetClipboardString(null_mut(), cstr.as_ptr()) };
+		let _ = tx.send(XErr::result(|| ()));
+	}
+}
+
+pub(super) fn clipboard_string(tx: Sender<Result<String, XErr>>)
+{
+	let value = unsafe { glfwGetClipboardString(null_mut()) };
+	let _ = tx.send(XErr::result(|| {
+		if value.is_null()
+		{
+			String::new()
+		}
+		else
+		{
+			unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() }
+		}
+	}));
 }

@@ -1,5 +1,5 @@
 use std::{
-	ffi::CStr,
+	ffi::CString,
 	os::raw::c_int,
 	sync::mpsc::Sender,
 };
@@ -7,6 +7,9 @@ use std::{
 use crate::{
 	bind::{
 		GLFW_TRUE,
+		GLFWgamepadstate,
+		glfwGetGamepadName,
+		glfwGetGamepadState,
 		glfwGetJoystickAxes,
 		glfwGetJoystickButtons,
 		glfwGetJoystickGUID,
@@ -14,6 +17,7 @@ use crate::{
 		glfwGetJoystickName,
 		glfwJoystickIsGamepad,
 		glfwJoystickPresent,
+		glfwUpdateGamepadMappings,
 	},
 	core::exec::send_string,
 	error::XErr,
@@ -117,6 +121,44 @@ pub(super) fn joystick_is_gamepad(jid: i32, tx: Sender<Result<bool, XErr>>)
 		else
 		{
 			false
+		}
+	}));
+}
+
+pub(super) fn update_gamepad_mappings(mappings: String, tx: Sender<Result<(), XErr>>)
+{
+	if let Ok(str) = CString::new(mappings)
+	{
+		unsafe { glfwUpdateGamepadMappings(str.as_ptr()) };
+		let _ = tx.send(XErr::result(|| ()));
+	}
+	else
+	{
+		let _ = tx.send(Ok(()));
+	}
+}
+
+pub(super) fn gamepad_name(jid: i32, tx: Sender<Result<Option<String>, XErr>>)
+{
+	send_string(unsafe { glfwGetGamepadName(jid) }, tx);
+}
+
+pub(super) fn gamepad_state(jid: i32, tx: Sender<Result<Option<GLFWgamepadstate>, XErr>>)
+{
+	let mut state = GLFWgamepadstate {
+		buttons: [0; 15usize],
+		axes:    [0.0; 6usize],
+	};
+	let res = unsafe { glfwGetGamepadState(jid, &mut state) };
+
+	let _ = tx.send(XErr::result(|| {
+		if res == GLFW_TRUE as i32
+		{
+			Some(state)
+		}
+		else
+		{
+			None
 		}
 	}));
 }

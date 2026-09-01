@@ -43,14 +43,21 @@ use crate::{
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
 		glfwGetPlatform,
+		glfwGetTime,
+		glfwGetTimerFrequency,
+		glfwGetTimerValue,
 		glfwInit,
 		glfwInitHint,
 		glfwPlatformSupported,
+		glfwSetTime,
 		glfwTerminate,
 	},
 	core::exec::XWinMessage,
 	error::XErr,
-	input::gamepad::JoystickConfigEvent,
+	input::event::{
+		JoystickConfigEvent,
+		set_joystick_callback,
+	},
 	monitor::{
 		MonitorEvent,
 		set_monitor_callback,
@@ -247,8 +254,8 @@ where
 	let (tx, rx) = channel();
 	if let Err(_) = XWIN.set(RwLock::new(XWin {
 		joystick_tx: None,
-		monitor_tx: None,
-		xwin_tx:    tx,
+		monitor_tx:  None,
+		xwin_tx:     tx,
 	}))
 	{
 		return Err(XErr::Reinitialized);
@@ -265,6 +272,7 @@ where
 	}
 
 	set_monitor_callback();
+	set_joystick_callback();
 
 	let handle = thread::Builder::new()
 		.name("XWin Thread".to_string())
@@ -292,52 +300,6 @@ where
 	}
 
 	Ok(())
-}
-
-/// Destroys all remaining windows and cursors, restores any modified gamma
-/// ramps and frees any other allocated resources. Once this function is
-/// called, most XWin functions will no longer be useful.
-///
-/// This function will not stop you from continuing to attempt to use other
-/// XWin objects (windows, monitors, etc), but most will begin returning
-/// errors after this is called.
-///
-/// This function has no effect if XWin is not initialized.
-///
-/// Unlike most functions which send a command to the main thread, this
-/// function will not wait for a response from the main thread before
-/// returning. This function may, as a result, return before XWin has
-/// actually been terminated.
-pub fn terminate()
-{
-	if let Some(xwin) = XWIN.get()
-	{
-		let _ = xwin.read().unwrap().post(XWinMessage::Terminate);
-	}
-}
-
-/// Set the platform to use for windowing and input.
-///
-/// **Default:** [`Platform::Any`]
-///
-/// # Thread Safety
-/// This function must only be called from the main thread.
-pub fn set_platform(platform: Platform)
-{
-	unsafe {
-		glfwInitHint(
-			GLFW_PLATFORM as c_int,
-			match platform
-			{
-				| Platform::Any => GLFW_ANY_PLATFORM as c_int,
-				| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
-				| Platform::Cocoa => GLFW_PLATFORM_COCOA as c_int,
-				| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
-				| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
-				| Platform::Null => GLFW_PLATFORM_NULL as c_int,
-			},
-		);
-	}
 }
 
 /// **MacOS Specific**
@@ -385,31 +347,6 @@ pub fn cocoa_menubar(value: bool)
 			else
 			{
 				GLFW_FALSE as c_int
-			},
-		)
-	};
-}
-
-/// **Wayland Specific**
-///
-/// specifies whether to use [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor)
-/// for window decorations where available. This is ignored on other
-/// platforms.
-///
-/// # Thread Safety
-/// This function must only be called from the main thread.
-pub fn wayland_libdecor(value: bool)
-{
-	unsafe {
-		glfwInitHint(
-			GLFW_WAYLAND_LIBDECOR as c_int,
-			if value
-			{
-				GLFW_WAYLAND_PREFER_LIBDECOR as c_int
-			}
-			else
-			{
-				GLFW_WAYLAND_DISABLE_LIBDECOR as c_int
 			},
 		)
 	};
@@ -474,4 +411,220 @@ pub fn platform_supported(platform: Platform) -> bool
 			| _ => false,
 		}
 	}
+}
+
+/// Set the platform to use for windowing and input.
+///
+/// **Default:** [`Platform::Any`]
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub fn set_platform(platform: Platform)
+{
+	unsafe {
+		glfwInitHint(
+			GLFW_PLATFORM as c_int,
+			match platform
+			{
+				| Platform::Any => GLFW_ANY_PLATFORM as c_int,
+				| Platform::Windows => GLFW_PLATFORM_WIN32 as c_int,
+				| Platform::Cocoa => GLFW_PLATFORM_COCOA as c_int,
+				| Platform::Wayland => GLFW_PLATFORM_WAYLAND as c_int,
+				| Platform::X11 => GLFW_PLATFORM_X11 as c_int,
+				| Platform::Null => GLFW_PLATFORM_NULL as c_int,
+			},
+		);
+	}
+}
+
+/// Destroys all remaining windows and cursors, restores any modified gamma
+/// ramps and frees any other allocated resources. Once this function is
+/// called, most XWin functions will no longer be useful.
+///
+/// This function will not stop you from continuing to attempt to use other
+/// XWin objects (windows, monitors, etc), but most will begin returning
+/// errors after this is called.
+///
+/// This function has no effect if XWin is not initialized.
+///
+/// Unlike most functions which send a command to the main thread, this
+/// function will not wait for a response from the main thread before
+/// returning. This function may, as a result, return before XWin has
+/// actually been terminated.
+pub fn terminate()
+{
+	if let Some(xwin) = XWIN.get()
+	{
+		let _ = xwin.read().unwrap().post(XWinMessage::Terminate);
+	}
+}
+
+/// **Wayland Specific**
+///
+/// specifies whether to use [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor)
+/// for window decorations where available. This is ignored on other
+/// platforms.
+///
+/// # Thread Safety
+/// This function must only be called from the main thread.
+pub fn wayland_libdecor(value: bool)
+{
+	unsafe {
+		glfwInitHint(
+			GLFW_WAYLAND_LIBDECOR as c_int,
+			if value
+			{
+				GLFW_WAYLAND_PREFER_LIBDECOR as c_int
+			}
+			else
+			{
+				GLFW_WAYLAND_DISABLE_LIBDECOR as c_int
+			},
+		)
+	};
+}
+
+/// See [try_clipboard_string].
+pub fn clipboard_string() -> String
+{
+	try_clipboard_string().unwrap_or_default()
+}
+
+/// See [try_set_clipboard_string].
+pub fn set_clipboard_string(value: String)
+{
+	let _ = try_set_clipboard_string(value);
+}
+
+/// See [try_set_time].
+pub fn set_time(value: f64)
+{
+	let _ = try_set_time(value);
+}
+
+/// See [try_time].
+pub fn time() -> f64
+{
+	try_time().unwrap_or_default()
+}
+
+/// See [try_timer_frequency].
+pub fn timer_frequency() -> u64
+{
+	try_timer_frequency().unwrap_or_default()
+}
+
+/// See [try_timer_value].
+pub fn timer_value() -> u64
+{
+	try_timer_value().unwrap_or_default()
+}
+
+/// Returns the contents of the system clipboard, if it contains or is
+/// convertible to a UTF-8 encoded string. If the clipboard is empty or if its
+/// contents cannot be converted, [XErr::FormatUnavailable] is returned.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized], [XErr::FormatUnavailable],
+/// and [XErr::Platform].
+///
+/// # Remarks
+/// **Win32**: The clipboard on Windows has a single global lock for reading and
+/// writing. XWin tries to acquire it a few times, which is almost always
+/// enough. If it cannot acquire the lock then this function returns
+/// [XErr::Platform]. It is safe to try this multiple times.
+pub fn try_clipboard_string() -> Result<String, XErr>
+{
+	let (tx, rx) = channel();
+	XWin::get()?
+		.read()
+		.unwrap()
+		.post_rcv(XWinMessage::GetClipboardString(tx), rx)?
+}
+
+/// Sets the system clipboard to the specified [String].
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+///
+/// # Remarks
+/// **Win32**: The clipboard on Windows has a single global lock for reading and
+/// writing. XWin tries to acquire it a few times, which is almost always
+/// enough. If it cannot acquire the lock then this function returns
+/// [XErr::Platform]. It is safe to try this multiple times.
+pub fn try_set_clipboard_string(value: String) -> Result<(), XErr>
+{
+	let (tx, rx) = channel();
+	XWin::get()?
+		.read()
+		.unwrap()
+		.post_rcv(XWinMessage::SetClipboardString(value, tx), rx)?
+}
+
+/// Sets the current XWin time, in seconds. The value must be a positive finite
+/// number less than or equal to `18446744073.0`, which is approximately 584.5
+/// yearsa.
+///
+/// This function and [try_get_time] are helper functions on top of
+/// [try_timer_frequency] and [try_timer_value].
+///
+/// # Thread Safety
+/// Reading and writing of the internal base time is not atomic, so it needs to
+/// be externally synchronized with calls to [try_set_time].
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+///
+/// # Remarks
+/// The upper limit of XWin time is calculated as `floor((2^64 - 1) / 10^9)` and
+/// is due to implementations storing nanoseconds in 64 bits. The limit may be
+/// increased in the future.
+pub fn try_set_time(value: f64) -> Result<(), XErr>
+{
+	unsafe { glfwSetTime(value) };
+	XErr::result(|| ())
+}
+
+/// Returns the current XWin time, in seconds. Unless the time has been set
+/// using [try_set_time] it measures the time elapsed since XWin was
+/// initialized.
+///
+/// This function and [try_set_time] are helper functions on top of
+/// [try_timer_frequency] and [try_timer_value].
+///
+/// The resolution of the timer is system dependent, but is usually on the order
+/// of a few micro- or nanoseconds. It uses the highest-resolution monotonic
+/// time source on each operating system.
+///
+/// # Thread Safety
+/// Reading and writing of the internal base time is not atomic, so it needs to
+/// be externally synchronized with calls to [try_set_time].
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn try_time() -> Result<f64, XErr>
+{
+	let time = unsafe { glfwGetTime() };
+	XErr::result(|| time)
+}
+
+/// Returns the frequency, in Hz, of the raw timer.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn try_timer_frequency() -> Result<u64, XErr>
+{
+	let time = unsafe { glfwGetTimerFrequency() };
+	XErr::result(|| time)
+}
+
+/// Returns the current value of the raw timer, measured in `1/frequency`
+/// seconds. To get the frequency, call [try_timer_frequency].
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn try_timer_value() -> Result<u64, XErr>
+{
+	let time = unsafe { glfwGetTimerValue() };
+	XErr::result(|| time)
 }

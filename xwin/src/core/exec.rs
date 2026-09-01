@@ -1,5 +1,5 @@
+mod gamepad;
 mod input;
-mod joystick;
 mod monitor;
 mod window;
 
@@ -20,6 +20,7 @@ use window::*;
 use crate::{
 	bind::{
 		GLFWcursor,
+		GLFWgamepadstate,
 		GLFWmonitor,
 		GLFWwindow,
 		glfwPostEmptyEvent,
@@ -31,13 +32,9 @@ use crate::{
 		ScreenCoordinates,
 		XWin,
 		exec::{
-			input::{
-				cursor_pos,
-				key,
-				mouse_button,
-				set_cursor_pos,
-			},
-			joystick::{
+			gamepad::{
+				gamepad_name,
+				gamepad_state,
 				joystick_axes,
 				joystick_buttons,
 				joystick_guid,
@@ -45,6 +42,13 @@ use crate::{
 				joystick_is_gamepad,
 				joystick_name,
 				joystick_present,
+				update_gamepad_mappings,
+			},
+			input::{
+				cursor_pos,
+				key,
+				mouse_button,
+				set_cursor_pos,
 			},
 		},
 		image::Image,
@@ -181,8 +185,10 @@ pub(crate) enum XWinMessage
 	),
 	SetCursorPos(*mut GLFWwindow, f64, f64, Sender<Result<(), XErr>>),
 	SetCursor(*mut GLFWwindow, *mut GLFWcursor, Sender<Result<(), XErr>>),
+	SetClipboardString(String, Sender<Result<(), XErr>>),
+	GetClipboardString(Sender<Result<String, XErr>>),
 
-	// Joystick
+	// Gamepad
 	JoystickPresent(i32, Sender<Result<bool, XErr>>),
 	JoystickAxes(i32, Sender<Result<Option<Vec<f32>>, XErr>>),
 	JoystickButtons(i32, Sender<Result<Option<Vec<ButtonState>>, XErr>>),
@@ -190,6 +196,9 @@ pub(crate) enum XWinMessage
 	JoystickName(i32, Sender<Result<Option<String>, XErr>>),
 	JoystickGuid(i32, Sender<Result<Option<String>, XErr>>),
 	JoystickIsGamepad(i32, Sender<Result<bool, XErr>>),
+	UpdateGamepadMappings(String, Sender<Result<(), XErr>>),
+	GetGamepadName(i32, Sender<Result<Option<String>, XErr>>),
+	GetGamepadState(i32, Sender<Result<Option<GLFWgamepadstate>, XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -345,6 +354,8 @@ fn handle_msg(msg: XWinMessage)
 		| XWinMessage::GetCursorPos(win, tx) => cursor_pos(win, tx),
 		| XWinMessage::SetCursorPos(win, x, y, tx) => set_cursor_pos(win, x, y, tx),
 		| XWinMessage::SetCursor(win, cursor, tx) => set_cursor(win, cursor, tx),
+		| XWinMessage::SetClipboardString(str, tx) => set_clipboard_string(str, tx),
+		| XWinMessage::GetClipboardString(tx) => clipboard_string(tx),
 
 		// Joystick
 		| XWinMessage::JoystickPresent(jid, tx) => joystick_present(jid, tx),
@@ -354,6 +365,9 @@ fn handle_msg(msg: XWinMessage)
 		| XWinMessage::JoystickName(jid, tx) => joystick_name(jid, tx),
 		| XWinMessage::JoystickGuid(jid, tx) => joystick_guid(jid, tx),
 		| XWinMessage::JoystickIsGamepad(jid, tx) => joystick_is_gamepad(jid, tx),
+		| XWinMessage::UpdateGamepadMappings(mappings, tx) => update_gamepad_mappings(mappings, tx),
+		| XWinMessage::GetGamepadName(jid, tx) => gamepad_name(jid, tx),
+		| XWinMessage::GetGamepadState(jid, tx) => gamepad_state(jid, tx),
 	};
 }
 

@@ -2,8 +2,6 @@ use std::sync::mpsc::channel;
 
 use crate::{
 	bind::{
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
 		GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,
 		GLFW_GAMEPAD_AXIS_LEFT_X,
 		GLFW_GAMEPAD_AXIS_LEFT_Y,
@@ -46,6 +44,7 @@ use crate::{
 		GLFW_JOYSTICK_7,
 		GLFW_JOYSTICK_8,
 		GLFW_JOYSTICK_9,
+		GLFWgamepadstate,
 	},
 	core::{
 		XWin,
@@ -57,7 +56,7 @@ use crate::{
 };
 
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GamepadAxis
 {
 	LeftX        = GLFW_GAMEPAD_AXIS_LEFT_X as u8,
@@ -69,30 +68,30 @@ pub enum GamepadAxis
 }
 glfw_enum!(GamepadAxis, u8);
 
-#[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[repr(u16)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GamepadButton
 {
-	A           = GLFW_GAMEPAD_BUTTON_A as u8,
-	B           = GLFW_GAMEPAD_BUTTON_B as u8,
-	X           = GLFW_GAMEPAD_BUTTON_X as u8,
-	Y           = GLFW_GAMEPAD_BUTTON_Y as u8,
-	LeftBumper  = GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as u8,
-	RightBumper = GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as u8,
-	Back        = GLFW_GAMEPAD_BUTTON_BACK as u8,
-	Start       = GLFW_GAMEPAD_BUTTON_START as u8,
-	Guide       = GLFW_GAMEPAD_BUTTON_GUIDE as u8,
-	LeftThumb   = GLFW_GAMEPAD_BUTTON_LEFT_THUMB as u8,
-	RightThumb  = GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as u8,
-	Up          = GLFW_GAMEPAD_BUTTON_DPAD_UP as u8,
-	Right       = GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as u8,
-	Down        = GLFW_GAMEPAD_BUTTON_DPAD_DOWN as u8,
-	Left        = GLFW_GAMEPAD_BUTTON_DPAD_LEFT as u8,
+	A           = GLFW_GAMEPAD_BUTTON_A as u16,
+	B           = GLFW_GAMEPAD_BUTTON_B as u16,
+	X           = GLFW_GAMEPAD_BUTTON_X as u16,
+	Y           = GLFW_GAMEPAD_BUTTON_Y as u16,
+	LeftBumper  = GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as u16,
+	RightBumper = GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as u16,
+	Back        = GLFW_GAMEPAD_BUTTON_BACK as u16,
+	Start       = GLFW_GAMEPAD_BUTTON_START as u16,
+	Guide       = GLFW_GAMEPAD_BUTTON_GUIDE as u16,
+	LeftThumb   = GLFW_GAMEPAD_BUTTON_LEFT_THUMB as u16,
+	RightThumb  = GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as u16,
+	Up          = GLFW_GAMEPAD_BUTTON_DPAD_UP as u16,
+	Right       = GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as u16,
+	Down        = GLFW_GAMEPAD_BUTTON_DPAD_DOWN as u16,
+	Left        = GLFW_GAMEPAD_BUTTON_DPAD_LEFT as u16,
 }
-glfw_enum!(GamepadButton, u8);
+glfw_enum!(GamepadButton, u16);
 
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JoystickHatState
 {
 	Centered  = GLFW_HAT_CENTERED as u8,
@@ -107,31 +106,76 @@ pub enum JoystickHatState
 }
 glfw_enum!(JoystickHatState, u8);
 
-#[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JoystickConfigEvent
+/// Contains the input state of a gamepad.
+pub struct GamepadState
 {
-	Connected(Joystick) = GLFW_CONNECTED as u8,
-	Disconnected(Joystick) = GLFW_DISCONNECTED as u8,
+	buttons: [ButtonState; 15],
+	axes:    [f32; 6],
 }
 
-impl JoystickConfigEvent
+impl GamepadState
 {
-	pub(crate) fn from_glfw(jid: u32, evt: u32) -> Self
+	/// Returns the [ButtonState] of a given [GamepadButton].
+	pub fn button(&self, button: GamepadButton) -> ButtonState
 	{
-		if evt == GLFW_CONNECTED
-		{
-			JoystickConfigEvent::Connected(Joystick::from_glfw(jid))
-		}
-		else
-		{
-			JoystickConfigEvent::Disconnected(Joystick::from_glfw(jid))
+		self.buttons[button.as_glfw() as usize]
+	}
+
+	/// Returns the state of a given [GamepadAxis], in the range -1.0 to 1.0
+	/// inclusive.
+	pub fn axis(&self, axis: GamepadAxis) -> f32
+	{
+		self.axes[axis.as_glfw() as usize]
+	}
+
+	pub(crate) fn from_glfw(state: GLFWgamepadstate) -> GamepadState
+	{
+		GamepadState {
+			buttons: [
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_A as usize] as u32),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_B as usize] as u32),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_X as usize] as u32),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_Y as usize] as u32),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as usize] as u32,
+				),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as usize] as u32,
+				),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_BACK as usize] as u32),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_START as usize] as u32),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_GUIDE as usize] as u32),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB as usize] as u32,
+				),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as usize] as u32,
+				),
+				ButtonState::from_glfw(state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP as usize] as u32),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as usize] as u32,
+				),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN as usize] as u32,
+				),
+				ButtonState::from_glfw(
+					state.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT as usize] as u32,
+				),
+			],
+			axes:    [
+				state.axes[GLFW_GAMEPAD_AXIS_LEFT_X as usize],
+				state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y as usize],
+				state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X as usize],
+				state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y as usize],
+				state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER as usize],
+				state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER as usize],
+			],
 		}
 	}
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Joystick
 {
 	One      = GLFW_JOYSTICK_1 as u8,
@@ -171,6 +215,12 @@ impl Joystick
 		self.try_buttons().unwrap_or_default()
 	}
 
+	/// See [Joystick::try_gamepad_name].
+	pub fn gamepad_name(&self) -> Option<String>
+	{
+		self.try_gamepad_name().unwrap_or_default()
+	}
+
 	/// See [Joystick::try_guid].
 	pub fn guid(&self) -> Option<String>
 	{
@@ -199,6 +249,12 @@ impl Joystick
 	pub fn name(&self) -> Option<String>
 	{
 		self.try_name().unwrap_or_default()
+	}
+
+	/// See [Joystick::try_state].
+	pub fn state(&self) -> Option<GamepadState>
+	{
+		self.try_state().unwrap_or_default()
 	}
 
 	// =======================
@@ -238,6 +294,25 @@ impl Joystick
 			.read()
 			.unwrap()
 			.post_rcv(XWinMessage::JoystickButtons(self.as_glfw() as i32, tx), rx)?
+	}
+
+	/// Returns the human-readable name of the gamepad from the gamepad mapping
+	/// assigned to the joystick.
+	///
+	/// If the joystick is not present or does not have a gamepad mapping this
+	/// function will return `None` without generating an error. Call
+	/// [Joystick::try_is_present] to check whether it is present regardless of
+	/// whether it has a mapping.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_gamepad_name(&self) -> Result<Option<String>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetGamepadName(self.as_glfw() as i32, tx), rx)?
 	}
 
 	/// Returns the SDL compatible GUID, as a hexadecimal string, of the
@@ -337,7 +412,57 @@ impl Joystick
 			.unwrap()
 			.post_rcv(XWinMessage::JoystickName(self.as_glfw() as i32, tx), rx)?
 	}
+
+	/// Returns the state of the joystick remapped to an Xbox-like gamepad.
+	///
+	/// If the joystick is not present or does not have a gamepad mapping this
+	/// function will return `None` without generating an error. Call
+	/// [Joystick::try_is_present] to check whether it is present regardless of
+	/// whether it has a mapping.
+	///
+	/// The `Guide` button may not be available for input as it is often hooked
+	/// by the system or the Steam client.
+	///
+	/// Not all devices have all the buttons or axes provided by [GamepadState].
+	/// Unavailable buttons and axes will always have values of
+	/// [ButtonState::Release] and `0.0` respectively.
+	///
+	/// # Errors
+	/// Possible errors include [XErr::NotInitialized].
+	pub fn try_state(&self) -> Result<Option<GamepadState>, XErr>
+	{
+		let (tx, rx) = channel();
+		XWin::get()?
+			.read()
+			.unwrap()
+			.post_rcv(XWinMessage::GetGamepadState(self.as_glfw() as i32, tx), rx)?
+			.map(|opt| opt.map(|state| GamepadState::from_glfw(state)))
+	}
 }
 
-// TODO - joystick config callback. XWIN struct has been updated, need to add
-//        callback, set tx, and get callback to send on channel.
+pub fn update_gamepad_mappings(mappings: String)
+{
+	let _ = try_update_gamepad_mappings(mappings);
+}
+
+// TODO - Add documentation for mapping format
+/// Parses the specified string and updates the internal list with any gamepad
+/// mappings it finds. The string may contain either a single gamepad mapping or
+/// many mappings separated by newlines. The parser supports the full format of
+/// the `gamecontrollerdb.txt` source file including empty lines and comments.
+///
+/// See the [GLFW documentation on Gamepad Mappings](https://www.glfw.org/docs/latest/input_guide.html#gamepad_mapping) for a more complete description of the format.
+///
+/// If there is already a gamepad mapping for a given GUID in the internal list,
+/// it will be replaced by the one passed to this function.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn try_update_gamepad_mappings(mappings: String) -> Result<(), XErr>
+{
+	let (tx, rx) = channel();
+	XWin::get()?
+		.read()
+		.unwrap()
+		.post_rcv(XWinMessage::UpdateGamepadMappings(mappings, tx), rx)?
+}

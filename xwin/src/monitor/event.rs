@@ -8,7 +8,6 @@ use xch::Sender;
 use crate::{
 	bind::{
 		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
 		GLFWmonitor,
 		glfwGetMonitorName,
 		glfwSetMonitorCallback,
@@ -32,59 +31,16 @@ pub enum MonitorEvent
 	Disconnected(String),
 }
 
-impl Clone for MonitorEvent
+impl MonitorEvent
 {
-	fn clone(&self) -> Self
+	fn from_glfw(mon: *mut GLFWmonitor, evt: u32) -> MonitorEvent
 	{
-		match self
+		let monitor = Monitor::from_glfw(mon);
+		if evt == GLFW_CONNECTED
 		{
-			| MonitorEvent::Connected(monitor) =>
-			{
-				MonitorEvent::Connected(Monitor(monitor.as_glfw()))
-			},
-			| MonitorEvent::Disconnected(name) => MonitorEvent::Disconnected(name.clone()),
+			MonitorEvent::Connected(monitor)
 		}
-	}
-}
-
-/// Sets the [Sender] that will be used to send monitor configuration events.A
-/// new event will be pushed to the channel each time a [Monitor] is connected
-/// or disconnected.
-///
-/// # Errors
-/// Possible errors include [XErr::NotInitialized].
-pub fn set_monitor_channel<T>(tx: T) -> Result<(), XErr>
-where
-	T: Sender<MonitorEvent> + Send + Sync + 'static,
-{
-	let mut xwin = XWin::get()?.write().unwrap();
-	xwin.set_monitor_tx(tx);
-	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
-	Ok(())
-}
-
-/// Closes the monitor event channel.
-///
-/// See [set_monitor_channel].
-pub fn clear_monitor_channel() -> Result<(), XErr>
-{
-	unsafe { glfwSetMonitorCallback(None) };
-	XWin::get()?.write().unwrap().remove_monitor_tx();
-	Ok(())
-}
-
-pub(crate) fn set_monitor_callback()
-{
-	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
-}
-
-extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
-{
-	let monitor = Monitor::from_glfw(mon);
-	let event = match ev as u32
-	{
-		| GLFW_CONNECTED => MonitorEvent::Connected(monitor),
-		| GLFW_DISCONNECTED =>
+		else
 		{
 			let title = unsafe { glfwGetMonitorName(monitor.as_glfw()) };
 
@@ -101,29 +57,66 @@ extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
 						.to_owned()
 				},
 			)
-		},
-		| _ => return,
-	};
+		}
+	}
+}
 
+impl Clone for MonitorEvent
+{
+	fn clone(&self) -> Self
+	{
+		match self
+		{
+			| MonitorEvent::Connected(monitor) =>
+			{
+				MonitorEvent::Connected(Monitor(monitor.as_glfw()))
+			},
+			| MonitorEvent::Disconnected(name) => MonitorEvent::Disconnected(name.clone()),
+		}
+	}
+}
+
+/// Sets the [Sender] that will be used to send monitor configuration events. A
+/// new event will be pushed to the channel each time a [Monitor] is connected
+/// to or disconnected from the system.
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn set_monitor_channel<T>(tx: T) -> Result<(), XErr>
+where
+	T: Sender<MonitorEvent> + Send + Sync + 'static,
+{
+	let mut xwin = XWin::get()?.write().unwrap();
+	xwin.set_monitor_tx(tx);
+	Ok(())
+}
+
+/// Closes the monitor event channel.
+///
+/// See [set_monitor_channel].
+///
+/// # Errors
+/// Possible errors include [XErr::NotInitialized].
+pub fn clear_monitor_channel() -> Result<(), XErr>
+{
+	XWin::get()?.write().unwrap().remove_monitor_tx();
+	Ok(())
+}
+
+pub(crate) fn set_monitor_callback()
+{
+	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
+}
+
+extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, evt: c_int)
+{
 	if let Ok(lock) = XWin::get()
 	{
 		if let Ok(xwin) = lock.read()
 		{
 			if let Some(tx) = xwin.monitor_tx()
 			{
-				if let Err(_) = tx.send(event)
-				{
-					drop(xwin);
-
-					// The only case where we wouldn't be able to acquire write access would be if a
-					// new sender is being written already, in which case we don't want to override
-					// that with None. This should be the only function calling read, so reads
-					// wouldn't be the thing preventing this lock.
-					if let Ok(mut xwin) = lock.try_write()
-					{
-						xwin.remove_monitor_tx();
-					}
-				}
+				let _ = tx.send(MonitorEvent::from_glfw(mon, evt as u32));
 			}
 		}
 	}

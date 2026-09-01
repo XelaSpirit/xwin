@@ -7,12 +7,13 @@ use crate::{
 	glfw_enum,
 };
 
+pub mod event;
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
 
 #[repr(u8)]
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ButtonState
 {
 	#[default]
@@ -22,7 +23,7 @@ pub enum ButtonState
 glfw_enum!(ButtonState, u8);
 
 #[repr(u8)]
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ButtonEvent
 {
 	#[default]

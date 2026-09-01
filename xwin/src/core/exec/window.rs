@@ -33,6 +33,7 @@ use crate::{
 		glfwMaximizeWindow,
 		glfwRequestWindowAttention,
 		glfwRestoreWindow,
+		glfwSetClipboardString,
 		glfwSetWindowAspectRatio,
 		glfwSetWindowAttrib,
 		glfwSetWindowIcon,
