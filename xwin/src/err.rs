@@ -1,3 +1,5 @@
+//! XWin error handling.
+//!
 //! Some XWin functions return a [Result] which may contain an [XErr]. The enum
 //! value indicates the general category of the error, while the [String] it
 //! contains is set to a more human-readable description of the error.

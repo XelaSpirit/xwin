@@ -1,27 +1,34 @@
-use std::os::raw::c_int;
-use std::sync::{
-	Arc,
-	LazyLock,
-	RwLock,
-};
-use crate::bind::{glfwSetMonitorCallback, GLFWmonitor, GLFW_CONNECTED, GLFW_DISCONNECTED};
-use crate::monitor::{
-	Monitor,
+use std::{
+	os::raw::c_int,
+	sync::{
+		Arc,
+		LazyLock,
+		RwLock,
+	},
 };
 
-/// Alias for a monitor callback function.
-pub type MonitorCallback = fn(&Monitor, MonitorEvent);
+use crate::{
+	bind::{
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
+		GLFWmonitor,
+		glfwSetMonitorCallback,
+	},
+	monitor::Monitor,
+};
 
-static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorCallback>>>> =
-	LazyLock::new(RwLock::default);
+/// Alias for a monitor window function.
+pub type MonitorFn = fn(&Monitor, MonitorEvent);
+
+static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorFn>>>> = LazyLock::new(RwLock::default);
 
 /// Describes a change to a monitor's configuration
 ///
 /// If a monitor is disconnected, all windows that are full screen on it will be
-/// switched to windowed mode before the callback is called.
+/// switched to windowed mode before the window is called.
 ///
 /// Only [Monitor::name] and [Monitor::userdata] will return useful values for a
-/// disconnected monitor and only before the monitor callback returns.
+/// disconnected monitor and only before the monitor window returns.
 #[derive(Copy, Clone, Debug)]
 pub enum MonitorEvent
 {
@@ -29,19 +36,19 @@ pub enum MonitorEvent
 	Disconnected,
 }
 
-/// Adds a monitor configuration callback. This is called when a monitor is
+/// Adds a monitor configuration window. This is called when a monitor is
 /// connected to or disconnected from the system.
 ///
 /// # Returns
-/// An [Arc] referring to the callback, which may be used to later remove the
-/// callback using [remove_monitor_callback].
+/// An [Arc] referring to the window, which may be used to later remove the
+/// window using [remove_monitor_callback].
 ///
 /// # Thread Safety
 /// This function may be called from any thread.
 ///
 /// # See Also
-/// - [MonitorCallback]
-pub fn add_monitor_callback(f: MonitorCallback) -> Arc<MonitorCallback>
+/// - [MonitorFn]
+pub fn add_monitor_callback(f: MonitorFn) -> Arc<MonitorFn>
 {
 	let arc = Arc::new(f);
 	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
@@ -51,15 +58,15 @@ pub fn add_monitor_callback(f: MonitorCallback) -> Arc<MonitorCallback>
 	arc
 }
 
-/// Removed a monitor configuration callback, such that it will no longer be
+/// Removed a monitor configuration window, such that it will no longer be
 /// called when a monitor is connected to or disconnected from the system.
 ///
 /// # Thread Safety
 /// This function may be called from any thread.
 ///
 /// # See Also
-/// - [MonitorCallback]
-pub fn remove_monitor_callback(f: Arc<MonitorCallback>)
+/// - [MonitorFn]
+pub fn remove_monitor_callback(f: Arc<MonitorFn>)
 {
 	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
 	{

@@ -1,3 +1,5 @@
+//! XWin core functionality.
+//!
 //! # Initialization and Termination
 //!
 //! Before most XWin functions may be called, the library must be initialized.
@@ -126,7 +128,7 @@
 //!
 //! ## Reentrancy
 //! XWin event processing and object destruction are not reentrant. This means
-//! that the following functions must not be called from any callback function:
+//! that the following functions must not be called from any window function:
 //!
 //! - TODO link functions here (destroy window, destroy cursor, poll events,
 //!   wait events, wait events timeout, terminate)
@@ -235,6 +237,19 @@ pub struct ScreenCoordinates
 	pub y: i32,
 }
 
+/// The content scale can be thought of as the ratio between the current DPI and
+/// the platform's default DPI. It is intended to be a scaling factor to apply
+/// to the pixel dimensions of text and other UI elements. If the dimensions
+/// scaled by this factor looks appropriate on your machine then it should
+/// appear at a reasonable size on other machines with different DPI and scaling
+/// settings.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct ContentScale
+{
+	pub x: f32,
+	pub y: f32,
+}
+
 impl Default for ScreenCoordinates
 {
 	fn default() -> ScreenCoordinates
@@ -259,6 +274,8 @@ pub enum Platform
 /// library. For a more complete guide, see [the core module
 /// documentation](crate::core)
 pub struct XWin(bool, PhantomData<Cell<()>>);
+
+// TODO - glfwInitVulkanLoader
 
 impl XWin
 {

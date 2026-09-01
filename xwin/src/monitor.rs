@@ -1,4 +1,4 @@
-//! Module containing monitor related functions and types
+//! Monitor related functionality of XWin
 //!
 //! # Monitor Objects
 //! A [Monitor] object represents a currently connected monitor. [Monitor]
@@ -43,7 +43,7 @@
 //!
 //! # Monitor Configuration Changes
 //! If you wish to be notified when a monitor is connected or disconnected, set
-//! a monitor callback.
+//! a monitor window.
 //!
 //! ```
 //! # use xwin::core::XWin;
@@ -64,9 +64,9 @@
 //! ```
 //!
 //! If a monitor is disconnected, all windows that are full screen on it will be
-//! switched to windowed mode before the callback is called. Only
+//! switched to windowed mode before the window is called. Only
 //! [Monitor::name] and [Monitor::userdata] will return useful values for a
-//! disconnected monitor and only before the monitor callback returns.
+//! disconnected monitor and only before the monitor window returns.
 //!
 //! # Monitor Properties
 //! Each monitor has a current video mode, a list of supported video modes, a
@@ -121,13 +121,13 @@
 //! #
 //! let primary = Monitor::primary();
 //! # if false { // GLFW doesn't seem to initialize in doc tests
-//! let (width_mm, height_mm) = primary.unwrap().physical_size().unwrap();
+//! let size_mm = primary.unwrap().physical_size().unwrap();
 //! # }
 //! ```
 //!
 //! While this can be used to calculate the raw DPI of a monitor, this is often
 //! not useful. Instead, use the [monitor content scale](Monitor::content_scale)
-//! and [window content scale](xwin::window::Window::content_scale) to scale
+//! and [window content scale](crate::window::Window::content_scale) to scale
 //! your content.
 //!
 //! ## Content scale
@@ -276,6 +276,7 @@ pub use work_area::*;
 
 use crate::{
 	bind::{
+		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -290,11 +291,23 @@ use crate::{
 		glfwSetGamma,
 		glfwSetGammaRamp,
 		glfwSetMonitorUserPointer,
-		GLFWmonitor,
 	},
-	core::ScreenCoordinates,
+	core::{
+		ContentScale,
+		ScreenCoordinates,
+	},
 	err::XErr,
 };
+
+/// Almost all positions and sizes in XWin are measured in
+/// [ScreenCoordinates]. However, a monitor's
+/// physical size is measured in millimeters
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Millimeters
+{
+	pub x: i32,
+	pub y: i32,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Monitor(*mut GLFWmonitor);
@@ -401,7 +414,7 @@ impl Monitor
 		XErr::result(|| area)
 	}
 
-	/// Returns the size `(width, height)`, in millimetres, of the display area
+	/// Returns the size, in millimetres, of the display area
 	/// of this monitor.
 	///
 	/// Some platforms do not provide accurate monitor size information, either
@@ -418,16 +431,21 @@ impl Monitor
 	///
 	/// # Thread safety
 	/// This function must only be called from the main thread.
-	pub fn physical_size(&self) -> Result<(i32, i32), XErr>
+	pub fn physical_size(&self) -> Result<Millimeters, XErr>
 	{
 		let mut width = 0i32;
 		let mut height = 0i32;
 
 		unsafe { glfwGetMonitorPhysicalSize(self.0, &mut width, &mut height) };
-		XErr::result(|| (width, height))
+		XErr::result(|| {
+			Millimeters {
+				x: width,
+				y: height,
+			}
+		})
 	}
 
-	/// Returns the content scale `(xscale, yscale)` for the specified monitor.
+	/// Returns the content scale for the specified monitor.
 	/// The content scale is the ratio between the current DPI and the
 	/// platform's default DPI. This is especially important for text and any
 	/// UI elements. If the pixel dimensions of your UI scaled by this look
@@ -448,13 +466,18 @@ impl Monitor
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn content_scale(&self) -> Result<(f32, f32), XErr>
+	pub fn content_scale(&self) -> Result<ContentScale, XErr>
 	{
 		let mut xscale = 0.0f32;
 		let mut yscale = 0.0f32;
 
 		unsafe { glfwGetMonitorContentScale(self.0, &mut xscale, &mut yscale) };
-		XErr::result(|| (xscale, yscale))
+		XErr::result(|| {
+			ContentScale {
+				x: xscale,
+				y: yscale,
+			}
+		})
 	}
 
 	/// Returns a human-readable name, encoded as UTF-8, of this monitor. The
@@ -486,7 +509,7 @@ impl Monitor
 	/// Sets the user-defined pointer of this monitor. The current value is
 	/// retained until the monitor is disconnected. The initial value is `0`.
 	///
-	/// This function may be called from the monitor callback, even for a
+	/// This function may be called from the monitor window, even for a
 	/// monitor that is being disconnected.
 	///
 	/// # Errors
@@ -508,7 +531,7 @@ impl Monitor
 	/// This function returns the current userdata of this monitor. The initial
 	/// value is 0.
 	///
-	/// This function may be called from the monitor callback, even for a
+	/// This function may be called from the monitor window, even for a
 	/// monitor that is being disconnected.
 	///
 	/// # Errors
@@ -659,6 +682,11 @@ impl Monitor
 	{
 		ramp.with_glfw(|ramp| unsafe { glfwSetGammaRamp(self.0, ramp) });
 		XErr::result(|| ())
+	}
+
+	pub(crate) fn get(&self) -> *mut GLFWmonitor
+	{
+		self.0
 	}
 
 	fn from_glfw(monitor: *mut GLFWmonitor) -> Self
