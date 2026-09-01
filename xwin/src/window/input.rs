@@ -3,6 +3,8 @@ use std::{
 	sync::mpsc::channel,
 };
 
+use xch::Sender;
+
 use crate::{
 	bind::{
 		GLFW_CURSOR,
@@ -29,7 +31,11 @@ use crate::{
 			MouseButton,
 		},
 	},
-	window::Window,
+	window::{
+		KeyEvent,
+		Window,
+		ctx::WindowContext,
+	},
 };
 
 pub struct WindowInput<'a>(&'a mut Window);
@@ -44,7 +50,40 @@ impl Eq for WindowInput<'_> {}
 
 impl<'a> WindowInput<'a>
 {
-	/// TODO - key events
+	/// TODO - events
+
+	/// Sets the [Sender] that will be used to send key events for the window.
+	pub fn set_key_channel<T>(&mut self, tx: T) -> Result<(), XErr>
+	where
+		T: Sender<KeyEvent> + Send + Sync + 'static,
+	{
+		if let Some(ctx) = WindowContext::get(&self.0.as_glfw())
+		{
+			ctx.set_key_tx(tx);
+			Ok(())
+		}
+		else
+		{
+			Err(XErr::NotInitialized(
+				"Unable to set event channels when XWin is uninitialized".to_string(),
+			))
+		}
+	}
+
+	pub fn clear_key_channel<T>(&mut self) -> Result<(), XErr>
+	{
+		if let Some(ctx) = WindowContext::get(&self.0.as_glfw())
+		{
+			ctx.remove_key_tx();
+			Ok(())
+		}
+		else
+		{
+			Err(XErr::NotInitialized(
+				"Unable to set event channels when XWin is uninitialized".to_string(),
+			))
+		}
+	}
 
 	/// Indicates whether the window is transparent to mouse input, letting any
 	/// mouse events pass through to whatever window is behind it.
@@ -211,9 +250,9 @@ impl<'a> WindowInput<'a>
 	/// Enables or disables lock key modifier bits.
 	///
 	/// If enabled, events that send modifier bits will also have the
-	/// [Modifier::CAPS_LOCK](crate::input::keyboard::Modifier::CAPS_LOCK) bit
+	/// [Modifier::CAPS_LOCK](crate::input::keyboard::Modifiers::CAPS_LOCK) bit
 	/// set when the event was generated with Caps Lock on, and the
-	/// [Modifier::NUM_LOCK](crate::input::keyboard::Modifier::NUM_LOCK) bit
+	/// [Modifier::NUM_LOCK](crate::input::keyboard::Modifiers::NUM_LOCK) bit
 	/// when Num Lock was on.
 	///
 	/// # Errors

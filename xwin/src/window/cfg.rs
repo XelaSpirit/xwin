@@ -52,22 +52,36 @@ impl<'a> WindowConfig<'a>
 	/// Sets the [Sender] that will be used to send window config events. See
 	/// [WindowEvent] for the specific conditions under which each event is
 	/// sent.
-	pub fn set_channel<T>(&self, tx: T)
+	pub fn set_channel<T>(&self, tx: T) -> Result<(), XErr>
 	where
 		T: Sender<WindowEvent> + Send + Sync + 'static,
 	{
 		if let Some(ctx) = WindowContext::get(&self.0.as_glfw())
 		{
 			ctx.set_ev_tx(tx);
+			Ok(())
+		}
+		else
+		{
+			Err(XErr::NotInitialized(
+				"Unable to set event channels when XWin is uninitialized".to_string(),
+			))
 		}
 	}
 
 	/// Closed the window config event channel. See [WindowConfig::set_channel].
-	pub fn clear_channel(&self)
+	pub fn clear_channel(&self) -> Result<(), XErr>
 	{
 		if let Some(ctx) = WindowContext::get(&self.0.as_glfw())
 		{
 			ctx.remove_ev_tx();
+			Ok(())
+		}
+		else
+		{
+			Err(XErr::NotInitialized(
+				"Unable to set event channels when XWin is uninitialized".to_string(),
+			))
 		}
 	}
 

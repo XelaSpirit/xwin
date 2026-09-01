@@ -5,19 +5,26 @@ use crate::{
 		GLFWwindow,
 		glfwGetWindowUserPointer,
 	},
-	window::WindowEvent,
+	window::{
+		KeyEvent,
+		WindowEvent,
+	},
 };
 
 pub(crate) struct WindowContext
 {
-	ev_tx: Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
+	ev_tx:  Option<Box<dyn Sender<WindowEvent> + Send + Sync>>,
+	key_tx: Option<Box<dyn Sender<KeyEvent> + Send + Sync>>,
 }
 
 impl WindowContext
 {
 	pub(crate) fn new() -> Self
 	{
-		WindowContext { ev_tx: None }
+		WindowContext {
+			ev_tx:  None,
+			key_tx: None,
+		}
 	}
 
 	pub(super) fn get(win: &*mut GLFWwindow) -> Option<&mut WindowContext>
@@ -37,13 +44,36 @@ impl WindowContext
 		self.ev_tx = None;
 	}
 
-	pub(super) fn post(&mut self, event: WindowEvent)
+	pub(super) fn set_key_tx<T>(&mut self, tx: T)
+	where
+		T: Sender<KeyEvent> + Send + Sync + 'static,
+	{
+		self.key_tx = Some(Box::new(tx));
+	}
+
+	pub(super) fn remove_key_tx(&mut self)
+	{
+		self.key_tx = None;
+	}
+
+	pub(super) fn post_config(&mut self, evt: WindowEvent)
 	{
 		if let Some(tx) = &self.ev_tx
 		{
-			if let Err(_) = tx.send(event)
+			if let Err(_) = tx.send(evt)
 			{
 				self.ev_tx = None;
+			}
+		}
+	}
+
+	pub(super) fn post_key(&mut self, evt: KeyEvent)
+	{
+		if let Some(tx) = &self.key_tx
+		{
+			if let Err(_) = tx.send(evt)
+			{
+				self.key_tx = None;
 			}
 		}
 	}

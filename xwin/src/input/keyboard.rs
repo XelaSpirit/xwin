@@ -277,23 +277,23 @@ glfw_enum!(Key, u16);
 
 /// Bitmask containing the state of modifier keys sent along with key events.
 ///
-/// Contains bit flags for [Modifier::ALT], [Modifier::CAPS_LOCK],
-/// [Modifier::CONTROL], [Modifier::NUM_LOCK], [Modifier::SHIFT], and
-/// [Modifier::SUPER].
+/// Contains bit flags for [Modifiers::ALT], [Modifiers::CAPS_LOCK],
+/// [Modifiers::CONTROL], [Modifiers::NUM_LOCK], [Modifiers::SHIFT], and
+/// [Modifiers::SUPER].
 ///
 /// Bitwise operators may be used to manipulate these flags. Utility functions
 /// have been provided for easily querying specific modifiers.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Modifier(u8);
+pub struct Modifiers(u8);
 
-impl Modifier
+impl Modifiers
 {
-	pub const ALT: Modifier = Modifier(GLFW_MOD_ALT as u8);
-	pub const CAPS_LOCK: Modifier = Modifier(GLFW_MOD_CAPS_LOCK as u8);
-	pub const CONTROL: Modifier = Modifier(GLFW_MOD_CONTROL as u8);
-	pub const NUM_LOCK: Modifier = Modifier(GLFW_MOD_NUM_LOCK as u8);
-	pub const SHIFT: Modifier = Modifier(GLFW_MOD_SHIFT as u8);
-	pub const SUPER: Modifier = Modifier(GLFW_MOD_SUPER as u8);
+	pub const ALT: Modifiers = Modifiers(GLFW_MOD_ALT as u8);
+	pub const CAPS_LOCK: Modifiers = Modifiers(GLFW_MOD_CAPS_LOCK as u8);
+	pub const CONTROL: Modifiers = Modifiers(GLFW_MOD_CONTROL as u8);
+	pub const NUM_LOCK: Modifiers = Modifiers(GLFW_MOD_NUM_LOCK as u8);
+	pub const SHIFT: Modifiers = Modifiers(GLFW_MOD_SHIFT as u8);
+	pub const SUPER: Modifiers = Modifiers(GLFW_MOD_SUPER as u8);
 
 	/// Returns whether the [SHIFT] flag is set.
 	pub fn is_shift(&self) -> bool
@@ -330,57 +330,62 @@ impl Modifier
 	{
 		self.0 & GLFW_MOD_NUM_LOCK as u8 > 0
 	}
-}
 
-impl BitAnd<Modifier> for Modifier
-{
-	type Output = Modifier;
-
-	fn bitand(self, rhs: Modifier) -> Modifier
+	pub(crate) fn from_glfw(value: i32) -> Modifiers
 	{
-		Modifier(self.0 & rhs.0)
+		Modifiers((value & 0xff) as u8)
 	}
 }
 
-impl BitAndAssign<Modifier> for Modifier
+impl BitAnd<Modifiers> for Modifiers
 {
-	fn bitand_assign(&mut self, rhs: Modifier)
+	type Output = Modifiers;
+
+	fn bitand(self, rhs: Modifiers) -> Modifiers
+	{
+		Modifiers(self.0 & rhs.0)
+	}
+}
+
+impl BitAndAssign<Modifiers> for Modifiers
+{
+	fn bitand_assign(&mut self, rhs: Modifiers)
 	{
 		self.0 &= rhs.0;
 	}
 }
 
-impl BitOr<Modifier> for Modifier
+impl BitOr<Modifiers> for Modifiers
 {
-	type Output = Modifier;
+	type Output = Modifiers;
 
-	fn bitor(self, rhs: Modifier) -> Modifier
+	fn bitor(self, rhs: Modifiers) -> Modifiers
 	{
-		Modifier(self.0 | rhs.0)
+		Modifiers(self.0 | rhs.0)
 	}
 }
 
-impl BitOrAssign<Modifier> for Modifier
+impl BitOrAssign<Modifiers> for Modifiers
 {
-	fn bitor_assign(&mut self, rhs: Modifier)
+	fn bitor_assign(&mut self, rhs: Modifiers)
 	{
 		self.0 |= rhs.0;
 	}
 }
 
-impl BitXor<Modifier> for Modifier
+impl BitXor<Modifiers> for Modifiers
 {
-	type Output = Modifier;
+	type Output = Modifiers;
 
-	fn bitxor(self, rhs: Modifier) -> Modifier
+	fn bitxor(self, rhs: Modifiers) -> Modifiers
 	{
-		Modifier(self.0 ^ rhs.0)
+		Modifiers(self.0 ^ rhs.0)
 	}
 }
 
-impl BitXorAssign<Modifier> for Modifier
+impl BitXorAssign<Modifiers> for Modifiers
 {
-	fn bitxor_assign(&mut self, rhs: Modifier)
+	fn bitxor_assign(&mut self, rhs: Modifiers)
 	{
 		self.0 ^= rhs.0;
 	}
