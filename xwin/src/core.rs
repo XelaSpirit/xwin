@@ -116,56 +116,6 @@
 //! XWin at the top of your main function, and save the result to a variable.
 //! This way, XWin won't be dropped until the program is terminating.
 //!
-//! # Error Handling
-//! Some XWin functions return a [Result] which may contain an [XErr]. The enum
-//! value indicates the general category of the error, while the [String] it
-//! contains is set to a more human-readable description of the error.
-//!
-//! If XWin was built with the `tracing` feature (enabled by default), XWin will
-//! also report errors as they occur using the [Tracing](https://crates.io/crates/tracing)
-//! crate as warnings.
-//!
-//! **Reported errors are never fatal.** As long as XWin was successfully
-//! initialized, it will remain initialized and in a safe state until terminated
-//! regardless of how many errors occur. If an error occurs during
-//! initialization that causes initialization to fail, any part of the library
-//! that was initialized will be safely terminated.
-//!
-//! Do not rely on a currently invalid call to generate a specific error, as in
-//! the future that same call may generate a different error or become valid.
-//!
-//! # Coordinate systems
-//! XWin has two primary coordinate systems: the `virtual screen` and the window
-//! `content area` or `content area`. Both use the same unit: `virtual screen
-//! coordinates`, or just `screen coordinates`, which don't necessarily
-//! correspond to pixels.
-//!
-//! Both the virtual screen and the content area coordinate systems have the
-//! X-axis pointing to the right and the Y-axis pointing down.
-//!
-//! Window and monitor positions are specified as the position of the upper-left
-//! corners of their content areas relative to the virtual screen, while cursor
-//! positions are specified relative to a window's content area.
-//!
-//! Because the origin of the window's content area coordinate system is also
-//! the point from which the window position is specified, you can translate
-//! content area coordinates to the virtual screen by adding the window
-//! position. The window frame, when present, extends out from the content area
-//! but does not affect the window position.
-//!
-//! Almost all positions and sizes in XWin are measured in screen coordinates
-//! relative to one of the two origins above. This includes cursor positions,
-//! window positions and sizes, window frame sizes, monitor positions and video
-//! mode resolutions.
-//!
-//! Two exceptions are the **monitor physical size**, which is measured in
-//! **millimetres**, and **framebuffer size**, which is measured in **pixels**.
-//!
-//! Pixels and screen coordinates may map 1:1 on your machine, but they won't on
-//! every other machine, for example on a Mac with a Retina display. The ratio
-//! between screen coordinates and pixels may also change at run-time depending
-//! on which monitor the window is currently considered to be on.
-//!
 //! # Guarantees and Limitations
 //! This section describes the conditions under which XWin can be expected to
 //! function, barring bugs in the operating system or drivers. Use of XWin
@@ -218,12 +168,6 @@ use std::os::raw::c_int;
 use crate::err::set_error_log;
 use crate::{
 	bind::{
-		glfwGetPlatform,
-		glfwGetVersion,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -238,9 +182,59 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
+		glfwGetPlatform,
+		glfwGetVersion,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 	},
 	err::XErr,
 };
+
+/// XWin has two primary coordinate systems: the **virtual screen** and the
+/// window **content area**. Both use the same unit: `virtual screen
+/// coordinates`, or just [screen coordinates](ScreenCoordinates), which don't
+/// necessarily correspond to pixels.
+///
+/// Both the virtual screen and the content area coordinate systems have the
+/// X-axis pointing to the right and the Y-axis pointing down.
+///
+/// Window and monitor positions are specified as the position of the upper-left
+/// corners of their content areas relative to the virtual screen, while cursor
+/// positions are specified relative to a window's content area.
+///
+/// Because the origin of the window's content area coordinate system is also
+/// the point from which the window position is specified, you can translate
+/// content area coordinates to the virtual screen by adding the window
+/// position. The window frame, when present, extends out from the content area
+/// but does not affect the window position.
+///
+/// Almost all positions and sizes in XWin are measured in screen coordinates
+/// relative to one of the two origins above. This includes cursor positions,
+/// window positions and sizes, window frame sizes, monitor positions and video
+/// mode resolutions.
+///
+/// Two exceptions are the **monitor physical size**, which is measured in
+/// **millimetres**, and **framebuffer size**, which is measured in **pixels**.
+///
+/// Pixels and screen coordinates may map 1:1 on your machine, but they won't on
+/// every other machine, for example on a Mac with a Retina display. The ratio
+/// between screen coordinates and pixels may also change at run-time depending
+/// on which monitor the window is currently considered to be on.
+pub struct ScreenCoordinates
+{
+	pub x: i32,
+	pub y: i32,
+}
+
+impl Default for ScreenCoordinates
+{
+	fn default() -> ScreenCoordinates
+	{
+		ScreenCoordinates { x: 0, y: 0 }
+	}
+}
 
 /// Used to configure [XWin]. Specifies the platform to use for windowing and
 /// input.
@@ -293,7 +287,7 @@ impl XWin
 	///
 	/// # Errors
 	/// Possible errors include [PlatformUnavailable](XErr::PlatformUnavailable)
-	/// and [PlatformError](XErr::PlatformError).
+	/// and [PlatformError](XErr::Platform).
 	///
 	/// # Remarks
 	/// - **macOS:** This function will change the current directory of the
@@ -477,7 +471,7 @@ impl Drop for XWin
 	/// This function has no effect if XWin is not initialized.
 	///
 	/// # Errors
-	/// Possible errors include [PlatformError](XErr::PlatformError). However,
+	/// Possible errors include [PlatformError](XErr::Platform). However,
 	/// since it's assumed this will likely be called when an application is
 	/// closing, and there's not much value in reporting such an error anyway,
 	/// no error checking or handling is done here.

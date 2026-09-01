@@ -1,23 +1,16 @@
-//! # Error Handling
-//! Some GLFW functions have return values that indicate an error, but this is
-//! often not very helpful when trying to figure out what happened or why it
-//! occurred. Other functions have no return value reserved for errors, so error
-//! notification needs a separate channel. Finally, far from all GLFW functions
-//! have return values.
+//! Some XWin functions return a [Result] which may contain an [XErr]. The enum
+//! value indicates the general category of the error, while the [String] it
+//! contains is set to a more human-readable description of the error.
 //!
-//! When XWin encounters one of these errors, it will grab the last error from
-//! GLFW and return it using [XErr]. XWin will also grab a human-readable string
-//! describing the error.
-//!
-//! The error code indicates the general category of the error. Some error
-//! codes, such as [XErr::NotInitialized] have only a single meaning, whereas
-//! others like [XErr::PlatformError] are used for many different errors.
+//! If XWin was built with the `tracing` feature (enabled by default), XWin will
+//! also report errors as they occur using the [Tracing](https://crates.io/crates/tracing)
+//! crate as warnings.
 //!
 //! **Reported errors are never fatal.** As long as XWin was successfully
 //! initialized, it will remain initialized and in a safe state until terminated
 //! regardless of how many errors occur. If an error occurs during
-//! initialization that causes [XWin::new](crate::core::XWin::new) to fail, any
-//! part of the library that was initialized will be safely terminated.
+//! initialization that causes initialization to fail, any part of the library
+//! that was initialized will be safely terminated.
 //!
 //! Do not rely on a currently invalid call to generate a specific error, as in
 //! the future that same call may generate a different error or become valid.
@@ -58,7 +51,8 @@ use crate::bind::{
 	glfwGetError,
 };
 
-/// Error codes used throughout the XWin API.
+/// Error codes used throughout the XWin library. See [crate::err] for more
+/// information.
 #[repr(u32)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum XErr
@@ -144,7 +138,7 @@ pub enum XErr
 	/// operating system or its drivers, or a lack of required resources.
 	/// Report the issue to our issue tracker.
 	/// TODO where to report bugs?
-	PlatformError(String) = GLFW_PLATFORM_ERROR,
+	Platform(String)     = GLFW_PLATFORM_ERROR,
 	/// The requested format is not supported or available.
 	///
 	/// If emitted during window creation, the requested pixel format is not
@@ -238,7 +232,7 @@ impl XErr
 			unsafe { CStr::from_ptr(msg) }
 				.to_str()
 				.unwrap_or_else(|_| "")
-				.to_string()
+				.to_owned()
 		}
 		else
 		{
@@ -255,7 +249,7 @@ impl XErr
 			| GLFW_OUT_OF_MEMORY => XErr::OutOfMemory(str),
 			| GLFW_API_UNAVAILABLE => XErr::ApiUnavailable(str),
 			| GLFW_VERSION_UNAVAILABLE => XErr::VersionUnavailable(str),
-			| GLFW_PLATFORM_ERROR => XErr::PlatformError(str),
+			| GLFW_PLATFORM_ERROR => XErr::Platform(str),
 			| GLFW_FORMAT_UNAVAILABLE => XErr::FormatUnavailable(str),
 			| GLFW_NO_WINDOW_CONTEXT => XErr::NoWindowContext(str),
 			| GLFW_CURSOR_UNAVAILABLE => XErr::CursorUnavailable(str),
@@ -272,6 +266,17 @@ impl XErr
 		let code = unsafe { glfwGetError(&mut desc) };
 
 		XErr::from_code(code, desc)
+	}
+
+	pub(crate) fn result<T, F>(f: F) -> Result<T, XErr>
+	where
+		F: FnOnce() -> T,
+	{
+		match XErr::get()
+		{
+			| XErr::None(_) => Ok(f()),
+			| err => Err(err),
+		}
 	}
 }
 
@@ -403,7 +408,7 @@ mod tests
 		let str = CString::new("").unwrap();
 		assert_eq!(
 			XErr::from_code(GLFW_PLATFORM_ERROR as c_int, str.as_ptr()),
-			XErr::PlatformError(String::default())
+			XErr::Platform(String::default())
 		);
 	}
 
