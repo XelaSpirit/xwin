@@ -1,6 +1,5 @@
 use std::{
 	ffi::CStr,
-	os::raw::c_double,
 	sync::mpsc::Sender,
 };
 

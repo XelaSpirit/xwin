@@ -3,6 +3,7 @@ macro_rules! glfw_enum {
 	($type:ty, $rep:ty) => {
 		impl $type
 		{
+			#[allow(dead_code)]
 			pub(crate) fn from_glfw(value: u32) -> $type
 			{
 				// This does not 100& guarantee a valid value, as some enums don't cover all
@@ -16,6 +17,7 @@ macro_rules! glfw_enum {
 				unsafe { std::mem::transmute(value as $rep) }
 			}
 
+			#[allow(dead_code)]
 			pub(crate) fn as_glfw(self) -> $rep
 			{
 				unsafe { std::mem::transmute(self as $type) }
@@ -26,6 +28,7 @@ macro_rules! glfw_enum {
 	($type:ty, $rep:ty, $def:expr) => {
 		impl $type
 		{
+			#[allow(dead_code)]
 			pub(crate) fn from_glfw(value: u32) -> $type
 			{
 				// This does not 100& guarantee a valid value, as some enums don't cover all
@@ -39,6 +42,7 @@ macro_rules! glfw_enum {
 				unsafe { std::mem::transmute(value as $rep) }
 			}
 
+			#[allow(dead_code)]
 			pub(crate) fn as_glfw(self) -> $rep
 			{
 				unsafe { std::mem::transmute(self as $type) }

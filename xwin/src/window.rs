@@ -12,7 +12,6 @@ use std::sync::mpsc::channel;
 
 pub use builder::*;
 pub use evt::*;
-use xch::Sender;
 
 use crate::{
 	bind::{
@@ -37,7 +36,6 @@ use crate::{
 	monitor::Monitor,
 	window::{
 		cfg::WindowConfig,
-		ctx::WindowContext,
 		input::WindowInput,
 	},
 };
@@ -176,7 +174,7 @@ impl Window
 	///
 	/// Any changes made to the configuration in the returned struct will affect
 	/// the window.
-	pub fn config(&mut self) -> WindowConfig
+	pub fn config(&mut self) -> WindowConfig<'_>
 	{
 		WindowConfig::new(self)
 	}
@@ -192,7 +190,7 @@ impl Window
 	///
 	/// Any changes made to the input configuration in the returned struct will
 	/// be reflected in the window.
-	pub fn input(&mut self) -> WindowInput
+	pub fn input(&mut self) -> WindowInput<'_>
 	{
 		WindowInput::new(self)
 	}

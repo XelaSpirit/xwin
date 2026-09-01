@@ -12,7 +12,6 @@ use std::{
 		UnwindSafe,
 		resume_unwind,
 	},
-	ptr,
 	sync::{
 		OnceLock,
 		RwLock,
