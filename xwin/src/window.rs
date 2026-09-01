@@ -720,7 +720,7 @@ impl Window
 	/// By default, windowed mode windows are focused when shown. Set the
 	/// [WindowBuilder::focus_on_show] window hint to `true` to change this
 	/// behavior a newly created window, or change the behavior for an
-	/// existing window with [Window::set_focus_on_show].
+	/// existing window with [Window::set_will_focus].
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
@@ -1242,8 +1242,6 @@ impl Window
 	/// Subscribes to general window events on the given channel. See
 	/// [WindowEvent] for the specific conditions under which each event is
 	/// sent.
-	///
-	/// See [crate::core#event-handling]
 	pub fn subscribe<T>(&self, tx: T)
 	where
 		T: Sender<WindowEvent> + Send + Sync + 'static,
@@ -1254,7 +1252,8 @@ impl Window
 		}
 	}
 
-	/// Disconnects the channel handling general window events. See [subscribe].
+	/// Disconnects the channel handling general window events. See
+	/// [subscribe](Window::subscribe).
 	pub fn unsubscribe(&self)
 	{
 		if let Some(ctx) = WindowContext::get(&self.0)

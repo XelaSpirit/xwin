@@ -5,6 +5,9 @@ use std::{
 
 use crate::{
 	bind::{
+		glfwDefaultWindowHints,
+		glfwWindowHint,
+		glfwWindowHintString,
 		GLFW_ALPHA_BITS,
 		GLFW_ANY_POSITION,
 		GLFW_AUTO_ICONIFY,
@@ -18,8 +21,8 @@ use crate::{
 		GLFW_DOUBLEBUFFER,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUS_ON_SHOW,
 		GLFW_FOCUSED,
+		GLFW_FOCUS_ON_SHOW,
 		GLFW_GREEN_BITS,
 		GLFW_MAXIMIZED,
 		GLFW_MOUSE_PASSTHROUGH,
@@ -42,13 +45,10 @@ use crate::{
 		GLFW_WIN32_SHOWDEFAULT,
 		GLFW_X11_CLASS_NAME,
 		GLFW_X11_INSTANCE_NAME,
-		glfwDefaultWindowHints,
-		glfwWindowHint,
-		glfwWindowHintString,
 	},
 	core::{
-		XWin,
 		exec::XWinMessage,
+		XWin,
 	},
 	error::XErr,
 	monitor::Monitor,
@@ -148,8 +148,9 @@ impl WindowBuilder
 	}
 
 	/// Specifies whether the windowed mode window will be resizable by the
-	/// user. The window will still be resizable using the [Window::try_resize]
-	/// function. This hint is ignored for full screen and undecorated windows.
+	/// user. The window will still be resizable using the
+	/// [Window::try_set_size] function. This hint is ignored for full screen
+	/// and undecorated windows.
 	///
 	/// **Default:** `true`
 	pub fn resizable(&mut self, value: bool) -> &mut Self

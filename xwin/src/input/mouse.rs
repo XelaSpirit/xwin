@@ -81,7 +81,7 @@ impl Cursor
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidValue],
-	/// [XErr:CursorUnavailable], and [XErr::Platform]
+	/// [XErr::CursorUnavailable], and [XErr::Platform]
 	pub fn try_new(shape: CursorShape) -> Result<Self, XErr>
 	{
 		let (tx, rx) = channel();

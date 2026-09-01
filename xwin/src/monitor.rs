@@ -66,7 +66,7 @@ impl Monitor
 	/// Possible errors include [XErr::NotInitialized].
 	///
 	/// # See Also
-	/// - [Monitor::primary]
+	/// - [Monitor::try_primary]
 	pub fn try_all() -> Result<Vec<Monitor>, XErr>
 	{
 		let (tx, rx) = channel();
@@ -336,7 +336,7 @@ impl Monitor
 			.post_rcv(XWinMessage::GammaRamp(self.0, tx), rx)?
 	}
 
-	/// See [Monitor::GammaRamp]
+	/// See [GammaRamp]
 	pub fn gamma_ramp(&self) -> GammaRamp
 	{
 		self.try_gamma_ramp().unwrap_or_default()
@@ -344,7 +344,7 @@ impl Monitor
 
 	/// Sets the current gamma ramp for the monitor. The original gamma ramp
 	/// for that monitor is saved by XWin the first time this function is called
-	/// and is restored by [XWin::drop](crate::core::XWin::drop).
+	/// and is restored when XWin is terminated.
 	///
 	/// The software controlled gamma ramp is applied in addition to the
 	/// hardware gamma correction, which today is usually an approximation of

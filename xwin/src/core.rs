@@ -55,7 +55,7 @@ use crate::{
 /// Used internally by XWin for managing global state
 pub(crate) static XWIN: OnceLock<RwLock<XWin>> = OnceLock::new();
 
-/// Used to configure [XWin]. Specifies the platform to use for windowing and
+/// Used to configure XWin. Specifies the platform to use for windowing and
 /// input.
 pub enum Platform
 {
@@ -182,23 +182,23 @@ impl XWin
 /// # Remarks
 /// - **macOS:** This function will change the current directory of the
 ///   application to the Contents/Resources subdirectory of the application's
-///   bundle, if present. This can be disabled with the
-///   [cocoa_dir_resources](cocoa_dir_resources) function.
+///   bundle, if present. This can be disabled with the [cocoa_dir_resources]
+///   function.
 ///
 /// - **macOS:** This function will create the main menu and dock icon for the
 ///   application. If XWin finds a `MainMenu.nib` it is loaded and assumed to
 ///   contain a menu bar. Otherwise a minimal menu bar is created manually with
 ///   common commands like `Hide`, `Quit` and `About`. The `About` entry opens a
 ///   minimal about dialog with information from the application's bundle. The
-///   menu bar and dock icon can be disabled entirely with the
-///   [cocoa_menubar](cocoa_menubar) function.
+///   menu bar and dock icon can be disabled entirely with the [cocoa_menubar]
+///   function.
 ///
 /// - **Wayland, X11:** If the library was compiled with support for both
-///   `Wayland` and `X11`, and the [platform](platform) config is set to
-///   [Platform::Any], the `XDG_SESSION_TYPE` environment variable affects which
-///   platform is picked. If the environment variable is not set, or is set to
-///   something other than `wayland` or `x11`, the regular detection mechanism
-///   will be used instead.
+///   `Wayland` and `X11`, and the [platform] config is set to [Platform::Any],
+///   the `XDG_SESSION_TYPE` environment variable affects which platform is
+///   picked. If the environment variable is not set, or is set to something
+///   other than `wayland` or `x11`, the regular detection mechanism will be
+///   used instead.
 ///
 /// - **X11:** This function will set the `LC_CTYPE` category of the application
 ///   locale according to the current environment if that category is still "C".
