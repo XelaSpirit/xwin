@@ -247,8 +247,8 @@ mod work_area;
 use std::{
 	os::raw::c_void,
 	sync::{
-		Mutex,
 		mpsc::channel,
+		Mutex,
 	},
 };
 
@@ -259,15 +259,15 @@ pub use work_area::*;
 
 use crate::{
 	bind::{
-		GLFWmonitor,
 		glfwGetMonitorUserPointer,
 		glfwSetMonitorUserPointer,
+		GLFWmonitor,
 	},
 	core::{
+		exec::XWinMessage,
 		ContentScale,
 		ScreenCoordinates,
 		XWin,
-		exec::XWinMessage,
 	},
 	err::XErr,
 };
@@ -280,6 +280,15 @@ pub struct Millimeters
 {
 	pub x: i32,
 	pub y: i32,
+}
+
+impl Default for Millimeters
+{
+	/// Construct a new [Millimeters] with `x` and `y` set to `0`.
+	fn default() -> Millimeters
+	{
+		Millimeters { x: 0, y: 0 }
+	}
 }
 
 #[derive(Debug)]
@@ -310,7 +319,7 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [Monitor::primary]
-	pub fn all() -> Result<Vec<Monitor>, XErr>
+	pub fn try_all() -> Result<Vec<Monitor>, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -320,6 +329,12 @@ impl Monitor
 					.map(|monitor| Self::from_glfw(*monitor))
 					.collect()
 			})
+	}
+
+	/// See [Monitor::try_all].
+	pub fn all() -> Vec<Monitor>
+	{
+		Self::try_all().unwrap_or_default()
 	}
 
 	/// Returns the primary monitor. This is usually the monitor where elements
@@ -332,7 +347,7 @@ impl Monitor
 	/// # Remarks
 	/// The primary monitor is always first in the [Vec] returned by
 	/// [Monitor::all]
-	pub fn primary() -> Result<Monitor, XErr>
+	pub fn try_primary() -> Result<Monitor, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?
@@ -345,10 +360,16 @@ impl Monitor
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized] and [XErr::Platform].
-	pub fn position(&self) -> Result<ScreenCoordinates, XErr>
+	pub fn try_position(&self) -> Result<ScreenCoordinates, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorPos(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::try_position].
+	pub fn position(&self) -> ScreenCoordinates
+	{
+		self.try_position().unwrap_or_default()
 	}
 
 	/// Returns the position, in screen coordinates, of the upper-left corner of
@@ -363,10 +384,16 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [WorkArea]
-	pub fn work_area(&self) -> Result<WorkArea, XErr>
+	pub fn try_work_area(&self) -> Result<WorkArea, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorWorkArea(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::try_work_area].
+	pub fn work_area(&self) -> WorkArea
+	{
+		self.try_work_area().unwrap_or_default()
 	}
 
 	/// Returns the size, in millimetres, of the display area
@@ -383,10 +410,16 @@ impl Monitor
 	/// **Windows**: On Windows 8 and earlier the physical size is calculated
 	/// from the current resolution and system DPI instead of querying the
 	/// monitor EDID data.
-	pub fn physical_size(&self) -> Result<Millimeters, XErr>
+	pub fn try_physical_size(&self) -> Result<Millimeters, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorPhysicalSize(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::physical_size].
+	pub fn physical_size(&self) -> Millimeters
+	{
+		self.try_physical_size().unwrap_or_default()
 	}
 
 	/// Returns the content scale for the specified monitor.
@@ -407,10 +440,16 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Fractional scaling information is not yet available for
 	/// monitors, so this function only returns integer content scales.
-	pub fn content_scale(&self) -> Result<ContentScale, XErr>
+	pub fn try_content_scale(&self) -> Result<ContentScale, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorContentScale(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::try_content_scale].
+	pub fn content_scale(&self) -> ContentScale
+	{
+		self.try_content_scale().unwrap_or_default()
 	}
 
 	/// Returns a human-readable name, encoded as UTF-8, of this monitor. The
@@ -419,10 +458,16 @@ impl Monitor
 	///
 	/// # Errors
 	/// Possible errors include [XErr::NotInitialized].
-	pub fn name(&self) -> Result<String, XErr>
+	pub fn try_name(&self) -> Result<String, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorName(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::try_name].
+	pub fn name(&self) -> String
+	{
+		self.try_name().unwrap_or_default()
 	}
 
 	/// Sets the user-defined pointer of this monitor. The current value is
@@ -436,7 +481,7 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [Monitor::userdata]
-	pub fn set_userdata(&self, userdata: usize) -> Result<(), XErr>
+	pub fn try_set_userdata(&self, userdata: usize) -> Result<(), XErr>
 	{
 		let data = userdata as *mut c_void;
 
@@ -445,6 +490,12 @@ impl Monitor
 		drop(lock);
 
 		XErr::result(|| ())
+	}
+
+	/// See [Monitor::try_set_userdata].
+	pub fn set_userdata(&self, userdata: usize)
+	{
+		self.try_set_userdata(userdata).unwrap_or_default()
 	}
 
 	/// This function returns the current userdata of this monitor. The initial
@@ -458,13 +509,19 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [Monitor::set_userdata]
-	pub fn userdata(&self) -> Result<usize, XErr>
+	pub fn try_userdata(&self) -> Result<usize, XErr>
 	{
 		let lock = self.lock.lock().unwrap();
 		let data = unsafe { glfwGetMonitorUserPointer(self.monitor) };
 		drop(lock);
 
 		XErr::result(|| data as usize)
+	}
+
+	/// See [Monitor::try_userdata].
+	pub fn userdata(&self) -> usize
+	{
+		self.try_userdata().unwrap_or_default()
 	}
 
 	/// This function returns a [Vec] of all video modes supported by this
@@ -478,10 +535,16 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [Monitor::video_mode]
-	pub fn video_modes(&self) -> Result<Vec<VideoMode>, XErr>
+	pub fn try_video_modes(&self) -> Result<Vec<VideoMode>, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoModes(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::try_video_modes].
+	pub fn video_modes(&self) -> Vec<VideoMode>
+	{
+		self.try_video_modes().unwrap_or_default()
 	}
 
 	/// This function returns the current video mode of this monitor. If you
@@ -493,10 +556,16 @@ impl Monitor
 	///
 	/// # See Also
 	/// - [Monitor::video_modes]
-	pub fn video_mode(&self) -> Result<VideoMode, XErr>
+	pub fn try_video_mode(&self) -> Result<VideoMode, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GetMonitorVideoMode(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::try_video_mode].
+	pub fn video_mode(&self) -> VideoMode
+	{
+		self.try_video_mode().unwrap_or_default()
 	}
 
 	/// This function generates an appropriately sized gamma ramp from the
@@ -515,10 +584,16 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	pub fn set_gamma(&self, gamma: f32) -> Result<(), XErr>
+	pub fn try_set_gamma(&self, gamma: f32) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetGamma(self.monitor, gamma, tx), rx)?
+	}
+
+	/// See [Monitor::try_set_gamma].
+	pub fn set_gamma(&self, gamma: f32)
+	{
+		self.try_set_gamma(gamma).unwrap_or_default()
 	}
 
 	/// Returns the current gamma ramp of this monitor.
@@ -530,10 +605,16 @@ impl Monitor
 	/// # Remarks
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	pub fn gamma_ramp(&self) -> Result<GammaRamp, XErr>
+	pub fn try_gamma_ramp(&self) -> Result<GammaRamp, XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::GammaRamp(self.monitor, tx), rx)?
+	}
+
+	/// See [Monitor::GammaRamp]
+	pub fn gamma_ramp(&self) -> GammaRamp
+	{
+		self.try_gamma_ramp().unwrap_or_default()
 	}
 
 	/// Sets the current gamma ramp for this monitor. The original gamma ramp
@@ -557,10 +638,16 @@ impl Monitor
 	///
 	/// **Wayland**: Gamma handling is a privileged protocol, this function will
 	/// thus never be implemented and returns [XErr::FeatureUnavailable].
-	pub fn set_gamma_ramp(&self, ramp: GammaRamp) -> Result<(), XErr>
+	pub fn try_set_gamma_ramp(&self, ramp: GammaRamp) -> Result<(), XErr>
 	{
 		let (tx, rx) = channel();
 		XWin::get()?.post_rcv(XWinMessage::SetGammaRamp(self.monitor, ramp, tx), rx)?
+	}
+
+	/// See [Monitor::try_set_gamma_ramp].
+	pub fn set_gamma_ramp(&self, ramp: GammaRamp)
+	{
+		self.try_set_gamma_ramp(ramp).unwrap_or_default()
 	}
 
 	/// Construct a new [Monitor] from a `GLFWmonitor`.

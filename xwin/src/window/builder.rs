@@ -5,6 +5,9 @@ use std::{
 
 use crate::{
 	bind::{
+		glfwDefaultWindowHints,
+		glfwWindowHint,
+		glfwWindowHintString,
 		GLFW_ALPHA_BITS,
 		GLFW_ANY_POSITION,
 		GLFW_ANY_RELEASE_BEHAVIOR,
@@ -27,8 +30,8 @@ use crate::{
 		GLFW_EGL_CONTEXT_API,
 		GLFW_FALSE,
 		GLFW_FLOATING,
-		GLFW_FOCUS_ON_SHOW,
 		GLFW_FOCUSED,
+		GLFW_FOCUS_ON_SHOW,
 		GLFW_GREEN_BITS,
 		GLFW_LOSE_CONTEXT_ON_RESET,
 		GLFW_MAXIMIZED,
@@ -63,13 +66,10 @@ use crate::{
 		GLFW_WIN32_SHOWDEFAULT,
 		GLFW_X11_CLASS_NAME,
 		GLFW_X11_INSTANCE_NAME,
-		glfwDefaultWindowHints,
-		glfwWindowHint,
-		glfwWindowHintString,
 	},
 	core::{
-		XWin,
 		exec::XWinMessage,
+		XWin,
 	},
 	err::XErr,
 	monitor::Monitor,
@@ -173,8 +173,8 @@ impl WindowBuilder
 	/// Possible errors include [XErr::NotInitialized], [XErr::InvalidEnum],
 	/// [XErr::InvalidValue], [XErr::ApiUnavailable],
 	/// [XErr::VersionUnavailable], [XErr::FormatUnavailable],
-	/// [XErr::NoWindowContext], [XErr::Platform].
-	pub fn create(
+	/// [XErr::Platform].
+	pub fn try_create(
 		&self,
 		width: i32,
 		height: i32,

@@ -10,11 +10,11 @@ pub struct WorkArea
 	pub size: ScreenCoordinates,
 }
 
-impl Default for crate::monitor::WorkArea
+impl Default for WorkArea
 {
-	fn default() -> crate::monitor::WorkArea
+	fn default() -> WorkArea
 	{
-		crate::monitor::WorkArea {
+		WorkArea {
 			pos:  ScreenCoordinates::default(),
 			size: ScreenCoordinates::default(),
 		}

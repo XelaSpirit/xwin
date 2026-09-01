@@ -35,6 +35,7 @@ use tracing::{
 #[cfg(feature = "tracing")]
 use crate::bind::glfwSetErrorCallback;
 use crate::bind::{
+	glfwGetError,
 	GLFW_API_UNAVAILABLE,
 	GLFW_CURSOR_UNAVAILABLE,
 	GLFW_FEATURE_UNAVAILABLE,
@@ -42,15 +43,14 @@ use crate::bind::{
 	GLFW_FORMAT_UNAVAILABLE,
 	GLFW_INVALID_ENUM,
 	GLFW_INVALID_VALUE,
+	GLFW_NOT_INITIALIZED,
 	GLFW_NO_CURRENT_CONTEXT,
 	GLFW_NO_ERROR,
 	GLFW_NO_WINDOW_CONTEXT,
-	GLFW_NOT_INITIALIZED,
 	GLFW_OUT_OF_MEMORY,
 	GLFW_PLATFORM_ERROR,
 	GLFW_PLATFORM_UNAVAILABLE,
 	GLFW_VERSION_UNAVAILABLE,
-	glfwGetError,
 };
 
 /// Error codes used throughout the XWin library. See [crate::err] for more
@@ -90,13 +90,6 @@ pub enum XErr
 	InvalidEnum(String)  = GLFW_INVALID_ENUM,
 	/// One of the arguments to the function was an invalid value.
 	///
-	/// For example, requesting a non-existent OpenGL or OpenGL ES version like
-	/// 2.7.
-	///
-	/// Requesting a valid but unavailable OpenGL or OpenGL ES version will
-	/// instead result in a [VersionUnavailable](XErr::VersionUnavailable)
-	/// error.
-	///
 	/// **Analysis**. Application programmer error. Fix the offending call.
 	InvalidValue(String) = GLFW_INVALID_VALUE,
 	/// A memory allocation failed.
@@ -123,15 +116,8 @@ pub enum XErr
 	/// The requested OpenGL or OpenGL ES version (including any requested
 	/// context or framebuffer hints) is not available on this machine.
 	///
-	/// **Analysis.** The machine does not support your requirements. If your
-	/// application is sufficiently flexible, downgrade your requirements and
-	/// try again. Otherwise, inform the user that their machine does not match
-	/// your requirements.
-	///
-	/// Future invalid OpenGL and OpenGL ES versions, for example OpenGL 4.8 if
-	/// 5.0 comes out before the 4.x series gets that far, also fail with this
-	/// error and not GLFW_INVALID_VALUE, because GLFW cannot know what future
-	/// versions will exist.
+	/// **Analysis.** Bug. XWin does not support OpenGL, and so this error
+	/// should never be generated.
 	VersionUnavailable(String) = GLFW_VERSION_UNAVAILABLE,
 	/// A platform-specific error occurred that does not match any of the more
 	/// specific categories.
@@ -161,7 +147,8 @@ pub enum XErr
 	/// A window that does not have an OpenGL or OpenGL ES context was passed to
 	/// a function that requires it to have one.
 	///
-	/// **Analysis**. Application programmer error. Fix the offending call.
+	/// **Analysis**. Bug. XWin does not support the creation/usage of OpenGL
+	/// contexts, and so this error should never be possible.
 	NoWindowContext(String) = GLFW_NO_WINDOW_CONTEXT,
 	/// The specified cursor shape is not available.
 	///
@@ -327,10 +314,10 @@ mod tests
 			GLFW_FORMAT_UNAVAILABLE,
 			GLFW_INVALID_ENUM,
 			GLFW_INVALID_VALUE,
+			GLFW_NOT_INITIALIZED,
 			GLFW_NO_CURRENT_CONTEXT,
 			GLFW_NO_ERROR,
 			GLFW_NO_WINDOW_CONTEXT,
-			GLFW_NOT_INITIALIZED,
 			GLFW_OUT_OF_MEMORY,
 			GLFW_PLATFORM_ERROR,
 			GLFW_PLATFORM_UNAVAILABLE,

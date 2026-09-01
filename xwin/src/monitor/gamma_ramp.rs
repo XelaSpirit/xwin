@@ -1,26 +1,12 @@
 use crate::bind::GLFWgammaramp;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct GammaRamp
 {
 	size:  u32,
 	red:   Vec<u16>,
 	green: Vec<u16>,
 	blue:  Vec<u16>,
-}
-
-impl Default for GammaRamp
-{
-	/// Constructs and returns a new [GammaRamp], with no values in each channel
-	fn default() -> Self
-	{
-		GammaRamp {
-			size:  0,
-			red:   vec![],
-			green: vec![],
-			blue:  vec![],
-		}
-	}
 }
 
 impl GammaRamp

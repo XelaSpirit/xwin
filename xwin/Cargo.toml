@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = []
+default = ["tracing"]
 
 [build-dependencies]
 cmake = "0.1"
 bindgen = "0.72"
 xela_build = { path = "../../xbuild" }
+
+[dependencies]
+tracing = { version = "0.1.44", optional = true }

@@ -32,6 +32,7 @@ use crate::{
 		glfwGetPrimaryMonitor,
 		glfwGetVideoMode,
 		glfwGetVideoModes,
+		glfwGetWindowAttrib,
 		glfwGetWindowContentScale,
 		glfwGetWindowFrameSize,
 		glfwGetWindowMonitor,
@@ -155,6 +156,7 @@ pub(crate) enum XWinMessage
 		size:     ScreenCoordinates,
 		tx:       Sender<Result<(), XErr>>,
 	},
+	GetWindowAttribute(*mut GLFWwindow, i32, Sender<Result<i32, XErr>>),
 }
 unsafe impl Send for XWinMessage {}
 
@@ -273,9 +275,16 @@ impl XWin
 					size,
 					tx,
 				} => set_window_monitor(window, None, position, size, 0, tx),
+				| XWinMessage::GetWindowAttribute(win, attr, tx) => window_attribute(win, attr, tx),
 			};
 		}
 	}
+}
+
+fn window_attribute(win: *mut GLFWwindow, attr: i32, tx: Sender<Result<i32, XErr>>)
+{
+	let value = unsafe { glfwGetWindowAttrib(win, attr) };
+	let _ = tx.send(XErr::result(|| value));
 }
 
 fn set_window_monitor(

@@ -162,15 +162,15 @@ use std::{
 	os::raw::c_int,
 	panic,
 	panic::{
-		UnwindSafe,
 		resume_unwind,
+		UnwindSafe,
 	},
 	sync::{
-		OnceLock,
 		mpsc::{
-			Sender,
 			channel,
+			Sender,
 		},
+		OnceLock,
 	},
 	thread,
 };
@@ -179,6 +179,12 @@ use std::{
 use crate::err::set_error_log;
 use crate::{
 	bind::{
+		glfwGetPlatform,
+		glfwGetVersion,
+		glfwInit,
+		glfwInitHint,
+		glfwPlatformSupported,
+		glfwTerminate,
 		GLFW_ANY_PLATFORM,
 		GLFW_COCOA_CHDIR_RESOURCES,
 		GLFW_COCOA_MENUBAR,
@@ -193,12 +199,6 @@ use crate::{
 		GLFW_WAYLAND_DISABLE_LIBDECOR,
 		GLFW_WAYLAND_LIBDECOR,
 		GLFW_WAYLAND_PREFER_LIBDECOR,
-		glfwGetPlatform,
-		glfwGetVersion,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
 	},
 	core::exec::XWinMessage,
 	err::XErr,
@@ -250,20 +250,11 @@ pub enum Platform
 /// on every other machine, for example on a Mac with a Retina display. The
 /// ratio between [ScreenCoordinates] and pixels may also change at run-time
 /// depending on which monitor the window is currently considered to be on.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct ScreenCoordinates
 {
 	pub x: i32,
 	pub y: i32,
-}
-
-impl Default for ScreenCoordinates
-{
-	/// Construct a new default [ScreenCoordinates], with x and y set to 0.
-	fn default() -> ScreenCoordinates
-	{
-		ScreenCoordinates { x: 0, y: 0 }
-	}
 }
 
 /// The content scale can be thought of as the ratio between the current DPI and
@@ -272,7 +263,7 @@ impl Default for ScreenCoordinates
 /// scaled by this factor looks appropriate on your machine then it should
 /// appear at a reasonable size on other machines with different DPI and scaling
 /// settings.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct ContentScale
 {
 	pub x: f32,

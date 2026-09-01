@@ -2,7 +2,7 @@ use crate::bind::GLFWvidmode;
 
 /// A struct containing the width, height, rgb bit depth, and refresh rate of a
 /// video mode for a monitor.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct VideoMode
 {
 	width:        i32,
