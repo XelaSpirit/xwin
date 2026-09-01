@@ -410,13 +410,13 @@ impl Modifiers
 	{
 		Self::from_glfw_crate(value as i32)
 	}
-	
+
 	#[cfg(feature = "glfw")]
 	pub fn as_glfw(&self) -> u8
 	{
 		self.0
 	}
-	
+
 	pub(crate) fn from_glfw_crate(value: i32) -> Modifiers
 	{
 		Modifiers((value & 0xff) as u8)

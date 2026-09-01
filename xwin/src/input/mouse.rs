@@ -24,8 +24,8 @@ use crate::{
 	},
 	error::XErr,
 	glfw_enum,
+	monitor::Monitor,
 };
-use crate::monitor::Monitor;
 
 #[repr(u8)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

@@ -64,7 +64,11 @@ impl Image
 	#[cfg(feature = "glfw")]
 	pub fn from_glfw(img: GLFWimage) -> Self
 	{
-		Self(img, img.width as usize * img.height as usize, img.width as usize * img.height as usize)
+		Self(
+			img,
+			img.width as usize * img.height as usize,
+			img.width as usize * img.height as usize,
+		)
 	}
 
 	/// Returns the underlying [GLFWimage] descriptor used by GLFW APIs.

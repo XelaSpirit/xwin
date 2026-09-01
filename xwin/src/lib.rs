@@ -26,7 +26,6 @@
 //! ### Dependencies
 //! - CMake
 
-mod bind;
 pub mod core;
 pub(crate) mod crate_util;
 pub mod error;
@@ -35,6 +34,11 @@ pub mod input;
 pub mod monitor;
 pub mod utility;
 pub mod window;
+
+#[cfg(feature = "bindings")]
+pub mod bind;
+#[cfg(not(feature = "bindings"))]
+pub(crate) mod bind;
 
 #[cfg(feature = "vulkan")]
 pub mod vulkan;

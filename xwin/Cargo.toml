@@ -5,14 +5,28 @@ edition = "2024"
 
 [features]
 default = ["vulkan"]
-vulkan = ["glfw"]
+
 glfw = []
+bindings = ["glfw"]
+
+vulkan = ["glfw"]
+
+cocoa = ["bindings"]
+wayland = ["bindings"]
+win32 = ["bindings"]
+x11 = ["bindings"]
+
+egl = ["bindings"]
+glx = ["bindings"]
+nsgl = ["bindings"]
+osmesa = ["bindings"]
+wgl = ["bindings"]
+
+[dependencies]
+xela_channels = { path = "../../xela_channels" }
+tracing = { version = "0.1.44", optional = true }
 
 [build-dependencies]
 cmake = "0.1"
 bindgen = "0.72"
 xela_build = { path = "../../xbuild" }
-
-[dependencies]
-xela_channels = { path = "../../xela_channels" }
-tracing = { version = "0.1.44", optional = true }

@@ -29,13 +29,6 @@ use crate::{
 		GLFW_HAT_RIGHT,
 		GLFW_HAT_UP,
 		GLFW_JOYSTICK_1,
-		GLFW_JOYSTICK_10,
-		GLFW_JOYSTICK_11,
-		GLFW_JOYSTICK_12,
-		GLFW_JOYSTICK_13,
-		GLFW_JOYSTICK_14,
-		GLFW_JOYSTICK_15,
-		GLFW_JOYSTICK_16,
 		GLFW_JOYSTICK_2,
 		GLFW_JOYSTICK_3,
 		GLFW_JOYSTICK_4,
@@ -44,6 +37,13 @@ use crate::{
 		GLFW_JOYSTICK_7,
 		GLFW_JOYSTICK_8,
 		GLFW_JOYSTICK_9,
+		GLFW_JOYSTICK_10,
+		GLFW_JOYSTICK_11,
+		GLFW_JOYSTICK_12,
+		GLFW_JOYSTICK_13,
+		GLFW_JOYSTICK_14,
+		GLFW_JOYSTICK_15,
+		GLFW_JOYSTICK_16,
 		GLFWgamepadstate,
 	},
 	core::{
@@ -133,12 +133,11 @@ impl GamepadState
 	{
 		Self::from_glfw_crate(state)
 	}
-	
+
 	#[cfg(feature = "glfw")]
 	pub fn as_glfw(&self) -> GLFWgamepadstate
 	{
-		GLFWgamepadstate
-		{
+		GLFWgamepadstate {
 			buttons: [
 				self.buttons[GLFW_GAMEPAD_BUTTON_A as usize].as_glfw(),
 				self.buttons[GLFW_GAMEPAD_BUTTON_B as usize].as_glfw(),
@@ -156,14 +155,14 @@ impl GamepadState
 				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN as usize].as_glfw(),
 				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT as usize].as_glfw(),
 			],
-			axes: [
+			axes:    [
 				self.axes[GLFW_GAMEPAD_AXIS_LEFT_X as usize],
 				self.axes[GLFW_GAMEPAD_AXIS_LEFT_Y as usize],
 				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_X as usize],
 				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y as usize],
 				self.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER as usize],
 				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER as usize],
-			]
+			],
 		}
 	}
 
