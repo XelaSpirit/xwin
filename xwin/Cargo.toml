@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["tracing"]
+default = ["tracing", "linkme"]
 
 [build-dependencies]
 cmake = "0.1"
@@ -13,5 +13,5 @@ xela_build = { path = "../../xbuild" }
 
 [dependencies]
 tracing = { version = "0.1.44", optional = true }
-linkme = "0.3"
+linkme = { version = "0.3", optional = true }
 xwin_macro = { path = "../xwin_macro" }

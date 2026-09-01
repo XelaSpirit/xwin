@@ -284,7 +284,10 @@ impl XErr
 #[instrument(level = "warn", skip_all)]
 extern "C" fn glfw_error_handler(code: c_int, desc: *const c_char)
 {
-	warn!("{:?}", XErr::from_code(code, desc));
+	warn!(
+		"XWin encountered an error: {:?}",
+		XErr::from_code(code, desc)
+	);
 }
 
 #[cfg(feature = "tracing")]

@@ -110,11 +110,12 @@
 //! ```
 //!
 //! ## Terminating XWin
-//! XWin will be automatically terminated when [XWin::drop] is called. For this
-//! reason, it is necessary to keep your [XWin] instance alive for as long as
-//! you intend to use this library. The easiest way to do this is to initialize
-//! XWin at the top of your main function, and save the result to a variable.
-//! This way, XWin won't be dropped until the program is terminating.
+//! XWin will be automatically terminated when [XWin::drop] is called (see
+//! [XWin::terminate_on_drop] to disable this behavior). For this reason, it is
+//! necessary to keep your [XWin] instance alive for as long as you intend to
+//! use this library. The easiest way to do this is to initialize XWin at the
+//! top of your main function, and save the result to a variable. This way, XWin
+//! won't be dropped until the program is terminating.
 //!
 //! # Guarantees and Limitations
 //! This section describes the conditions under which XWin can be expected to
@@ -162,7 +163,11 @@
 //! across platforms. The exception is synthetic key and mouse button release
 //! events, which are always delivered after the window defocus event.
 
-use std::os::raw::c_int;
+use std::{
+	cell::Cell,
+	marker::PhantomData,
+	os::raw::c_int,
+};
 
 #[cfg(feature = "tracing")]
 use crate::err::set_error_log;
@@ -253,17 +258,10 @@ pub enum Platform
 /// A structure for handling the initialization and termination of the XWin
 /// library. For a more complete guide, see [the core module
 /// documentation](crate::core)
-pub struct XWin(());
+pub struct XWin(bool, PhantomData<Cell<()>>);
 
 impl XWin
 {
-	/// Initialize the XWin library with default configuration. See
-	/// [XWin::init].
-	pub fn default() -> Result<Self, XErr>
-	{
-		XWin::new().init()
-	}
-
 	/// This function initializes the XWin library. Before most XWin functions
 	/// can be used, XWin must be initialized. When an [XWin] goes out of scope,
 	/// the library is terminated in order to free any resources allocation
@@ -316,10 +314,8 @@ impl XWin
 	///   application locale according to the current environment if that
 	///   category is still "C". This is because the "C" locale breaks Unicode
 	///   text input.
-	pub fn init(&self) -> Result<Self, XErr>
+	pub fn init(self) -> Result<Self, XErr>
 	{
-		set_monitor_callback();
-
 		#[cfg(feature = "tracing")]
 		set_error_log();
 
@@ -329,7 +325,8 @@ impl XWin
 		}
 		else
 		{
-			Ok(XWin(()))
+			set_monitor_callback();
+			Ok(self)
 		}
 	}
 
@@ -339,8 +336,7 @@ impl XWin
 	/// Configuration you set is never reset by XWin, but it only takes effect
 	/// during initialization. Once XWin has been initialized, any further
 	/// configuration will be ignored until the library is terminated and
-	/// initialized again (this would require dropping the XWin instance and
-	/// creating a new one).
+	/// initialized again.
 	///
 	/// Some configuration is platform specific. These may be set on any
 	/// platform, but they will only affect their specific platform. Other
@@ -351,7 +347,7 @@ impl XWin
 	/// initialization of the library.
 	pub fn new() -> Self
 	{
-		XWin(())
+		XWin(true, PhantomData::default())
 	}
 
 	/// Set the platform to use for windowing and input.
@@ -360,7 +356,7 @@ impl XWin
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn platform(&self, platform: Platform) -> &Self
+	pub fn platform(&mut self, platform: Platform) -> &mut Self
 	{
 		unsafe {
 			glfwInitHint(
@@ -387,7 +383,7 @@ impl XWin
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn cocoa_dir_resources(&self, value: bool) -> &Self
+	pub fn cocoa_dir_resources(&mut self, value: bool) -> &mut Self
 	{
 		unsafe {
 			glfwInitHint(
@@ -413,7 +409,7 @@ impl XWin
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn cocoa_menubar(&self, value: bool) -> &Self
+	pub fn cocoa_menubar(&mut self, value: bool) -> &mut Self
 	{
 		unsafe {
 			glfwInitHint(
@@ -439,7 +435,7 @@ impl XWin
 	///
 	/// # Thread Safety
 	/// This function must only be called from the main thread.
-	pub fn wayland_libdecor(&self, value: bool) -> &Self
+	pub fn wayland_libdecor(&mut self, value: bool) -> &mut Self
 	{
 		unsafe {
 			glfwInitHint(
@@ -454,6 +450,28 @@ impl XWin
 				},
 			)
 		};
+		self
+	}
+
+	/// Specifies whether to terminate the XWin library when this instance of
+	/// [XWin] is dropped.
+	///
+	/// # Remarks
+	/// By default, this value is set to true. Assuming you intend to have XWin
+	/// initialized for the duration of your runtime, there should be no need to
+	/// change this, simply save the result of calling [XWin::init] in a
+	/// variable at the top of your main function so that it won't drop until
+	/// your program is terminating.
+	///
+	/// If you have a specific need to explicitly control the termination /
+	/// reinitialization of the XWin library, you can use this function to
+	/// prevent auto-termination on drop.
+	///
+	/// # Thread Safety
+	/// This function must only be called from the main thread.
+	pub fn terminate_on_drop(&mut self, value: bool) -> &mut Self
+	{
+		self.0 = value;
 		self
 	}
 }
@@ -482,7 +500,10 @@ impl Drop for XWin
 	/// This function must only be called from the main thread.
 	fn drop(&mut self)
 	{
-		unsafe { glfwTerminate() };
+		if self.0
+		{
+			unsafe { glfwTerminate() };
+		}
 	}
 }
 

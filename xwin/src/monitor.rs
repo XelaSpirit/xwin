@@ -8,17 +8,20 @@ use std::{
 		c_int,
 		c_void,
 	},
+	sync::{
+		Arc,
+		LazyLock,
+		RwLock,
+	},
 };
 
+#[cfg(feature = "linkme")]
 use linkme::distributed_slice;
+#[cfg(feature = "linkme")]
 pub use xwin_macro::monitor_callback;
 
 use crate::{
 	bind::{
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
-		GLFWgammaramp,
-		GLFWmonitor,
 		glfwGetGammaRamp,
 		glfwGetMonitorContentScale,
 		glfwGetMonitorName,
@@ -34,14 +37,25 @@ use crate::{
 		glfwSetGammaRamp,
 		glfwSetMonitorCallback,
 		glfwSetMonitorUserPointer,
+		GLFWgammaramp,
+		GLFWmonitor,
+		GLFW_CONNECTED,
+		GLFW_DISCONNECTED,
 	},
 	core::ScreenCoordinates,
 	err::XErr,
 };
 
-/// Container for all functions handling monitor configuration events
+/// Alias for a monitor callback function.
+pub type MonitorCallback = fn(&Monitor, MonitorEvent);
+
+/// Container for all functions handling monitor configuration events.
+#[cfg(feature = "linkme")]
 #[distributed_slice]
-pub static MONITOR_CALLBACKS: [fn(&Monitor, MonitorEvent)];
+pub static __MONITOR_CALLBACKS: [MonitorCallback];
+
+static MONITOR_CALLBACKS: LazyLock<RwLock<Vec<Arc<MonitorCallback>>>> =
+	LazyLock::new(RwLock::default);
 
 /// The area of a monitor not occupied by global task bars or menu bars is the
 /// work area. This is specified in screen coordinates and can be retrieved with
@@ -651,6 +665,44 @@ pub enum MonitorEvent
 	Disconnected,
 }
 
+/// Adds a monitor configuration callback. This is called when a monitor is
+/// connected to or disconnected from the system.
+///
+/// # Returns
+/// An [Arc] referring to the callback, which may be used to later remove the
+/// callback using [remove_monitor_callback].
+///
+/// # Thread Safety
+/// This function may be called from any thread.
+///
+/// # See Also
+/// - [MonitorCallback]
+pub fn add_monitor_callback(f: MonitorCallback) -> Arc<MonitorCallback>
+{
+	let arc = Arc::new(f);
+	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
+	{
+		vec.push(arc.clone());
+	}
+	arc
+}
+
+/// Removed a monitor configuration callback, such that it will no longer be
+/// called when a monitor is connected to or disconnected from the system.
+///
+/// # Thread Safety
+/// This function may be called from any thread.
+///
+/// # See Also
+/// - [MonitorCallback]
+pub fn remove_monitor_callback(f: Arc<MonitorCallback>)
+{
+	if let Ok(mut vec) = MONITOR_CALLBACKS.write()
+	{
+		(*vec).retain(|cb| !Arc::ptr_eq(&f, cb));
+	}
+}
+
 extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
 {
 	let monitor = Monitor::from_glfw(mon);
@@ -661,14 +713,22 @@ extern "C" fn glfw_monitor_handler(mon: *mut GLFWmonitor, ev: c_int)
 		| _ => return,
 	};
 
-	for cb in MONITOR_CALLBACKS
+	#[cfg(feature = "linkme")]
+	for cb in __MONITOR_CALLBACKS
 	{
 		cb(&monitor, event);
+	}
+
+	if let Ok(vec) = MONITOR_CALLBACKS.read()
+	{
+		for cb in &*vec
+		{
+			cb(&monitor, event);
+		}
 	}
 }
 
 pub(crate) fn set_monitor_callback()
 {
-	// TODO - add non-linkme callbacks
 	unsafe { glfwSetMonitorCallback(Some(glfw_monitor_handler)) };
 }
