@@ -23,21 +23,21 @@ const DEF_VULKAN: &str = "GLFW_INCLUDE_VULKAN";
 const VULKAN: &str = "vulkan";
 
 // Additional config environment variables
-const VULKAN_SDK_PATH: &str = "VULKAN_SDK_PATH";
+const VULKAN_INCLUDE_PATH: &str = "VULKAN_INCLUDE_PATH";
 
 fn config_features(mut bindings: bindgen::Builder) -> bindgen::Builder
 {
 	if is_feature(VULKAN)
 	{
-		if let Ok(vk) = env::var(VULKAN_SDK_PATH)
+		if let Ok(vk) = env::var(VULKAN_INCLUDE_PATH)
 		{
 			CargoCmd()
 				.link_lib("dylib=vulkan-1")
-				.rerun_if_env_changed(VULKAN_SDK_PATH);
+				.rerun_if_env_changed(VULKAN_INCLUDE_PATH);
 
 			bindings = bindings
 				.clang_arg(format!("-D{}", DEF_VULKAN))
-				.clang_arg(format!("-I{}/Include", vk))
+				.clang_arg(format!("-I{}", vk))
 		}
 	}
 
