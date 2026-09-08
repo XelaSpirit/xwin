@@ -1,6 +1,6 @@
 //! Module containing raw GLFW bindings
 
-mod glfw;
+pub(crate) mod glfw;
 
 #[cfg(feature = "bindings")]
 pub use glfw::*;
