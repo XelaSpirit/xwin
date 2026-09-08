@@ -14,7 +14,7 @@ pub use video_mode::*;
 pub use work_area::*;
 
 #[cfg(feature = "glfw")]
-pub use crate::bind::GLFWmonitor;
+pub use crate::bind::glfw::GLFWmonitor;
 #[cfg(not(feature = "glfw"))]
 use crate::bind::GLFWmonitor;
 use crate::{

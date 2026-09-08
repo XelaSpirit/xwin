@@ -17,7 +17,7 @@ use std::{
 pub use builder::*;
 
 #[cfg(feature = "glfw")]
-pub use crate::bind::GLFWwindow;
+pub use crate::bind::glfw::GLFWwindow;
 #[cfg(not(feature = "glfw"))]
 use crate::bind::GLFWwindow;
 use crate::{
