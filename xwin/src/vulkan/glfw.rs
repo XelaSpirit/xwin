@@ -4,7 +4,7 @@ use std::{
 	slice,
 };
 
-pub use crate::bind::{
+pub use crate::bind::glfw::{
 	VkInstance,
 	VkPhysicalDevice,
 };
