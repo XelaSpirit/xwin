@@ -44,14 +44,6 @@ use glfw::{
 	GLFW_VERSION_UNAVAILABLE,
 	glfwGetError,
 };
-#[cfg(feature = "tracing")]
-use tracing::{
-	instrument,
-	warn,
-};
-
-#[cfg(feature = "tracing")]
-use crate::bind::glfwSetErrorCallback;
 
 /// Error codes used throughout the XWin library. See [crate::error] for more
 /// information.
@@ -266,22 +258,6 @@ impl XErr
 			| err => Err(err),
 		}
 	}
-}
-
-#[cfg(feature = "tracing")]
-#[instrument(level = "warn", skip_all)]
-extern "C" fn glfw_error_handler(code: c_int, desc: *const c_char)
-{
-	warn!(
-		"XWin encountered an error: {:?}",
-		XErr::from_code(code, desc)
-	);
-}
-
-#[cfg(feature = "tracing")]
-pub(crate) fn set_error_log()
-{
-	unsafe { glfwSetErrorCallback(Some(glfw_error_handler)) };
 }
 
 #[cfg(test)]

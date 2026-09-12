@@ -59,6 +59,7 @@ pub enum CursorMode
 	/// Makes the cursor visible and confines it to the content area of the
 	/// window.
 	Captured = GLFW_CURSOR_CAPTURED,
+	// TODO - Add GLFW_UNLIMITED_MOUSE_BUTTONS (need to update MouseButton enum to support this)
 }
 glfw_enum!(CursorMode, u32, CursorMode::Normal);
 

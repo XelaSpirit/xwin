@@ -45,8 +45,6 @@ use glfw::{
 };
 use xch::Sender;
 
-#[cfg(feature = "tracing")]
-use crate::error::set_error_log;
 use crate::{
 	core::exec::XWinMessage,
 	error::XErr,
@@ -256,9 +254,6 @@ where
 	{
 		lock.write().unwrap().xwin_tx = tx;
 	}
-
-	#[cfg(feature = "tracing")]
-	set_error_log();
 
 	unsafe { glfwInitHint(GLFW_JOYSTICK_HAT_BUTTONS as c_int, GLFW_FALSE as c_int) };
 
