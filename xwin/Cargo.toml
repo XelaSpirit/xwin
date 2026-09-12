@@ -9,7 +9,7 @@ default = []
 [dependencies]
 xela_channels = { git = "https://github.com/XelaSpirit/xela_channels.git", branch = "master" }
 tracing = { version = "0.1.44", optional = true }
-xela_glfw_sys = { path = "../../bindings/xela_glfw_sys", features = ["vulkan"] }
+xela_glfw_sys = { git = "https://github.com/XelaSpirit/bindings.git", features = ["vulkan"] }
 
 [build-dependencies]
 cmake = "0.1"
