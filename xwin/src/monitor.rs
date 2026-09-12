@@ -10,13 +10,10 @@ mod work_area;
 use std::sync::mpsc::channel;
 
 pub use gamma_ramp::*;
+use glfw::GLFWmonitor;
 pub use video_mode::*;
 pub use work_area::*;
 
-#[cfg(feature = "glfw")]
-pub use crate::bind::glfw::GLFWmonitor;
-#[cfg(not(feature = "glfw"))]
-use crate::bind::GLFWmonitor;
 use crate::{
 	core::{
 		ContentScale,
@@ -372,42 +369,13 @@ impl Monitor
 		self.try_set_gamma_ramp(ramp).unwrap_or_default()
 	}
 
-	/// Convert the [Monitor] to a raw `*mut GLFWmonitor`.
-	///
-	/// Refer to the GLFW documentation for further information about how to
-	/// handle this pointer safely.
-	#[cfg(feature = "glfw")]
-	pub unsafe fn to_glfw(self) -> *mut GLFWmonitor
-	{
-		self.0
-	}
-
-	/// Returns the raw `*mut GLFWmonitor` that this [Monitor] represents.
-	///
-	/// Refer to the GLFW documentation for more information about how to handle
-	/// this pointer safely.
-	#[cfg(feature = "glfw")]
-	pub unsafe fn as_glfw(&self) -> *mut GLFWmonitor
-	{
-		self.0
-	}
-
-	/// Construct a new [Monitor] from a `*mut GLFWmonitor`.
-	#[cfg(feature = "glfw")]
-	pub unsafe fn from_glfw(monitor: *mut GLFWmonitor) -> Self
-	{
-		Monitor(monitor)
-	}
-
 	/// Construct a new [Monitor] from a `GLFWmonitor`.
-	#[cfg(not(feature = "glfw"))]
 	pub(crate) unsafe fn from_glfw(monitor: *mut GLFWmonitor) -> Self
 	{
 		Monitor(monitor)
 	}
 
 	/// Return the `GLFWmonitor` held by this [Monitor].
-	#[cfg(not(feature = "glfw"))]
 	pub(crate) unsafe fn as_glfw(&self) -> *mut GLFWmonitor
 	{
 		self.0

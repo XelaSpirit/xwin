@@ -1,51 +1,52 @@
 use std::sync::mpsc::channel;
 
+use glfw::{
+	GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,
+	GLFW_GAMEPAD_AXIS_LEFT_X,
+	GLFW_GAMEPAD_AXIS_LEFT_Y,
+	GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER,
+	GLFW_GAMEPAD_AXIS_RIGHT_X,
+	GLFW_GAMEPAD_AXIS_RIGHT_Y,
+	GLFW_GAMEPAD_BUTTON_A,
+	GLFW_GAMEPAD_BUTTON_B,
+	GLFW_GAMEPAD_BUTTON_BACK,
+	GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
+	GLFW_GAMEPAD_BUTTON_DPAD_LEFT,
+	GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
+	GLFW_GAMEPAD_BUTTON_DPAD_UP,
+	GLFW_GAMEPAD_BUTTON_GUIDE,
+	GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,
+	GLFW_GAMEPAD_BUTTON_LEFT_THUMB,
+	GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER,
+	GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,
+	GLFW_GAMEPAD_BUTTON_START,
+	GLFW_GAMEPAD_BUTTON_X,
+	GLFW_GAMEPAD_BUTTON_Y,
+	GLFW_HAT_CENTERED,
+	GLFW_HAT_DOWN,
+	GLFW_HAT_LEFT,
+	GLFW_HAT_RIGHT,
+	GLFW_HAT_UP,
+	GLFW_JOYSTICK_1,
+	GLFW_JOYSTICK_2,
+	GLFW_JOYSTICK_3,
+	GLFW_JOYSTICK_4,
+	GLFW_JOYSTICK_5,
+	GLFW_JOYSTICK_6,
+	GLFW_JOYSTICK_7,
+	GLFW_JOYSTICK_8,
+	GLFW_JOYSTICK_9,
+	GLFW_JOYSTICK_10,
+	GLFW_JOYSTICK_11,
+	GLFW_JOYSTICK_12,
+	GLFW_JOYSTICK_13,
+	GLFW_JOYSTICK_14,
+	GLFW_JOYSTICK_15,
+	GLFW_JOYSTICK_16,
+	GLFWgamepadstate,
+};
+
 use crate::{
-	bind::{
-		GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,
-		GLFW_GAMEPAD_AXIS_LEFT_X,
-		GLFW_GAMEPAD_AXIS_LEFT_Y,
-		GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER,
-		GLFW_GAMEPAD_AXIS_RIGHT_X,
-		GLFW_GAMEPAD_AXIS_RIGHT_Y,
-		GLFW_GAMEPAD_BUTTON_A,
-		GLFW_GAMEPAD_BUTTON_B,
-		GLFW_GAMEPAD_BUTTON_BACK,
-		GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
-		GLFW_GAMEPAD_BUTTON_DPAD_LEFT,
-		GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
-		GLFW_GAMEPAD_BUTTON_DPAD_UP,
-		GLFW_GAMEPAD_BUTTON_GUIDE,
-		GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,
-		GLFW_GAMEPAD_BUTTON_LEFT_THUMB,
-		GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER,
-		GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,
-		GLFW_GAMEPAD_BUTTON_START,
-		GLFW_GAMEPAD_BUTTON_X,
-		GLFW_GAMEPAD_BUTTON_Y,
-		GLFW_HAT_CENTERED,
-		GLFW_HAT_DOWN,
-		GLFW_HAT_LEFT,
-		GLFW_HAT_RIGHT,
-		GLFW_HAT_UP,
-		GLFW_JOYSTICK_1,
-		GLFW_JOYSTICK_2,
-		GLFW_JOYSTICK_3,
-		GLFW_JOYSTICK_4,
-		GLFW_JOYSTICK_5,
-		GLFW_JOYSTICK_6,
-		GLFW_JOYSTICK_7,
-		GLFW_JOYSTICK_8,
-		GLFW_JOYSTICK_9,
-		GLFW_JOYSTICK_10,
-		GLFW_JOYSTICK_11,
-		GLFW_JOYSTICK_12,
-		GLFW_JOYSTICK_13,
-		GLFW_JOYSTICK_14,
-		GLFW_JOYSTICK_15,
-		GLFW_JOYSTICK_16,
-		GLFWgamepadstate,
-	},
 	core::{
 		XWin,
 		exec::XWinMessage,
@@ -126,44 +127,6 @@ impl GamepadState
 	pub fn axis(&self, axis: GamepadAxis) -> f32
 	{
 		self.axes[axis.as_glfw() as usize]
-	}
-
-	#[cfg(feature = "glfw")]
-	pub unsafe fn from_glfw(state: GLFWgamepadstate) -> GamepadState
-	{
-		Self::from_glfw_crate(state)
-	}
-
-	#[cfg(feature = "glfw")]
-	pub fn as_glfw(&self) -> GLFWgamepadstate
-	{
-		GLFWgamepadstate {
-			buttons: [
-				self.buttons[GLFW_GAMEPAD_BUTTON_A as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_B as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_X as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_Y as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_BACK as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_START as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_GUIDE as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_LEFT_THUMB as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_THUMB as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN as usize].as_glfw(),
-				self.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT as usize].as_glfw(),
-			],
-			axes:    [
-				self.axes[GLFW_GAMEPAD_AXIS_LEFT_X as usize],
-				self.axes[GLFW_GAMEPAD_AXIS_LEFT_Y as usize],
-				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_X as usize],
-				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y as usize],
-				self.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER as usize],
-				self.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER as usize],
-			],
-		}
 	}
 
 	pub(crate) fn from_glfw_crate(state: GLFWgamepadstate) -> GamepadState

@@ -1,6 +1,6 @@
 use std::ptr::null_mut;
 
-use crate::bind::GLFWimage;
+use glfw::GLFWimage;
 
 /// Describes a single 2D image. See the documentation for related functions for
 /// what the expected pixel format is.
@@ -52,23 +52,6 @@ impl Image
 		self.0.pixels = parts.0;
 		self.1 = parts.1;
 		self.2 = parts.2;
-	}
-
-	#[cfg(feature = "glfw")]
-	pub fn to_glfw(mut self) -> GLFWimage
-	{
-		self.1 = 0;
-		self.0
-	}
-
-	#[cfg(feature = "glfw")]
-	pub fn from_glfw(img: GLFWimage) -> Self
-	{
-		Self(
-			img,
-			img.width as usize * img.height as usize,
-			img.width as usize * img.height as usize,
-		)
 	}
 
 	/// Returns the underlying [GLFWimage] descriptor used by GLFW APIs.

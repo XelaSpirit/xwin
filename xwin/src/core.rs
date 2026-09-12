@@ -21,33 +21,33 @@ use std::{
 	thread,
 };
 
+use glfw::{
+	GLFW_ANY_PLATFORM,
+	GLFW_COCOA_CHDIR_RESOURCES,
+	GLFW_COCOA_MENUBAR,
+	GLFW_FALSE,
+	GLFW_JOYSTICK_HAT_BUTTONS,
+	GLFW_PLATFORM,
+	GLFW_PLATFORM_COCOA,
+	GLFW_PLATFORM_NULL,
+	GLFW_PLATFORM_WAYLAND,
+	GLFW_PLATFORM_WIN32,
+	GLFW_PLATFORM_X11,
+	GLFW_TRUE,
+	GLFW_WAYLAND_DISABLE_LIBDECOR,
+	GLFW_WAYLAND_LIBDECOR,
+	GLFW_WAYLAND_PREFER_LIBDECOR,
+	glfwGetPlatform,
+	glfwInit,
+	glfwInitHint,
+	glfwPlatformSupported,
+	glfwTerminate,
+};
 use xch::Sender;
 
 #[cfg(feature = "tracing")]
 use crate::error::set_error_log;
 use crate::{
-	bind::{
-		GLFW_ANY_PLATFORM,
-		GLFW_COCOA_CHDIR_RESOURCES,
-		GLFW_COCOA_MENUBAR,
-		GLFW_FALSE,
-		GLFW_JOYSTICK_HAT_BUTTONS,
-		GLFW_PLATFORM,
-		GLFW_PLATFORM_COCOA,
-		GLFW_PLATFORM_NULL,
-		GLFW_PLATFORM_WAYLAND,
-		GLFW_PLATFORM_WIN32,
-		GLFW_PLATFORM_X11,
-		GLFW_TRUE,
-		GLFW_WAYLAND_DISABLE_LIBDECOR,
-		GLFW_WAYLAND_LIBDECOR,
-		GLFW_WAYLAND_PREFER_LIBDECOR,
-		glfwGetPlatform,
-		glfwInit,
-		glfwInitHint,
-		glfwPlatformSupported,
-		glfwTerminate,
-	},
 	core::exec::XWinMessage,
 	error::XErr,
 	event::{

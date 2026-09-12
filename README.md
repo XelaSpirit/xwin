@@ -131,19 +131,12 @@ No features are enabled by default.
 | Feature    | Purpose                                                                        |
 |------------|--------------------------------------------------------------------------------|
 | `tracing`  | Reports GLFW errors through the `tracing` crate.                               |
-| `glfw`     | Exposes conversions to and from selected underlying GLFW types.                |
-| `bindings` | Enables `glfw` and publicly exposes the raw bindings in `xwin::bind`.          |
-| `vulkan`   | Enables `glfw` and exposes Vulkan integration helpers and Vulkan handle types. |
-
-If you have enabled the `vulkan` feature, be sure to set the `VULKAN_INCLUDE_PATH` environment variable. It must be the
-location of the `vulkan` folder containing `vulkan.h`. If you're using the LunarG vulkan SDK, this would be the location
-of the `Include` folder inside the SDK.
 
 For example:
 
 ```toml
 [dependencies]
-xwin = { git = "https://github.com/XelaSpirit/xwin.git", branch = "master", features = ["vulkan", "tracing"] }
+xwin = { git = "https://github.com/XelaSpirit/xwin.git", branch = "master", features = ["tracing"] }
 ```
 
 ## Running the sample

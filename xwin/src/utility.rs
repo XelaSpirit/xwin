@@ -2,13 +2,14 @@
 
 use std::sync::mpsc::channel;
 
+use glfw::{
+	glfwGetTime,
+	glfwGetTimerFrequency,
+	glfwGetTimerValue,
+	glfwSetTime,
+};
+
 use crate::{
-	bind::{
-		glfwGetTime,
-		glfwGetTimerFrequency,
-		glfwGetTimerValue,
-		glfwSetTime,
-	},
 	core::{
 		XWin,
 		exec::XWinMessage,

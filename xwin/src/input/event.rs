@@ -1,13 +1,13 @@
 use std::os::raw::c_int;
 
+use glfw::{
+	GLFW_CONNECTED,
+	GLFW_DISCONNECTED,
+	glfwSetJoystickCallback,
+};
 use xch::Sender;
 
 use crate::{
-	bind::{
-		GLFW_CONNECTED,
-		GLFW_DISCONNECTED,
-		glfwSetJoystickCallback,
-	},
 	core::XWin,
 	error::XErr,
 	input::gamepad::Joystick,
@@ -24,22 +24,6 @@ pub enum JoystickConfigEvent
 
 impl JoystickConfigEvent
 {
-	#[cfg(feature = "glfw")]
-	pub unsafe fn from_glfw(jid: u32, evt: u32) -> Self
-	{
-		Self::from_glfw_crate(jid, evt)
-	}
-
-	#[cfg(feature = "glfw")]
-	pub fn as_glfw(&self) -> u32
-	{
-		match self
-		{
-			| JoystickConfigEvent::Connected(_) => GLFW_CONNECTED,
-			| JoystickConfigEvent::Disconnected(_) => GLFW_DISCONNECTED,
-		}
-	}
-
 	pub(crate) fn from_glfw_crate(jid: u32, evt: u32) -> Self
 	{
 		if evt == GLFW_CONNECTED

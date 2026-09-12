@@ -1,4 +1,4 @@
-use crate::bind::GLFWvidmode;
+use glfw::GLFWvidmode;
 
 /// A struct containing the width, height, rgb bit depth, and refresh rate of a
 /// video mode for a monitor.
@@ -49,25 +49,6 @@ impl VideoMode
 	pub fn refresh_rate(&self) -> i32
 	{
 		self.refresh_rate
-	}
-
-	#[cfg(feature = "glfw")]
-	pub fn as_glfw(&self) -> GLFWvidmode
-	{
-		GLFWvidmode {
-			width:       self.width,
-			height:      self.height,
-			redBits:     self.red_bits,
-			greenBits:   self.green_bits,
-			blueBits:    self.blue_bits,
-			refreshRate: self.refresh_rate,
-		}
-	}
-
-	#[cfg(feature = "glfw")]
-	pub fn from_glfw(vm: &GLFWvidmode) -> Self
-	{
-		Self::from_glfw_crate(vm)
 	}
 
 	/// Construct a video mode from a GLFWvidmode

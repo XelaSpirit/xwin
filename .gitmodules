@@ -1,3 +1,0 @@
-[submodule "xwin/lib/glfw"]
-	path = xwin/lib/glfw
-	url = https://github.com/glfw/glfw.git

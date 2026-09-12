@@ -12,27 +12,28 @@ use std::{
 	slice,
 };
 
+use glfw::{
+	GLFW_TRUE,
+	GLFWwindow,
+	glfwSetCharCallback,
+	glfwSetCursorEnterCallback,
+	glfwSetCursorPosCallback,
+	glfwSetDropCallback,
+	glfwSetFramebufferSizeCallback,
+	glfwSetKeyCallback,
+	glfwSetMouseButtonCallback,
+	glfwSetScrollCallback,
+	glfwSetWindowCloseCallback,
+	glfwSetWindowContentScaleCallback,
+	glfwSetWindowFocusCallback,
+	glfwSetWindowIconifyCallback,
+	glfwSetWindowMaximizeCallback,
+	glfwSetWindowPosCallback,
+	glfwSetWindowRefreshCallback,
+	glfwSetWindowSizeCallback,
+};
+
 use crate::{
-	bind::{
-		GLFW_TRUE,
-		GLFWwindow,
-		glfwSetCharCallback,
-		glfwSetCursorEnterCallback,
-		glfwSetCursorPosCallback,
-		glfwSetDropCallback,
-		glfwSetFramebufferSizeCallback,
-		glfwSetKeyCallback,
-		glfwSetMouseButtonCallback,
-		glfwSetScrollCallback,
-		glfwSetWindowCloseCallback,
-		glfwSetWindowContentScaleCallback,
-		glfwSetWindowFocusCallback,
-		glfwSetWindowIconifyCallback,
-		glfwSetWindowMaximizeCallback,
-		glfwSetWindowPosCallback,
-		glfwSetWindowRefreshCallback,
-		glfwSetWindowSizeCallback,
-	},
 	core::{
 		ContentScale,
 		Pixels,

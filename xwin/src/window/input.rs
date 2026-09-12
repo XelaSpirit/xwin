@@ -1,18 +1,18 @@
 use std::sync::mpsc::channel;
 
+use glfw::{
+	GLFW_CURSOR,
+	GLFW_FALSE,
+	GLFW_LOCK_KEY_MODS,
+	GLFW_MOUSE_PASSTHROUGH,
+	GLFW_RAW_MOUSE_MOTION,
+	GLFW_STICKY_KEYS,
+	GLFW_STICKY_MOUSE_BUTTONS,
+	GLFW_TRUE,
+};
 use xch::Sender;
 
 use crate::{
-	bind::{
-		GLFW_CURSOR,
-		GLFW_FALSE,
-		GLFW_LOCK_KEY_MODS,
-		GLFW_MOUSE_PASSTHROUGH,
-		GLFW_RAW_MOUSE_MOTION,
-		GLFW_STICKY_KEYS,
-		GLFW_STICKY_MOUSE_BUTTONS,
-		GLFW_TRUE,
-	},
 	core::{
 		ScreenCoordinates,
 		XWin,

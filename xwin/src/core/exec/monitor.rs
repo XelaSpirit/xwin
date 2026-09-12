@@ -3,22 +3,23 @@ use std::{
 	sync::mpsc::Sender,
 };
 
+use glfw::{
+	GLFWmonitor,
+	glfwGetGammaRamp,
+	glfwGetMonitorContentScale,
+	glfwGetMonitorName,
+	glfwGetMonitorPhysicalSize,
+	glfwGetMonitorPos,
+	glfwGetMonitorWorkarea,
+	glfwGetMonitors,
+	glfwGetPrimaryMonitor,
+	glfwGetVideoMode,
+	glfwGetVideoModes,
+	glfwSetGamma,
+	glfwSetGammaRamp,
+};
+
 use crate::{
-	bind::{
-		GLFWmonitor,
-		glfwGetGammaRamp,
-		glfwGetMonitorContentScale,
-		glfwGetMonitorName,
-		glfwGetMonitorPhysicalSize,
-		glfwGetMonitorPos,
-		glfwGetMonitorWorkarea,
-		glfwGetMonitors,
-		glfwGetPrimaryMonitor,
-		glfwGetVideoMode,
-		glfwGetVideoModes,
-		glfwSetGamma,
-		glfwSetGammaRamp,
-	},
 	core::{
 		ContentScale,
 		ScreenCoordinates,

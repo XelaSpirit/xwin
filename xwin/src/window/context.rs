@@ -1,10 +1,10 @@
+use glfw::{
+	GLFWwindow,
+	glfwGetWindowUserPointer,
+};
 use xch::Sender;
 
 use crate::{
-	bind::{
-		GLFWwindow,
-		glfwGetWindowUserPointer,
-	},
 	error::XErr,
 	event::{
 		KeyEvent,

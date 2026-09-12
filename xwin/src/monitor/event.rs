@@ -3,15 +3,15 @@ use std::{
 	os::raw::c_int,
 };
 
+use glfw::{
+	GLFW_CONNECTED,
+	GLFWmonitor,
+	glfwGetMonitorName,
+	glfwSetMonitorCallback,
+};
 use xch::Sender;
 
 use crate::{
-	bind::{
-		GLFW_CONNECTED,
-		GLFWmonitor,
-		glfwGetMonitorName,
-		glfwSetMonitorCallback,
-	},
 	core::XWin,
 	error::XErr,
 	monitor::Monitor,

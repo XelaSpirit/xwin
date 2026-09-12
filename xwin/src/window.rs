@@ -15,16 +15,13 @@ use std::{
 };
 
 pub use builder::*;
+use glfw::{
+	GLFW_FALSE,
+	GLFW_TRUE,
+	GLFWwindow,
+};
 
-#[cfg(feature = "glfw")]
-pub use crate::bind::glfw::GLFWwindow;
-#[cfg(not(feature = "glfw"))]
-use crate::bind::GLFWwindow;
 use crate::{
-	bind::{
-		GLFW_FALSE,
-		GLFW_TRUE,
-	},
 	core::{
 		XWin,
 		exec::XWinMessage,
@@ -152,52 +149,6 @@ impl Window
 			.map(|win| unsafe { Self::from_glfw(win) })
 	}
 
-	/// Convert the [Window] to a raw `*mut GLFWwindow`.
-	///
-	/// XWin will no longer own this pointer, and it is up to the caller to keep
-	/// track of it, and to destroy the GLFW window when it is no longer in use.
-	///
-	/// Refer to the GLFW documentation for more information about how to handle
-	/// this pointer safely.
-	#[cfg(feature = "glfw")]
-	pub unsafe fn to_glfw(mut self) -> *mut GLFWwindow
-	{
-		let value = self.0;
-		self.0 = null_mut();
-		value
-	}
-
-	/// Returns the raw `*mut GLFWwindow` that this [Window] represents.
-	///
-	/// XWin still treats this pointer as being owned by the [Window], meaning
-	/// XWin will destroy the GLFW window if this [Window] is dropped.
-	///
-	/// Refer to the GLFW documentation for more information about how to handle
-	/// this pointer safely.
-	#[cfg(feature = "glfw")]
-	pub unsafe fn as_glfw(&self) -> *mut GLFWwindow
-	{
-		self.0
-	}
-
-	/// Construct a new [Window] from a `*mut GLFWwindow`.
-	///
-	/// After this function is called, the specified window pointer should no
-	/// longer be used by the caller, as it is treated as owned by the returned
-	/// [Window]. This window will also be automatically destroyed by XWin when
-	/// the returned [Window] is dropped, meaning copies of the given pointer
-	/// will no longer be valid.
-	///
-	/// Note that XWin can only automatically destroy the window if GLFW was
-	/// initialized with [crate::core::init].
-	#[cfg(feature = "glfw")]
-	pub unsafe fn from_glfw(win: *mut GLFWwindow) -> Self
-	{
-		Window(win)
-	}
-
-	/// Construct a new [Window] from a `GLFWwindow`.
-	#[cfg(not(feature = "glfw"))]
 	pub(crate) unsafe fn from_glfw(win: *mut GLFWwindow) -> Self
 	{
 		Window(win)

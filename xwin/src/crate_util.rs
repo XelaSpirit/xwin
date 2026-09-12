@@ -3,7 +3,6 @@ macro_rules! glfw_enum {
 	($type:ty, $rep:ty) => {
 		impl $type
 		{
-			#[cfg(feature = "glfw")]
 			#[allow(dead_code)]
 			pub(crate) unsafe fn from_glfw(value: u32) -> $type
 			{
@@ -18,29 +17,6 @@ macro_rules! glfw_enum {
 				unsafe { std::mem::transmute(value as $rep) }
 			}
 
-			#[cfg(feature = "glfw")]
-			#[allow(dead_code)]
-			pub(crate) fn as_glfw(&self) -> $rep
-			{
-				unsafe { std::mem::transmute(self.clone() as $type) }
-			}
-
-			#[cfg(not(feature = "glfw"))]
-			#[allow(dead_code)]
-			pub(crate) unsafe fn from_glfw(value: u32) -> $type
-			{
-				// This does not 100& guarantee a valid value, as some enums don't cover all
-				// values within their type, and some (JoystickHatState) even have gaps in their
-				// coverage. This check only covers the most obviously wrong values. Production
-				// code won't have this assertion, anyway.
-				debug_assert!(
-					value <= <$rep>::MAX as u32,
-					"Attempted to convert invalid glfw enum value"
-				);
-				unsafe { std::mem::transmute(value as $rep) }
-			}
-
-			#[cfg(not(feature = "glfw"))]
 			#[allow(dead_code)]
 			pub(crate) fn as_glfw(&self) -> $rep
 			{
@@ -52,7 +28,6 @@ macro_rules! glfw_enum {
 	($type:ty, $rep:ty, $def:expr) => {
 		impl $type
 		{
-			#[cfg(feature = "glfw")]
 			#[allow(dead_code)]
 			pub(crate) unsafe fn from_glfw(value: u32) -> $type
 			{
@@ -67,29 +42,6 @@ macro_rules! glfw_enum {
 				unsafe { std::mem::transmute(value as $rep) }
 			}
 
-			#[cfg(feature = "glfw")]
-			#[allow(dead_code)]
-			pub(crate) unsafe fn as_glfw(&self) -> $rep
-			{
-				unsafe { std::mem::transmute(self.clone() as $type) }
-			}
-
-			#[cfg(not(feature = "glfw"))]
-			#[allow(dead_code)]
-			pub(crate) unsafe fn from_glfw(value: u32) -> $type
-			{
-				// This does not 100& guarantee a valid value, as some enums don't cover all
-				// values within their type, and some (JoystickHatState) even have gaps in their
-				// coverage. This check only covers the most obviously wrong values. Production
-				// code won't have this assertion, anyway.
-				debug_assert!(
-					value <= <$rep>::MAX as u32,
-					"Attempted to convert invalid glfw enum value"
-				);
-				unsafe { std::mem::transmute(value as $rep) }
-			}
-
-			#[cfg(not(feature = "glfw"))]
 			#[allow(dead_code)]
 			pub(crate) unsafe fn as_glfw(&self) -> $rep
 			{

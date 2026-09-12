@@ -4,21 +4,22 @@ use std::{
 	sync::mpsc::Sender,
 };
 
+use glfw::{
+	GLFW_TRUE,
+	GLFWgamepadstate,
+	glfwGetGamepadName,
+	glfwGetGamepadState,
+	glfwGetJoystickAxes,
+	glfwGetJoystickButtons,
+	glfwGetJoystickGUID,
+	glfwGetJoystickHats,
+	glfwGetJoystickName,
+	glfwJoystickIsGamepad,
+	glfwJoystickPresent,
+	glfwUpdateGamepadMappings,
+};
+
 use crate::{
-	bind::{
-		GLFW_TRUE,
-		GLFWgamepadstate,
-		glfwGetGamepadName,
-		glfwGetGamepadState,
-		glfwGetJoystickAxes,
-		glfwGetJoystickButtons,
-		glfwGetJoystickGUID,
-		glfwGetJoystickHats,
-		glfwGetJoystickName,
-		glfwJoystickIsGamepad,
-		glfwJoystickPresent,
-		glfwUpdateGamepadMappings,
-	},
 	core::exec::send_string,
 	error::XErr,
 	input::{

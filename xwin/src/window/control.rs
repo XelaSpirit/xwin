@@ -1,18 +1,19 @@
 use std::sync::mpsc::channel;
 
+use glfw::{
+	GLFW_DONT_CARE,
+	GLFW_FALSE,
+	GLFW_FOCUSED,
+	GLFW_HOVERED,
+	GLFW_ICONIFIED,
+	GLFW_MAXIMIZED,
+	GLFW_TRUE,
+	GLFW_VISIBLE,
+	glfwSetWindowShouldClose,
+	glfwWindowShouldClose,
+};
+
 use crate::{
-	bind::{
-		GLFW_DONT_CARE,
-		GLFW_FALSE,
-		GLFW_FOCUSED,
-		GLFW_HOVERED,
-		GLFW_ICONIFIED,
-		GLFW_MAXIMIZED,
-		GLFW_TRUE,
-		GLFW_VISIBLE,
-		glfwSetWindowShouldClose,
-		glfwWindowShouldClose,
-	},
 	core::{
 		ScreenCoordinates,
 		XWin,

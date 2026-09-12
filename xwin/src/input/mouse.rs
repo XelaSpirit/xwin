@@ -1,21 +1,22 @@
 use std::sync::mpsc::channel;
 
+use glfw::{
+	GLFW_CURSOR_CAPTURED,
+	GLFW_CURSOR_DISABLED,
+	GLFW_CURSOR_HIDDEN,
+	GLFW_CURSOR_NORMAL,
+	GLFW_MOUSE_BUTTON_4,
+	GLFW_MOUSE_BUTTON_5,
+	GLFW_MOUSE_BUTTON_6,
+	GLFW_MOUSE_BUTTON_7,
+	GLFW_MOUSE_BUTTON_8,
+	GLFW_MOUSE_BUTTON_LEFT,
+	GLFW_MOUSE_BUTTON_MIDDLE,
+	GLFW_MOUSE_BUTTON_RIGHT,
+	GLFWcursor,
+};
+
 use crate::{
-	bind::{
-		GLFW_CURSOR_CAPTURED,
-		GLFW_CURSOR_DISABLED,
-		GLFW_CURSOR_HIDDEN,
-		GLFW_CURSOR_NORMAL,
-		GLFW_MOUSE_BUTTON_4,
-		GLFW_MOUSE_BUTTON_5,
-		GLFW_MOUSE_BUTTON_6,
-		GLFW_MOUSE_BUTTON_7,
-		GLFW_MOUSE_BUTTON_8,
-		GLFW_MOUSE_BUTTON_LEFT,
-		GLFW_MOUSE_BUTTON_MIDDLE,
-		GLFW_MOUSE_BUTTON_RIGHT,
-		GLFWcursor,
-	},
 	core::{
 		Pixels,
 		XWin,
@@ -117,41 +118,11 @@ impl Cursor
 			.map(|win| Self::from_glfw(win))
 	}
 
-	/// Convert the [Cursor] to a raw `*mut GLFWcursor`.
-	///
-	/// Refer to the GLFW documentation for further information about how to
-	/// handle this pointer safely.
-	#[cfg(feature = "glfw")]
-	pub fn to_glfw(self) -> *mut GLFWcursor
-	{
-		self.0
-	}
-
-	/// Returns the raw `*mut GLFWcursor` for the [Cursor].
-	///
-	/// Refer to the GLFW documentation for further information about how to
-	/// handle this pointer safely.
-	#[cfg(feature = "glfw")]
-	pub fn as_glfw(&self) -> *mut GLFWcursor
-	{
-		self.0
-	}
-
-	/// Construct a new [Cursor] from a raw `*mut GLFWcursor`.
-	#[cfg(feature = "glfw")]
-	pub fn from_glfw(cursor: *mut GLFWcursor) -> Self
-	{
-		Self(cursor)
-	}
-
-	#[cfg(not(feature = "glfw"))]
 	pub(crate) fn as_glfw(&self) -> *mut GLFWcursor
 	{
 		self.0
 	}
 
-	/// Construct a new [Cursor] from a `GLFWcursor`.
-	#[cfg(not(feature = "glfw"))]
 	fn from_glfw(cursor: *mut GLFWcursor) -> Self
 	{
 		Self(cursor)

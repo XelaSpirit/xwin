@@ -1,17 +1,17 @@
 use std::sync::mpsc::channel;
 
+use glfw::{
+	GLFW_AUTO_ICONIFY,
+	GLFW_DECORATED,
+	GLFW_DONT_CARE,
+	GLFW_FLOATING,
+	GLFW_FOCUS_ON_SHOW,
+	GLFW_RESIZABLE,
+	GLFW_TRANSPARENT_FRAMEBUFFER,
+};
 use xch::Sender;
 
 use crate::{
-	bind::{
-		GLFW_AUTO_ICONIFY,
-		GLFW_DECORATED,
-		GLFW_DONT_CARE,
-		GLFW_FLOATING,
-		GLFW_FOCUS_ON_SHOW,
-		GLFW_RESIZABLE,
-		GLFW_TRANSPARENT_FRAMEBUFFER,
-	},
 	core::{
 		ContentScale,
 		Pixels,

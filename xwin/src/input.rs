@@ -2,14 +2,13 @@
 
 // TODO documentation
 
-use crate::{
-	bind::{
-		GLFW_PRESS,
-		GLFW_RELEASE,
-		GLFW_REPEAT,
-	},
-	glfw_enum,
+use glfw::{
+	GLFW_PRESS,
+	GLFW_RELEASE,
+	GLFW_REPEAT,
 };
+
+use crate::glfw_enum;
 
 pub(crate) mod event;
 pub mod gamepad;
